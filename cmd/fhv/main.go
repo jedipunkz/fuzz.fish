@@ -352,7 +352,7 @@ func main() {
 
 	t := table.New(
 		table.WithColumns(columns),
-		table.WithFocused(true),
+		table.WithFocused(false),
 		table.WithHeight(10), // Initial, updated in resize
 	)
 
