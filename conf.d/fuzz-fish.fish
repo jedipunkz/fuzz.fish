@@ -86,6 +86,14 @@ function _fuzz_fish_rebuild_binary
         rm -f "$bin_path"
     end
 
+    # Clear module cache for this package to force fresh download
+    echo "   Clearing module cache..."
+    set -l gopath (go env GOPATH)
+    if test -d "$gopath/pkg/mod/github.com/jedipunkz"
+        rm -rf "$gopath/pkg/mod/github.com/jedipunkz/fuzz.fish@"*
+        echo "   Cache cleared"
+    end
+
     # Always install from GitHub to ensure latest version
     echo "   Installing from github.com/jedipunkz/fuzz.fish/cmd/fhv@latest..."
 
