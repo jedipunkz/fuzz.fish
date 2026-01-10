@@ -21,29 +21,41 @@ type HistoryEntry struct {
 	CmdLine int
 }
 
+const (
+	// Tokyo Night color palette
+	colorCyan           = "#7dcfff"
+	colorPurple         = "#bb9af7"
+	colorForeground     = "#c0caf5"
+	colorYellow         = "#e0af68"
+	colorOrange         = "#ff9e64"
+	colorComment        = "#565f89"
+	colorBlue           = "#7aa2f7"
+	colorSelectionBg    = "#543970" // Darker muted purple for selection
+)
+
 var (
 	// Styles for preview window
 	headerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#7dcfff")). // Tokyo Night Cyan
+			Foreground(lipgloss.Color(colorCyan)).
 			Bold(true).
 			Underline(true)
 
 	labelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#bb9af7")) // Tokyo Night Purple
+			Foreground(lipgloss.Color(colorPurple))
 
 	contentStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#c0caf5")) // Tokyo Night Foreground
+			Foreground(lipgloss.Color(colorForeground))
 
 	contextHeaderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#e0af68")). // Tokyo Night Yellow
+				Foreground(lipgloss.Color(colorYellow)).
 				Bold(true)
 
 	activeContextStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#ff9e64")). // Tokyo Night Orange
+				Foreground(lipgloss.Color(colorOrange)).
 				Bold(true)
 
 	inactiveContextStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#565f89")) // Tokyo Night Comment
+				Foreground(lipgloss.Color(colorComment))
 )
 
 func main() {
@@ -57,14 +69,14 @@ func main() {
 	// Use go-fzf with Tokyo Night theme
 	f, err := fzf.New(
 		fzf.WithStyles(
-			fzf.WithStylePrompt(fzf.Style{ForegroundColor: "#7aa2f7"}),
-			fzf.WithStyleInputText(fzf.Style{ForegroundColor: "#c0caf5"}),
-			fzf.WithStyleCursor(fzf.Style{ForegroundColor: "#7aa2f7"}),
-			// Selection background set to purple-ish
-			fzf.WithStyleCursorLine(fzf.Style{ForegroundColor: "#c0caf5", BackgroundColor: "#4f355d", Bold: true}),
-			fzf.WithStyleMatches(fzf.Style{ForegroundColor: "#ff9e64"}),
-			fzf.WithStyleSelectedPrefix(fzf.Style{ForegroundColor: "#7aa2f7"}),
-			fzf.WithStyleUnselectedPrefix(fzf.Style{ForegroundColor: "#565f89"}),
+			fzf.WithStylePrompt(fzf.Style{ForegroundColor: colorBlue}),
+			fzf.WithStyleInputText(fzf.Style{ForegroundColor: colorForeground}),
+			fzf.WithStyleCursor(fzf.Style{ForegroundColor: colorBlue}),
+			// Selection background set to brighter purple
+			fzf.WithStyleCursorLine(fzf.Style{ForegroundColor: colorForeground, BackgroundColor: colorSelectionBg, Bold: true}),
+			fzf.WithStyleMatches(fzf.Style{ForegroundColor: colorOrange}),
+			fzf.WithStyleSelectedPrefix(fzf.Style{ForegroundColor: colorBlue}),
+			fzf.WithStyleUnselectedPrefix(fzf.Style{ForegroundColor: colorComment}),
 		),
 		fzf.WithInputPosition(fzf.InputPositionBottom),
 	)
