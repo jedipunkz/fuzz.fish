@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	fuzzyfinder "github.com/ktr0731/go-fuzzyfinder"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/koki-develop/go-fzf"
 )
 
 type HistoryEntry struct {
@@ -19,6 +21,31 @@ type HistoryEntry struct {
 	CmdLine int
 }
 
+var (
+	// Styles for preview window
+	headerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#7dcfff")). // Tokyo Night Cyan
+			Bold(true).
+			Underline(true)
+
+	labelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#bb9af7")) // Tokyo Night Purple
+
+	contentStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#c0caf5")) // Tokyo Night Foreground
+
+	contextHeaderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#e0af68")). // Tokyo Night Yellow
+				Bold(true)
+
+	activeContextStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#ff9e64")). // Tokyo Night Orange
+				Bold(true)
+
+	inactiveContextStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#565f89")) // Tokyo Night Comment
+)
+
 func main() {
 	// Parse history
 	entries := parseHistory()
@@ -27,13 +54,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Use go-fuzzyfinder
-	idx, err := fuzzyfinder.Find(
+	// Use go-fzf with Tokyo Night theme
+	f, err := fzf.New(
+		fzf.WithStyles(
+			fzf.WithStylePrompt(fzf.Style{ForegroundColor: "#7aa2f7"}),
+			fzf.WithStyleInputText(fzf.Style{ForegroundColor: "#c0caf5"}),
+			fzf.WithStyleCursor(fzf.Style{ForegroundColor: "#7aa2f7"}),
+			// Selection background set to purple-ish
+			fzf.WithStyleCursorLine(fzf.Style{ForegroundColor: "#c0caf5", BackgroundColor: "#4f355d", Bold: true}),
+			fzf.WithStyleMatches(fzf.Style{ForegroundColor: "#ff9e64"}),
+			fzf.WithStyleSelectedPrefix(fzf.Style{ForegroundColor: "#7aa2f7"}),
+			fzf.WithStyleUnselectedPrefix(fzf.Style{ForegroundColor: "#565f89"}),
+		),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize fzf: %v\n", err)
+		os.Exit(1)
+	}
+
+	idxs, err := f.Find(
 		entries,
 		func(i int) string {
 			return formatEntry(entries[i])
 		},
-		fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
+		fzf.WithPreviewWindow(func(i, w, h int) string {
 			if i < 0 || i >= len(entries) {
 				return "No selection"
 			}
@@ -42,37 +86,54 @@ func main() {
 	)
 
 	if err != nil {
-		// User cancelled
-		os.Exit(0)
+		if errors.Is(err, fzf.ErrAbort) {
+			// User cancelled
+			os.Exit(0)
+		}
+		fmt.Fprintf(os.Stderr, "fzf error: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Output selected command
-	fmt.Print(entries[idx].Cmd)
+	if len(idxs) > 0 {
+		fmt.Print(entries[idxs[0]].Cmd)
+	}
 }
 
 func formatEntry(e HistoryEntry) string {
 	timeStr := formatTime(e.When)
+	// Replace escaped newlines and physical newlines with spaces to prevent display corruption
+	cmd := strings.ReplaceAll(e.Cmd, "\\n", " ")
+	cmd = strings.ReplaceAll(cmd, "\n", " ")
 	// Format: "2026-01-10 15:30:45 | git status"
-	return fmt.Sprintf("%-19s | %s", timeStr, e.Cmd)
+	return fmt.Sprintf("%-19s | %s", timeStr, cmd)
 }
 
 func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height int) string {
 	var sb strings.Builder
 
 	// Header
-	sb.WriteString("COMMAND\n")
-	sb.WriteString(entry.Cmd)
+	sb.WriteString(headerStyle.Render("COMMAND") + "\n")
+	// Wrap command to fit width
+	sb.WriteString(contentStyle.Copy().Width(width).Render(entry.Cmd))
 	sb.WriteString("\n\n")
 
 	// Metadata
-	sb.WriteString(fmt.Sprintf("Time: %s\n", formatTime(entry.When)))
+	// Time
+	sb.WriteString(labelStyle.Render("Time: "))
+	sb.WriteString(contentStyle.Render(formatTime(entry.When)))
+	sb.WriteString("\n")
+
+	// Dir
 	if len(entry.Paths) > 0 {
-		sb.WriteString(fmt.Sprintf("Dir:  %s\n", formatDir(entry.Paths[0])))
+		sb.WriteString(labelStyle.Render("Dir:  "))
+		sb.WriteString(contentStyle.Render(formatDir(entry.Paths[0])))
+		sb.WriteString("\n")
 	}
 	sb.WriteString("\n")
 
 	// Context (commands before/after)
-	sb.WriteString("CONTEXT\n")
+	sb.WriteString(contextHeaderStyle.Render("CONTEXT") + "\n")
 	start := idx - 3
 	if start < 0 {
 		start = 0
@@ -84,19 +145,23 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height 
 
 	for i := start; i < end; i++ {
 		e := all[i]
-		cursor := "  "
-		if i == idx {
-			cursor = "→ "
-		}
-
 		cmd := e.Cmd
-		// Truncate if needed
-		maxWidth := width - 5
-		if maxWidth > 0 && len(cmd) > maxWidth {
-			cmd = cmd[:maxWidth-3] + "..."
-		}
 
-		sb.WriteString(fmt.Sprintf("%s%s\n", cursor, cmd))
+		if i == idx {
+			cursor := "→ "
+			// Wrap active context line
+			line := activeContextStyle.Copy().Width(width).Render(cursor + cmd)
+			sb.WriteString(line + "\n")
+		} else {
+			cursor := "  "
+			// Truncate inactive lines to keep context compact
+			maxWidth := width - lipgloss.Width(cursor)
+			if maxWidth > 0 && len(cmd) > maxWidth {
+				cmd = cmd[:maxWidth-3] + "..."
+			}
+			line := inactiveContextStyle.Render(cursor + cmd)
+			sb.WriteString(line + "\n")
+		}
 	}
 
 	return sb.String()
