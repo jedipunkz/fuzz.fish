@@ -46,11 +46,18 @@ sudo pacman -S fish fzf go
 
 ## 🚀 Installation
 
-### Using Fisher
+### Using Fisher (Recommended)
+
+The binary will be automatically built during installation:
 
 ```fish
 fisher install jedipunkz/fuzz.fish
 ```
+
+Fisher will:
+1. Download the plugin
+2. Run `install.fish` to build the Go binary
+3. Set up key bindings automatically
 
 ### Using Oh My Fish
 
@@ -61,11 +68,19 @@ omf install https://github.com/jedipunkz/fuzz.fish
 ### Manual Installation
 
 ```fish
+# Clone the repository
 git clone https://github.com/jedipunkz/fuzz.fish.git ~/.config/fish/plugins/fuzz.fish
 
-# Add to your config.fish
-set fish_plugins ~/.config/fish/plugins/fuzz.fish $fish_plugins
+# Build the binary
+cd ~/.config/fish/plugins/fuzz.fish
+go build -o bin/fhv ./cmd/fhv
+
+# Source the plugin in your config.fish
+echo "source ~/.config/fish/plugins/fuzz.fish/conf.d/fuzz-fish.fish" >> ~/.config/fish/config.fish
+echo "set fish_function_path ~/.config/fish/plugins/fuzz.fish/functions \$fish_function_path" >> ~/.config/fish/config.fish
 ```
+
+**Note**: The Go binary (`bin/fhv`) will be built automatically on first use if it doesn't exist, but using Fisher ensures it's built during installation for a smoother experience.
 
 ## 📖 Usage
 
@@ -102,13 +117,18 @@ fuzz.fish combines the power of Go and Fish:
   - Generates preview content
 
 - **Fish function** (`functions/fh.fish`): User interface
-  - Builds Go binary automatically
   - Integrates with fzf
   - Handles command insertion
+  - Multi-platform clipboard support (pbcopy/xclip/xsel/wl-copy)
 
 - **Plugin config** (`conf.d/fuzz-fish.fish`): Auto-configuration
   - Sets up `Ctrl+R` key binding
+  - Builds binary if missing (on shell startup)
   - Initializes plugin on shell start
+
+- **Install scripts**: Fisher integration
+  - `install.fish`: Builds binary during plugin installation
+  - `uninstall.fish`: Cleans up binary on uninstall
 
 ## 🔧 Configuration
 
