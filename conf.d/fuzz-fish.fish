@@ -1,75 +1,40 @@
 # fuzz.fish - Context-aware Fish history viewer
 # Initialization and key bindings
 
-# Detect the source directory
-function __fuzz_fish_get_source_dir
-    # Check if fish_plugins exists and contains fuzz.fish path
-    if test -f ~/.config/fish/fish_plugins
-        set -l fuzz_path (grep "fuzz.fish" ~/.config/fish/fish_plugins | head -1)
-        if test -n "$fuzz_path"; and test -d "$fuzz_path"
-            echo "$fuzz_path"
+# Set the binary path
+set -l install_dir "$HOME/.local/share/fuzz.fish/bin"
+set -Ux FUZZ_FISH_BIN_PATH "$install_dir/fhv"
+
+# Helper to build binary (mostly for development or manual updates)
+function __fuzz_fish_build
+    set -l conf_dir (dirname (status -f))
+    
+    # Try to find source relative to this file (for development)
+    if test -f "$conf_dir/../cmd/fhv/main.go"
+        set -l source_dir (realpath "$conf_dir/..")
+        set -l bin_path "$source_dir/bin/fhv"
+        
+        # In development mode, we might want to use the local bin
+        if go build -o "$bin_path" "$source_dir/cmd/fhv"
+            set -Ux FUZZ_FISH_BIN_PATH "$bin_path"
             return 0
         end
     end
-
-    # Fallback: try to find it relative to this file
-    set -l conf_dir (dirname (status -f))
-    if test -f "$conf_dir/../cmd/fhv/main.go"
-        realpath "$conf_dir/.."
+    
+    # If we are here, we assume the binary is already installed via install.fish
+    if test -f "$FUZZ_FISH_BIN_PATH"
         return 0
     end
 
+    # If binary is missing and we can't build it, warn only when trying to use it
+    # (The error is handled in fh.fish)
     return 1
 end
 
-# Build the Go binary
-function __fuzz_fish_build
-    set -l source_dir (__fuzz_fish_get_source_dir)
-    if test -z "$source_dir"
-        return 0  # Silently skip if source not found
-    end
-
-    set -l bin_path "$source_dir/bin/fhv"
-    set -l src_path "$source_dir/cmd/fhv/main.go"
-
-    # Check if Go is installed
-    if not type -q go
-        echo "⚠️  fuzz.fish: Go is not installed. The plugin will not work." >&2
-        echo "   Install Go from: https://golang.org/dl/" >&2
-        return 1
-    end
-
-    # Build if binary doesn't exist or source is newer
-    if not test -f "$bin_path"; or test "$src_path" -nt "$bin_path"
-        echo "🔨 fuzz.fish: Building binary..." >&2
-        mkdir -p "$source_dir/bin"
-        if go build -o "$bin_path" "$source_dir/cmd/fhv"
-            echo "✅ fuzz.fish: Build successful!" >&2
-            # Set global variable for fh function to use
-            set -Ux FUZZ_FISH_BIN_PATH "$bin_path"
-            return 0
-        else
-            echo "❌ fuzz.fish: Build failed!" >&2
-            return 1
-        end
-    else
-        # Binary exists, set the path
-        set -Ux FUZZ_FISH_BIN_PATH "$bin_path"
-    end
-end
-
-# Fisher install hook - build on install
-function __fuzz_fish_install --on-event fuzz_fish_install
-    __fuzz_fish_build
-end
-
-# Fisher update hook - rebuild on update
+# Fisher update hook
 function __fuzz_fish_update --on-event fuzz_fish_update
-    __fuzz_fish_build
-end
-
-# Build on shell startup if binary doesn't exist
-if status is-interactive
+    # Re-run install script logic if needed, but usually install.fish handles this.
+    # We can try to trigger a rebuild if source is available.
     __fuzz_fish_build
 end
 
