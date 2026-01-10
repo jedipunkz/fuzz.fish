@@ -1,4 +1,6 @@
-# 🐟 fuzz.fish
+![fuzz.fish](./assets/fuzz.png)
+
+# fuzz.fish
 
 fuzz.fish is Fish Plugin for Context-Aware Command History Search with Fuzzy Find.
 
