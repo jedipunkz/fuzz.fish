@@ -1,11 +1,36 @@
 # fuzz.fish - Context-aware Fish history viewer
 # Initialization and key bindings
 
+# Detect the source directory
+function __fuzz_fish_get_source_dir
+    # Check if fish_plugins exists and contains fuzz.fish path
+    if test -f ~/.config/fish/fish_plugins
+        set -l fuzz_path (grep "fuzz.fish" ~/.config/fish/fish_plugins | head -1)
+        if test -n "$fuzz_path"; and test -d "$fuzz_path"
+            echo "$fuzz_path"
+            return 0
+        end
+    end
+
+    # Fallback: try to find it relative to this file
+    set -l conf_dir (dirname (status -f))
+    if test -f "$conf_dir/../cmd/fhv/main.go"
+        realpath "$conf_dir/.."
+        return 0
+    end
+
+    return 1
+end
+
 # Build the Go binary
 function __fuzz_fish_build
-    set -l plugin_dir (dirname (status -f))
-    set -l bin_path "$plugin_dir/../bin/fhv"
-    set -l src_path "$plugin_dir/../cmd/fhv/main.go"
+    set -l source_dir (__fuzz_fish_get_source_dir)
+    if test -z "$source_dir"
+        return 0  # Silently skip if source not found
+    end
+
+    set -l bin_path "$source_dir/bin/fhv"
+    set -l src_path "$source_dir/cmd/fhv/main.go"
 
     # Check if Go is installed
     if not type -q go
@@ -17,14 +42,19 @@ function __fuzz_fish_build
     # Build if binary doesn't exist or source is newer
     if not test -f "$bin_path"; or test "$src_path" -nt "$bin_path"
         echo "🔨 fuzz.fish: Building binary..." >&2
-        mkdir -p "$plugin_dir/../bin"
-        if go build -o "$bin_path" "$plugin_dir/../cmd/fhv"
+        mkdir -p "$source_dir/bin"
+        if go build -o "$bin_path" "$source_dir/cmd/fhv"
             echo "✅ fuzz.fish: Build successful!" >&2
+            # Set global variable for fh function to use
+            set -Ux FUZZ_FISH_BIN_PATH "$bin_path"
             return 0
         else
             echo "❌ fuzz.fish: Build failed!" >&2
             return 1
         end
+    else
+        # Binary exists, set the path
+        set -Ux FUZZ_FISH_BIN_PATH "$bin_path"
     end
 end
 
