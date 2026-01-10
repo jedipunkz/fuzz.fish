@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/term"
 )
 
 // Styling definitions
@@ -110,11 +110,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selectedRow := m.table.SelectedRow()
 			if selectedRow != nil && len(selectedRow) >= 3 {
 				// The command is in the 3rd column
-				m.selectedCmd = selectedRow[2]
-				// Also verify with filtered list to be safe, as table row might be truncated?
-				// Actually table row data is just strings.
-				// Let's rely on index if possible, but filtering changes indices.
-				// The table model tracks selection index relative to rows.
+				// But wait, the table row data is formatted string.
+				// We need the original full command, not truncated or formatted.
+				// Best way is to map back via index.
 				idx := m.table.Cursor()
 				if idx >= 0 && idx < len(m.filtered) {
 					m.selectedCmd = m.filtered[idx].Cmd
@@ -136,59 +134,51 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Filter logic
 	// Only re-filter if input changed or init
-	// Simple containment check for now
 	filterText := m.input.Value()
-	if filterText != "" {
-		var newFiltered []HistoryEntry
-		var rows []table.Row
 
-		lowerFilter := strings.ToLower(filterText)
+	// We need to re-filter every time input changes or just use simple logic
+	// For now, let's just re-filter on every update if input changed
+	// Ideally we would check if input actually changed but bubbletea doesn't give easy diff.
+	// Let's just do it.
 
-		for _, e := range m.entries {
-			// Search in Command and Directory
-			match := strings.Contains(strings.ToLower(e.Cmd), lowerFilter)
+	var newFiltered []HistoryEntry
+	var rows []table.Row
+
+	lowerFilter := strings.ToLower(filterText)
+
+	for _, e := range m.entries {
+		// Search in Command and Directory
+		match := true
+		if filterText != "" {
+			match = strings.Contains(strings.ToLower(e.Cmd), lowerFilter)
 			if !match && len(e.Paths) > 0 {
 				match = strings.Contains(strings.ToLower(e.Paths[0]), lowerFilter)
 			}
+		}
 
-			if match {
-				newFiltered = append(newFiltered, e)
+		if match {
+			newFiltered = append(newFiltered, e)
 
-				// Format row
-				timeStr := formatTime(e.When)
-				dirStr := ""
-				if len(e.Paths) > 0 {
-					dirStr = formatDir(e.Paths[0])
-				}
-
-				rows = append(rows, table.Row{timeStr, dirStr, e.Cmd})
+			// Format row
+			timeStr := formatTime(e.When)
+			dirStr := ""
+			if len(e.Paths) > 0 {
+				dirStr = formatDir(e.Paths[0])
 			}
+
+			// Truncate dirStr if too long for table column (optional, table handles it)
+			// But good to clean up home path
+
+			rows = append(rows, table.Row{timeStr, dirStr, e.Cmd})
 		}
-		m.filtered = newFiltered
-		m.table.SetRows(rows)
-		// Reset cursor to top when filtering
-		// m.table.SetCursor(0) // This might be annoying if typing refines search, maybe keep it?
-		// Usually creating a new result set resets cursor in fzf style
-		if len(newFiltered) != len(m.filtered) { // Rough check if changed
-			m.table.SetCursor(0)
-		}
-	} else {
-		// No filter, show all (limited to recent 1000? or all)
-		// For performance with bubbletea table, we might want to paginate or limit initial load?
-		// Let's use all for now but check performance.
-		if len(m.filtered) != len(m.entries) {
-			m.filtered = m.entries
-			var rows []table.Row
-			for _, e := range m.entries {
-				timeStr := formatTime(e.When)
-				dirStr := ""
-				if len(e.Paths) > 0 {
-					dirStr = formatDir(e.Paths[0])
-				}
-				rows = append(rows, table.Row{timeStr, dirStr, e.Cmd})
-			}
-			m.table.SetRows(rows)
-		}
+	}
+	m.filtered = newFiltered
+	m.table.SetRows(rows)
+
+	// If filter changed significantly (length diff), reset cursor?
+	// Or just ensure cursor is valid
+	if m.table.Cursor() >= len(rows) {
+		m.table.SetCursor(len(rows) - 1)
 	}
 
 	cmd = tea.Batch(cmd, inputCmd)
@@ -241,7 +231,7 @@ func (m model) View() string {
 	idx := m.table.Cursor()
 	if idx >= 0 && idx < len(m.filtered) {
 		entry := m.filtered[idx]
-		previewContent = generatePreview(entry, m.filtered, idx)
+		previewContent = generatePreview(entry, m.filtered, idx, m.width-m.table.Width()-6)
 	} else {
 		previewContent = "No selection"
 	}
@@ -270,14 +260,15 @@ func (m model) View() string {
 	)
 }
 
-func generatePreview(entry HistoryEntry, all []HistoryEntry, idx int) string {
+func generatePreview(entry HistoryEntry, all []HistoryEntry, idx int, maxWidth int) string {
 	// Format details
 	sb := strings.Builder{}
 
 	// Command
 	sb.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Render("COMMAND"))
 	sb.WriteString("\n")
-	sb.WriteString(entry.Cmd)
+	// Wrap long commands
+	sb.WriteString(lipgloss.NewStyle().Width(maxWidth).Render(entry.Cmd))
 	sb.WriteString("\n\n")
 
 	// Time & Dir
@@ -286,7 +277,7 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx int) string {
 	sb.WriteString("\n")
 	sb.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Dir:  "))
 	if len(entry.Paths) > 0 {
-		sb.WriteString(entry.Paths[0])
+		sb.WriteString(formatDir(entry.Paths[0]))
 	}
 	sb.WriteString("\n\n")
 
@@ -314,8 +305,8 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx int) string {
 
 		// Truncate cmd for preview context
 		cmd := e.Cmd
-		if len(cmd) > 30 {
-			cmd = cmd[:27] + "..."
+		if len(cmd) > maxWidth-5 {
+			cmd = cmd[:maxWidth-8] + "..."
 		}
 
 		line := fmt.Sprintf("%s %s", cursor, cmd)
@@ -329,6 +320,15 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx int) string {
 // --- Main & Helpers ---
 
 func main() {
+	// Check if stdin is a terminal
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		// If not a terminal, we might be in a pipe, but bubbletea needs a TTY.
+		// Usually when run from fish as `fh`, stdin is inherited.
+		// However, if fish does something weird with pipes, it might fail.
+		// Let's try to open /dev/tty explicitly if needed, but bubbletea usually handles it.
+		// For now, assume it works or fail gracefully.
+	}
+
 	entries := parseHistory()
 
 	// Initialize Table
@@ -343,6 +343,18 @@ func main() {
 		table.WithFocused(true),
 		table.WithHeight(10), // Initial, updated in resize
 	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	t.SetStyles(s)
 
 	// Initialize Input
 	ti := textinput.New()
