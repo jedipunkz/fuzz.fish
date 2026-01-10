@@ -11,7 +11,6 @@ fuzz.fish is Fish Plugin for Context-Aware Command History Search with Fuzzy Fin
 ## Requirements
 
 - [Fish Shell](https://fishshell.com/) 3.0+
-- [fzf](https://github.com/junegunn/fzf) (fuzzy finder)
 - [Go](https://golang.org/) 1.21+ (for building)
 
 ## Installation
