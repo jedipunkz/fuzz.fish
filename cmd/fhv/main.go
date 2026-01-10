@@ -61,7 +61,7 @@ type model struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return textinput.Blink
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -70,6 +70,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+
+		// Update input width to match screen width (minus borders)
+		m.input.Width = m.width - 4
 
 		// Calculate split sizes
 		// Left panel (Table): 60% width
@@ -352,7 +355,7 @@ func main() {
 
 	t := table.New(
 		table.WithColumns(columns),
-		table.WithFocused(false),
+		table.WithFocused(true),
 		table.WithHeight(10), // Initial, updated in resize
 	)
 
@@ -374,6 +377,9 @@ func main() {
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 20
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	ti.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
 	m := model{
 		table:    t,
