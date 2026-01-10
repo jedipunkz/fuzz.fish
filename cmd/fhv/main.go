@@ -101,12 +101,19 @@ func main() {
 }
 
 func formatEntry(e HistoryEntry) string {
-	timeStr := formatTime(e.When)
+	var timeStr string
+	if e.When == 0 {
+		timeStr = "Unknown                   "
+	} else {
+		t := time.Unix(e.When, 0)
+		// Format with day of week: "Fri 2026-01-10 15:30:45"
+		timeStr = t.Format("Mon 2006-01-02 15:04:05")
+	}
 	// Replace escaped newlines and physical newlines with spaces to prevent display corruption
 	cmd := strings.ReplaceAll(e.Cmd, "\\n", " ")
 	cmd = strings.ReplaceAll(cmd, "\n", " ")
-	// Format: "2026-01-10 15:30:45 | git status"
-	return fmt.Sprintf("%-19s | %s", timeStr, cmd)
+	// Format: "Fri 2026-01-10 15:30:45 | git status"
+	return fmt.Sprintf("%-23s | %s", timeStr, cmd)
 }
 
 func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height int) string {
@@ -122,6 +129,8 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height 
 	// Time
 	sb.WriteString(labelStyle.Render("Time") + "\n")
 	sb.WriteString(contentStyle.Render(formatTime(entry.When)))
+	sb.WriteString("\n")
+	sb.WriteString(contentStyle.Copy().Faint(true).Render(formatRelativeTime(entry.When)))
 	sb.WriteString("\n\n")
 
 	// Dir
@@ -234,4 +243,60 @@ func formatTime(timestamp int64) string {
 
 	t := time.Unix(timestamp, 0)
 	return t.Format("2006-01-02 15:04:05")
+}
+
+func formatRelativeTime(timestamp int64) string {
+	if timestamp == 0 {
+		return "unknown"
+	}
+
+	now := time.Now()
+	t := time.Unix(timestamp, 0)
+	diff := now.Sub(t)
+
+	seconds := int(diff.Seconds())
+	minutes := int(diff.Minutes())
+	hours := int(diff.Hours())
+	days := int(diff.Hours() / 24)
+	weeks := days / 7
+	months := days / 30
+	years := days / 365
+
+	switch {
+	case seconds < 60:
+		if seconds == 1 {
+			return "1 second ago"
+		}
+		return fmt.Sprintf("%d seconds ago", seconds)
+	case minutes < 60:
+		if minutes == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", minutes)
+	case hours < 24:
+		if hours == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", hours)
+	case days < 7:
+		if days == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	case weeks < 4:
+		if weeks == 1 {
+			return "1 week ago"
+		}
+		return fmt.Sprintf("%d weeks ago", weeks)
+	case months < 12:
+		if months == 1 {
+			return "1 month ago"
+		}
+		return fmt.Sprintf("%d months ago", months)
+	default:
+		if years == 1 {
+			return "1 year ago"
+		}
+		return fmt.Sprintf("%d years ago", years)
+	}
 }
