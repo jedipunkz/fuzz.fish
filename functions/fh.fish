@@ -1,54 +1,23 @@
-function fh --description 'Fish History viewer with context'
-    # Get binary path from environment variable (set by conf.d/fuzz-fish.fish)
+function fh --description 'Fish History viewer with context (TUI)'
+    # Get binary path from environment variable
     set -l bin_path "$FUZZ_FISH_BIN_PATH"
 
     # Check if binary exists
     if test -z "$bin_path"; or not test -f "$bin_path"
-        echo "❌ fuzz.fish: Binary not found. Please restart your shell." >&2
-        return 1
+        # Try to build if missing
+        if functions -q _fuzz_fish_ensure_binary
+            _fuzz_fish_ensure_binary
+        else
+            echo "❌ fuzz.fish: Binary not found. Please restart your shell." >&2
+            return 1
+        end
     end
+    
+    # Run the TUI binary
+    # It will print the selected command to stdout on exit
+    set -l cmd ($bin_path)
 
-    # Check if fzf is available
-    if not type -q fzf
-        echo "❌ fuzz.fish: fzf is required but not installed." >&2
-        echo "   Install: brew install fzf (macOS) or apt install fzf (Linux)" >&2
-        return 1
-    end
-
-    # Detect clipboard command
-    set -l clip_cmd
-    if type -q pbcopy
-        set clip_cmd "pbcopy"
-    else if type -q xclip
-        set clip_cmd "xclip -selection clipboard"
-    else if type -q xsel
-        set clip_cmd "xsel --clipboard --input"
-    else if type -q wl-copy
-        set clip_cmd "wl-copy"
-    else
-        set clip_cmd "cat"  # Fallback: just print
-    end
-
-    # Run the history viewer with fzf
-    set -l selected ($bin_path | fzf \
-        --ansi \
-        --height=50% \
-        --reverse \
-        --preview="$bin_path preview {1}" \
-        --preview-window=right:50%:wrap \
-        --header='CTRL-Y: Copy | ENTER: Execute | ESC: Cancel' \
-        --bind="ctrl-y:execute-silent(echo -n {4..} | $clip_cmd)+abort" \
-        --delimiter='\t' \
-        --with-nth=2.. \
-        --layout=reverse \
-        --border \
-        --info=inline \
-        --prompt='History > ')
-
-    if test -n "$selected"
-        # Extract the command (4th field onward)
-        set -l cmd (echo "$selected" | cut -f4-)
-
+    if test -n "$cmd"
         # Insert into command line
         commandline -r -- "$cmd"
         commandline -f repaint

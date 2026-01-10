@@ -26,20 +26,23 @@ function _fuzz_fish_ensure_binary
     # Ensure functions directory exists
     mkdir -p (dirname "$bin_path")
 
-    # Check dependencies
+    # Check dependencies - ONLY GO is needed now, fzf removed
     if not type -q go
         echo "⚠️  fuzz.fish: Go is not installed." >&2
         echo "   Please install Go to use this plugin." >&2
         return 1
     end
-    if not type -q fzf
-        echo "⚠️  fuzz.fish: fzf is not installed." >&2
-        echo "   Please install fzf to use this plugin." >&2
-    end
 
     # Build strategy
     if test -d "$local_src"
         echo "   Building from local source: $local_src"
+        
+        # We need to run go mod tidy probably, or ensure dependencies are fetched
+        # Since we changed go.mod, we should run go mod tidy
+        pushd "$plugin_dir"
+        go mod tidy
+        popd
+        
         if go build -o "$bin_path" "$local_src"
             echo "✅ fuzz.fish: Build successful!"
         else
@@ -51,7 +54,6 @@ function _fuzz_fish_ensure_binary
         echo "   Target: $bin_path"
         
         # Use GOBIN to install directly to the target directory
-        # We use 'cd' to resolve the absolute path safely without relying on realpath
         set -l abs_bin_dir (builtin cd (dirname "$bin_path") && pwd)
         
         if env GOBIN="$abs_bin_dir" go install github.com/jedipunkz/fuzz.fish/cmd/fhv@latest
@@ -65,7 +67,7 @@ function _fuzz_fish_ensure_binary
     return 0
 end
 
-# Uninstall hook (clean up on removal)
+# Uninstall hook
 function _fuzz_fish_uninstall --on-event fuzz.fish_uninstall
     if test -f "$FUZZ_FISH_BIN_PATH"
         rm -f "$FUZZ_FISH_BIN_PATH"
@@ -78,22 +80,15 @@ if status is-interactive
     _fuzz_fish_ensure_binary
 end
 
-# Set up Ctrl+R to open the history viewer
+# Set up Ctrl+R key bindings
 function __fuzz_fish_key_bindings
-    # Bind Ctrl+R to fh function
     bind \cr fh
-
-    # For vi mode users, bind in both insert and normal modes
     if test "$fish_key_bindings" = fish_vi_key_bindings
         bind -M insert \cr fh
         bind -M default \cr fh
     end
 end
-
-# Initialize key bindings
 __fuzz_fish_key_bindings
 
-# Re-initialize bindings when the key binding mode changes
 function __fuzz_fish_postexec --on-event fish_prompt
-    # This ensures bindings persist across different key binding modes
 end
