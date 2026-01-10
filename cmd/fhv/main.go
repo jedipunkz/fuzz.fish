@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	fuzzyfinder "github.com/ktr0731/go-fuzzyfinder"
+	"github.com/koki-develop/go-fzf"
 )
 
 type HistoryEntry struct {
@@ -27,27 +27,65 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Use go-fuzzyfinder
-	idx, err := fuzzyfinder.Find(
-		entries,
-		func(i int) string {
-			return formatEntry(entries[i])
-		},
-		fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
+	// Create display items
+	items := make([]string, len(entries))
+	for i, e := range entries {
+		items[i] = formatEntry(e)
+	}
+
+	// Configure go-fzf with styling
+	f, err := fzf.New(
+		fzf.WithPrompt("🔍 "),
+		fzf.WithInputPlaceholder("Type to search history..."),
+		fzf.WithLimit(1), // Single selection only
+		fzf.WithInputPosition(fzf.InputPositionTop),
+		fzf.WithStyles(
+			fzf.WithStylePrompt(fzf.Style{
+				ForegroundColor: "205", // Pink
+				Bold:            true,
+			}),
+			fzf.WithStyleCursorLine(fzf.Style{
+				BackgroundColor: "57",  // Purple background for selected
+				ForegroundColor: "229", // Light yellow text
+			}),
+			fzf.WithStyleMatches(fzf.Style{
+				ForegroundColor: "205", // Pink for matched chars
+				Bold:            true,
+			}),
+			fzf.WithStyleInputText(fzf.Style{
+				ForegroundColor: "255", // White
+				Bold:            true,
+			}),
+			fzf.WithStyleInputPlaceholder(fzf.Style{
+				ForegroundColor: "240", // Gray
+			}),
+		),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing fzf: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Run fuzzy finder with preview
+	idxs, err := f.Find(
+		items,
+		func(i int) string { return items[i] },
+		fzf.WithPreviewWindow(func(i, w, h int) string {
 			if i < 0 || i >= len(entries) {
-				return "No selection"
+				return "Invalid selection"
 			}
 			return generatePreview(entries[i], entries, i, w, h)
 		}),
 	)
-
 	if err != nil {
-		// User cancelled
+		// User cancelled or error occurred
 		os.Exit(0)
 	}
 
-	// Output selected command
-	fmt.Print(entries[idx].Cmd)
+	// Output selected command to stdout
+	if len(idxs) > 0 && idxs[0] < len(entries) {
+		fmt.Print(entries[idxs[0]].Cmd)
+	}
 }
 
 func formatEntry(e HistoryEntry) string {
