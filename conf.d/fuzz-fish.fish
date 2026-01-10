@@ -74,7 +74,9 @@ function _fuzz_fish_rebuild_binary
     echo "   Cloning repository to $tmp_dir..."
 
     # Clone repository
-    if not git clone --depth 1 https://github.com/jedipunkz/fuzz.fish.git "$tmp_dir" 2>&1 | grep -v "Cloning into"
+    if git clone --depth 1 https://github.com/jedipunkz/fuzz.fish.git "$tmp_dir" >/dev/null 2>&1
+        echo "   Clone successful"
+    else
         echo "❌ fuzz.fish: Failed to clone repository!" >&2
         rm -rf "$tmp_dir"
         return 1
@@ -83,10 +85,11 @@ function _fuzz_fish_rebuild_binary
     echo "   Building binary..."
 
     # Build from cloned source
-    pushd "$tmp_dir"
-    go mod download
+    pushd "$tmp_dir" >/dev/null
+    go mod download >/dev/null 2>&1
+
     if go build -o "$bin_path" ./cmd/fhv
-        popd
+        popd >/dev/null
         echo "✅ fuzz.fish: Build successful!"
         echo "   Binary location: $bin_path"
         ls -lh "$bin_path"
@@ -94,7 +97,7 @@ function _fuzz_fish_rebuild_binary
         rm -rf "$tmp_dir"
         return 0
     else
-        popd
+        popd >/dev/null
         echo "❌ fuzz.fish: Build failed!" >&2
         rm -rf "$tmp_dir"
         return 1
