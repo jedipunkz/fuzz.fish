@@ -4,7 +4,9 @@
 echo "📦 Installing fuzz.fish..."
 
 set -l plugin_dir (dirname (status -f))
-set -l bin_path "$plugin_dir/bin/fhv"
+# Use a persistent location for the binary
+set -l install_dir "$HOME/.local/share/fuzz.fish/bin"
+set -l bin_path "$install_dir/fhv"
 
 # Check if Go is installed
 if not type -q go
@@ -28,10 +30,11 @@ end
 
 # Build the binary
 echo "🔨 Building fhv binary..."
-mkdir -p "$plugin_dir/bin"
+mkdir -p "$install_dir"
 
 if go build -o "$bin_path" "$plugin_dir/cmd/fhv"
     echo "✅ fuzz.fish installed successfully!"
+    echo "   Binary installed to: $bin_path"
     echo ""
     echo "   Usage: Press Ctrl+R or type 'fh'"
     echo ""

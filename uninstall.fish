@@ -3,18 +3,12 @@
 
 echo "🗑️  Uninstalling fuzz.fish..."
 
-set -l plugin_dir (dirname (status -f))
-set -l bin_path "$plugin_dir/bin/fhv"
+set -l install_dir "$HOME/.local/share/fuzz.fish"
 
-# Remove the binary
-if test -f "$bin_path"
-    rm -f "$bin_path"
-    echo "   Removed binary: $bin_path"
-end
-
-# Remove bin directory if empty
-if test -d "$plugin_dir/bin"; and not test (count "$plugin_dir/bin"/*) -gt 0
-    rmdir "$plugin_dir/bin" 2>/dev/null
+# Remove the installation directory
+if test -d "$install_dir"
+    rm -rf "$install_dir"
+    echo "   Removed directory: $install_dir"
 end
 
 echo "✅ fuzz.fish uninstalled"
