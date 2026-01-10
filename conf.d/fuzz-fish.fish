@@ -116,14 +116,27 @@ function _fuzz_fish_rebuild_binary
     if test -d "$local_src"
         echo "   Building from local source: $local_src"
 
+        # Debug: Show main.go first line to verify source version
+        echo "   Checking source version..."
+        head -n 15 "$local_src/main.go" | tail -n 3
+
+        # Debug: Show go.mod
+        echo "   go.mod requires:"
+        grep "require" "$plugin_dir/go.mod"
+
         pushd "$plugin_dir"
         # Ensure dependencies are up to date
+        echo "   Running go mod tidy..."
         go mod tidy 2>&1 | grep -v "go: downloading" || true
+        echo "   Running go mod download..."
         go mod download
         popd
 
+        echo "   Building binary..."
         if go build -o "$bin_path" "$local_src"
             echo "✅ fuzz.fish: Build successful!"
+            # Show binary modification time
+            ls -lh "$bin_path"
             return 0
         else
             echo "❌ fuzz.fish: Local build failed!" >&2
