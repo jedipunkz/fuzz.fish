@@ -228,10 +228,17 @@ func (m model) View() string {
 	// Right: Preview
 	// Get selected entry
 	var previewContent string
+
+	// Calculate available width for preview
+	availWidth := m.width - m.table.Width() - 6
+	if availWidth < 10 {
+		availWidth = 10 // Minimum width safeguard, though generatePreview will return empty if small
+	}
+
 	idx := m.table.Cursor()
 	if idx >= 0 && idx < len(m.filtered) {
 		entry := m.filtered[idx]
-		previewContent = generatePreview(entry, m.filtered, idx, m.width-m.table.Width()-6)
+		previewContent = generatePreview(entry, m.filtered, idx, availWidth)
 	} else {
 		previewContent = "No selection"
 	}
@@ -261,6 +268,11 @@ func (m model) View() string {
 }
 
 func generatePreview(entry HistoryEntry, all []HistoryEntry, idx int, maxWidth int) string {
+	// Safety check for width
+	if maxWidth < 10 {
+		return "" // Not enough space for preview
+	}
+
 	// Format details
 	sb := strings.Builder{}
 
