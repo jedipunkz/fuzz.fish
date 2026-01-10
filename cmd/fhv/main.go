@@ -80,8 +80,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		tableWidth := int(float64(m.width) * 0.6)
 
 		// Adjust table dimensions
-		// Reserve space for input (3 lines) and help (2 lines) and borders
-		tableHeight := m.height - 7
+		// Reserve space for search box (5 lines) and help (2 lines) and borders
+		tableHeight := m.height - 9
 		if tableHeight < 5 {
 			tableHeight = 5
 		}
@@ -195,17 +195,30 @@ func (m model) View() string {
 	// Bottom: Help/Status
 
 	// --- Search Bar ---
+	searchTitle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("205")).
+		Bold(true).
+		Render("SEARCH")
+
+	searchInput := m.input.View()
+
+	searchContent := lipgloss.JoinVertical(lipgloss.Left,
+		searchTitle,
+		searchInput,
+	)
+
 	searchView := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("62")).
 		Padding(0, 1).
 		Width(m.width - 2). // Full width minus border
-		Render(m.input.View())
+		Render(searchContent)
 
 	// --- Main Content (Split) ---
 
 	// Left: Table
-	tableHeight := m.height - 7
+	// Reserve space for search box (5 lines) and help (2 lines) and borders
+	tableHeight := m.height - 9
 	if tableHeight < 0 {
 		tableHeight = 0
 	}
@@ -373,12 +386,14 @@ func main() {
 
 	// Initialize Input
 	ti := textinput.New()
-	ti.Placeholder = "Search history..."
+	ti.Placeholder = "Type to search..."
+	ti.Prompt = "🔍 "
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 20
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	ti.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
+	ti.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Bold(true)
+	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
 	m := model{
