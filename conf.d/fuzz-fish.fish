@@ -86,6 +86,10 @@ function _fuzz_fish_rebuild_binary
 
     # Build from cloned source
     pushd "$tmp_dir" >/dev/null
+
+    # Generate go.sum and download dependencies
+    echo "   Downloading dependencies..."
+    go mod tidy >/dev/null 2>&1
     go mod download >/dev/null 2>&1
 
     if go build -o "$bin_path" ./cmd/fhv
