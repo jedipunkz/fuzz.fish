@@ -17,31 +17,8 @@ function _fuzz_fish_ensure_binary
         return 0
     end
 
-    echo "🔨 fuzz.fish: Binary not found. Installing from GitHub..."
-
-    # Ensure functions directory exists
-    mkdir -p (dirname "$bin_path")
-
-    # Check dependencies
-    if not type -q go
-        echo "⚠️  fuzz.fish: Go is not installed." >&2
-        echo "   Please install Go to use this plugin." >&2
-        return 1
-    end
-
-    # Always install from GitHub to ensure latest version
-    echo "   Installing from github.com/jedipunkz/fuzz.fish/cmd/fhv@latest..."
-
-    # Use GOBIN to install directly to the target directory
-    set -l abs_bin_dir (builtin cd (dirname "$bin_path") && pwd)
-
-    if env GOBIN="$abs_bin_dir" go install github.com/jedipunkz/fuzz.fish/cmd/fhv@latest
-        echo "✅ fuzz.fish: Installation successful!"
-        return 0
-    else
-        echo "❌ fuzz.fish: Installation failed!" >&2
-        return 1
-    end
+    # Binary not found, build it using the same logic as rebuild
+    _fuzz_fish_rebuild_binary
 end
 
 # Install hook - build binary on initial install
@@ -80,33 +57,46 @@ function _fuzz_fish_rebuild_binary
         return 1
     end
 
+    if not type -q git
+        echo "⚠️  fuzz.fish: Git is not installed." >&2
+        echo "   Please install Git to use this plugin." >&2
+        return 1
+    end
+
     # Remove old binary if exists
     if test -f "$bin_path"
         echo "   Removing old binary..."
         rm -f "$bin_path"
     end
 
-    # Clear module cache for this package to force fresh download
-    echo "   Clearing module cache..."
-    set -l gopath (go env GOPATH)
-    if test -d "$gopath/pkg/mod/github.com/jedipunkz"
-        rm -rf "$gopath/pkg/mod/github.com/jedipunkz/fuzz.fish@"*
-        echo "   Cache cleared"
+    # Create temporary directory
+    set -l tmp_dir (mktemp -d)
+    echo "   Cloning repository to $tmp_dir..."
+
+    # Clone repository
+    if not git clone --depth 1 https://github.com/jedipunkz/fuzz.fish.git "$tmp_dir" 2>&1 | grep -v "Cloning into"
+        echo "❌ fuzz.fish: Failed to clone repository!" >&2
+        rm -rf "$tmp_dir"
+        return 1
     end
 
-    # Always install from GitHub to ensure latest version
-    echo "   Installing from github.com/jedipunkz/fuzz.fish/cmd/fhv@latest..."
+    echo "   Building binary..."
 
-    # Use GOBIN to install directly to the target directory
-    set -l abs_bin_dir (builtin cd (dirname "$bin_path") && pwd)
-
-    if env GOBIN="$abs_bin_dir" go install github.com/jedipunkz/fuzz.fish/cmd/fhv@latest
-        echo "✅ fuzz.fish: Installation successful!"
+    # Build from cloned source
+    pushd "$tmp_dir"
+    go mod download
+    if go build -o "$bin_path" ./cmd/fhv
+        popd
+        echo "✅ fuzz.fish: Build successful!"
         echo "   Binary location: $bin_path"
         ls -lh "$bin_path"
+        # Clean up temporary directory
+        rm -rf "$tmp_dir"
         return 0
     else
-        echo "❌ fuzz.fish: Installation failed!" >&2
+        popd
+        echo "❌ fuzz.fish: Build failed!" >&2
+        rm -rf "$tmp_dir"
         return 1
     end
 end
