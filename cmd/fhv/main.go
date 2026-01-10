@@ -113,27 +113,27 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height 
 	var sb strings.Builder
 
 	// Header
-	sb.WriteString(headerStyle.Render("COMMAND") + "\n")
+	sb.WriteString(headerStyle.Render("Command") + "\n")
 	// Wrap command to fit width
 	sb.WriteString(contentStyle.Copy().Width(width).Render(entry.Cmd))
 	sb.WriteString("\n\n")
 
 	// Metadata
 	// Time
-	sb.WriteString(labelStyle.Render("Time: "))
+	sb.WriteString(labelStyle.Render("Time") + "\n")
 	sb.WriteString(contentStyle.Render(formatTime(entry.When)))
-	sb.WriteString("\n")
+	sb.WriteString("\n\n")
 
 	// Dir
 	if len(entry.Paths) > 0 {
-		sb.WriteString(labelStyle.Render("Dir:  "))
+		sb.WriteString(labelStyle.Render("Directory") + "\n")
 		sb.WriteString(contentStyle.Render(formatDir(entry.Paths[0])))
 		sb.WriteString("\n")
 	}
 	sb.WriteString("\n")
 
 	// Context (commands before/after)
-	sb.WriteString(contextHeaderStyle.Render("CONTEXT") + "\n")
+	sb.WriteString(contextHeaderStyle.Render("Context") + "\n")
 	start := idx - 3
 	if start < 0 {
 		start = 0
