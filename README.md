@@ -1,4 +1,4 @@
-![fuzz.fish](./assets/fuzz.png)
+![fuzz.fish](./assets/fuzz.png =200x200)
 
 # fuzz.fish
 
