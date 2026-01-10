@@ -3,21 +3,31 @@ function fh --description 'Fish History viewer with context'
     set -l plugin_dir (dirname (dirname (status -f)))
     set -l bin_path "$plugin_dir/bin/fhv"
 
-    # Build the Go binary if it doesn't exist or is outdated
-    if not test -f "$bin_path"; or test "$plugin_dir/cmd/fhv/main.go" -nt "$bin_path"
-        echo "Building fhv..." >&2
-        mkdir -p "$plugin_dir/bin"
-        if not go build -o "$bin_path" "$plugin_dir/cmd/fhv"
-            echo "Error: Failed to build fhv. Make sure Go is installed." >&2
-            return 1
-        end
+    # Check if binary exists
+    if not test -f "$bin_path"
+        echo "❌ fuzz.fish: Binary not found. Please restart your shell or run: source ~/.config/fish/config.fish" >&2
+        return 1
     end
 
     # Check if fzf is available
     if not type -q fzf
-        echo "Error: fzf is required but not installed." >&2
-        echo "Install it with: brew install fzf (macOS) or apt install fzf (Linux)" >&2
+        echo "❌ fuzz.fish: fzf is required but not installed." >&2
+        echo "   Install: brew install fzf (macOS) or apt install fzf (Linux)" >&2
         return 1
+    end
+
+    # Detect clipboard command
+    set -l clip_cmd
+    if type -q pbcopy
+        set clip_cmd "pbcopy"
+    else if type -q xclip
+        set clip_cmd "xclip -selection clipboard"
+    else if type -q xsel
+        set clip_cmd "xsel --clipboard --input"
+    else if type -q wl-copy
+        set clip_cmd "wl-copy"
+    else
+        set clip_cmd "cat"  # Fallback: just print
     end
 
     # Run the history viewer with fzf
@@ -28,7 +38,7 @@ function fh --description 'Fish History viewer with context'
         --preview="$bin_path preview {1}" \
         --preview-window=right:50%:wrap \
         --header='CTRL-Y: Copy | ENTER: Execute | ESC: Cancel' \
-        --bind='ctrl-y:execute-silent(echo -n {4..} | pbcopy)+abort' \
+        --bind="ctrl-y:execute-silent(echo -n {4..} | $clip_cmd)+abort" \
         --delimiter='\t' \
         --with-nth=2.. \
         --layout=reverse \
