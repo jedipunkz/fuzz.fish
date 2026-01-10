@@ -117,7 +117,9 @@ function _fuzz_fish_rebuild_binary
         echo "   Building from local source: $local_src"
 
         pushd "$plugin_dir"
-        go mod tidy
+        # Ensure dependencies are up to date
+        go mod tidy 2>&1 | grep -v "go: downloading" || true
+        go mod download
         popd
 
         if go build -o "$bin_path" "$local_src"
