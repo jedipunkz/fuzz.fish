@@ -12,10 +12,10 @@ import (
 
 // HistoryEntry represents a single fish history entry
 type HistoryEntry struct {
-	Cmd      string
-	When     int64
-	Paths    []string
-	CmdLine  int
+	Cmd     string
+	When    int64
+	Paths   []string
+	CmdLine int
 }
 
 func main() {
@@ -99,9 +99,25 @@ func displayEntries(entries []HistoryEntry) {
 			dir = strings.Replace(dir, home, "~", 1)
 		}
 
-		// Format: [time] [dir] command
-		fmt.Printf("%d\t%s\t%s\t%s\n", i, timeStr, dir, entry.Cmd)
+		// Truncate directory path to keep alignment
+		formattedDir := truncatePath(dir, 30)
+
+		// Format: [id] [time (fixed width)] [dir (fixed width)] [command]
+		// %-12s: Left-align time, 12 chars
+		// %30s:  Right-align dir, 30 chars
+		fmt.Printf("%d\t%-12s\t%30s\t%s\n", i, timeStr, formattedDir, entry.Cmd)
 	}
+}
+
+// truncatePath ensures the path fits within maxLen characters.
+// If it's longer, it keeps the end of the path and prefixes with ".."
+func truncatePath(path string, maxLen int) string {
+	if len(path) <= maxLen {
+		return path
+	}
+	// Keep the last (maxLen - 2) characters and add ".."
+	// e.g. if maxLen=10, "/usr/local/bin" -> "..cal/bin"
+	return ".." + path[len(path)-(maxLen-2):]
 }
 
 func formatTime(timestamp int64) string {
@@ -135,27 +151,14 @@ func showPreview(entryIndex int) {
 		return
 	}
 
-	entry := entries[entryIndex]
+	// Only show context, no header details
+	fmt.Println("┌─ Context ─────────────────────────────────────────────┐")
 
-	fmt.Println("╭─ Command Details ─────────────────────────────────────╮")
-	fmt.Printf("│ Command: %s\n", entry.Cmd)
-	fmt.Printf("│ Time:    %s (%s)\n",
-		formatTime(entry.When),
-		time.Unix(entry.When, 0).Format("2006-01-02 15:04:05"))
-	if len(entry.Paths) > 0 {
-		fmt.Printf("│ Dir:     %s\n", entry.Paths[0])
-	}
-	fmt.Println("╰───────────────────────────────────────────────────────╯")
-	fmt.Println()
-
-	// Show context: previous and next commands
-	fmt.Println("┌─ Command Context ─────────────────────────────────────┐")
-
-	start := entryIndex - 3
+	start := entryIndex - 5
 	if start < 0 {
 		start = 0
 	}
-	end := entryIndex + 4
+	end := entryIndex + 6
 	if end > len(entries) {
 		end = len(entries)
 	}
@@ -166,7 +169,8 @@ func showPreview(entryIndex int) {
 		if i == entryIndex {
 			prefix = "→ "
 		}
-		fmt.Printf("%s [%s] %s\n", prefix, formatTime(e.When), e.Cmd)
+		// Also align context view slightly for better readability
+		fmt.Printf("%s [%-10s] %s\n", prefix, formatTime(e.When), e.Cmd)
 	}
 	fmt.Println("└───────────────────────────────────────────────────────┘")
 }
