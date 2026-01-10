@@ -1,5 +1,7 @@
-{: align="center"}
-![fuzz.fish](./assets/fuzz.png)
+
+<p align="center">
+  <img src="./assets/fuzz.png" />
+</p>
 
 # fuzz.fish
 
@@ -11,23 +13,6 @@ fuzz.fish is Fish Plugin for Context-Aware Command History Search with Fuzzy Fin
 - [Fish Shell](https://fishshell.com/) 3.0+
 - [fzf](https://github.com/junegunn/fzf) (fuzzy finder)
 - [Go](https://golang.org/) 1.21+ (for building)
-
-### Installing Dependencies
-
-macOS:
-```bash
-brew install fish fzf go
-```
-
-Ubuntu/Debian:
-```bash
-sudo apt install fish fzf golang
-```
-
-Arch Linux:
-```bash
-sudo pacman -S fish fzf go
-```
 
 ## Installation
 
