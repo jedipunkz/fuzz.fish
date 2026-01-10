@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/koki-develop/go-fzf"
+	fuzzyfinder "github.com/ktr0731/go-fuzzyfinder"
 )
 
 type HistoryEntry struct {
@@ -27,71 +27,33 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create display items
-	items := make([]string, len(entries))
-	for i, e := range entries {
-		items[i] = formatEntry(e)
-	}
-
-	// Configure go-fzf with styling
-	f, err := fzf.New(
-		fzf.WithPrompt("🔍 "),
-		fzf.WithInputPlaceholder("Type to search history..."),
-		fzf.WithLimit(1), // Single selection only
-		fzf.WithInputPosition(fzf.InputPositionTop),
-		fzf.WithStyles(
-			fzf.WithStylePrompt(fzf.Style{
-				ForegroundColor: "205", // Pink
-				Bold:            true,
-			}),
-			fzf.WithStyleCursorLine(fzf.Style{
-				BackgroundColor: "57",  // Purple background for selected
-				ForegroundColor: "229", // Light yellow text
-			}),
-			fzf.WithStyleMatches(fzf.Style{
-				ForegroundColor: "205", // Pink for matched chars
-				Bold:            true,
-			}),
-			fzf.WithStyleInputText(fzf.Style{
-				ForegroundColor: "255", // White
-				Bold:            true,
-			}),
-			fzf.WithStyleInputPlaceholder(fzf.Style{
-				ForegroundColor: "240", // Gray
-			}),
-		),
-	)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing fzf: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Run fuzzy finder with preview
-	idxs, err := f.Find(
-		items,
-		func(i int) string { return items[i] },
-		fzf.WithPreviewWindow(func(i, w, h int) string {
+	// Use go-fuzzyfinder
+	idx, err := fuzzyfinder.Find(
+		entries,
+		func(i int) string {
+			return formatEntry(entries[i])
+		},
+		fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
 			if i < 0 || i >= len(entries) {
-				return "Invalid selection"
+				return "No selection"
 			}
 			return generatePreview(entries[i], entries, i, w, h)
 		}),
 	)
+
 	if err != nil {
-		// User cancelled or error occurred
+		// User cancelled
 		os.Exit(0)
 	}
 
-	// Output selected command to stdout
-	if len(idxs) > 0 && idxs[0] < len(entries) {
-		fmt.Print(entries[idxs[0]].Cmd)
-	}
+	// Output selected command
+	fmt.Print(entries[idx].Cmd)
 }
 
 func formatEntry(e HistoryEntry) string {
 	timeStr := formatTime(e.When)
-	// Format: "5m ago | git status"
-	return fmt.Sprintf("%-12s | %s", timeStr, e.Cmd)
+	// Format: "2026-01-10 15:30:45 | git status"
+	return fmt.Sprintf("%-19s | %s", timeStr, e.Cmd)
 }
 
 func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height int) string {
@@ -202,25 +164,9 @@ func formatDir(path string) string {
 
 func formatTime(timestamp int64) string {
 	if timestamp == 0 {
-		return "unknown"
+		return "0000-00-00 00:00:00"
 	}
 
 	t := time.Unix(timestamp, 0)
-	now := time.Now()
-	diff := now.Sub(t)
-
-	if diff < time.Minute {
-		return "just now"
-	} else if diff < time.Hour {
-		mins := int(diff.Minutes())
-		return fmt.Sprintf("%dm ago", mins)
-	} else if diff < 24*time.Hour {
-		hours := int(diff.Hours())
-		return fmt.Sprintf("%dh ago", hours)
-	} else if diff < 7*24*time.Hour {
-		days := int(diff.Hours() / 24)
-		return fmt.Sprintf("%dd ago", days)
-	} else {
-		return t.Format("2006-01-02")
-	}
+	return t.Format("2006-01-02 15:04:05")
 }
