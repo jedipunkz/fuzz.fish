@@ -1,11 +1,10 @@
 function fh --description 'Fish History viewer with context'
-    # Get the plugin directory
-    set -l plugin_dir (dirname (dirname (status -f)))
-    set -l bin_path "$plugin_dir/bin/fhv"
+    # Get binary path from environment variable (set by conf.d/fuzz-fish.fish)
+    set -l bin_path "$FUZZ_FISH_BIN_PATH"
 
     # Check if binary exists
-    if not test -f "$bin_path"
-        echo "❌ fuzz.fish: Binary not found. Please restart your shell or run: source ~/.config/fish/config.fish" >&2
+    if test -z "$bin_path"; or not test -f "$bin_path"
+        echo "❌ fuzz.fish: Binary not found. Please restart your shell." >&2
         return 1
     end
 
