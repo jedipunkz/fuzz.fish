@@ -305,7 +305,7 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx int, maxWidth i
 
 		// Truncate cmd for preview context
 		cmd := e.Cmd
-		if len(cmd) > maxWidth-5 {
+		if maxWidth > 8 && len(cmd) > maxWidth-5 {
 			cmd = cmd[:maxWidth-8] + "..."
 		}
 
