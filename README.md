@@ -34,29 +34,6 @@ sudo pacman -S fish fzf go
 fisher install jedipunkz/fuzz.fish
 ```
 
-
-### Using Oh My Fish
-
-```fish
-omf install https://github.com/jedipunkz/fuzz.fish
-```
-
-### Manual Installation
-
-```fish
-# Clone the repository
-git clone https://github.com/jedipunkz/fuzz.fish.git ~/.config/fish/plugins/fuzz.fish
-
-# Build the binary
-cd ~/.config/fish/plugins/fuzz.fish
-go build -o bin/fhv ./cmd/fhv
-
-# Source the plugin in your config.fish
-echo "source ~/.config/fish/plugins/fuzz.fish/conf.d/fuzz-fish.fish" >> ~/.config/fish/config.fish
-echo "set fish_function_path ~/.config/fish/plugins/fuzz.fish/functions \$fish_function_path" >> ~/.config/fish/config.fish
-```
-
-
 ## Usage
 
 ### Keyboard Shortcut
