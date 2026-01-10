@@ -66,6 +66,7 @@ func main() {
 			fzf.WithStyleSelectedPrefix(fzf.Style{ForegroundColor: "#7aa2f7"}),
 			fzf.WithStyleUnselectedPrefix(fzf.Style{ForegroundColor: "#565f89"}),
 		),
+		fzf.WithInputPosition(fzf.InputPositionBottom),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to initialize fzf: %v\n", err)
