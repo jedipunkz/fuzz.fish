@@ -1,3 +1,4 @@
+{: align="center"}
 ![fuzz.fish](./assets/fuzz.png)
 
 # fuzz.fish
