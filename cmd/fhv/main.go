@@ -370,7 +370,7 @@ func main() {
 		filtered: entries, // Initially all
 	}
 
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithOutput(os.Stderr))
 	finalModel, err := p.Run()
 	if err != nil {
 		fmt.Printf("Error: %v", err)
