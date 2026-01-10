@@ -113,10 +113,10 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height 
 	var sb strings.Builder
 
 	// Header
-	sb.WriteString(headerStyle.Render("Command") + "\n")
+	// sb.WriteString(headerStyle.Render("Command") + "\n")
 	// Wrap command to fit width
-	sb.WriteString(contentStyle.Copy().Width(width).Render(entry.Cmd))
-	sb.WriteString("\n\n")
+	// sb.WriteString(contentStyle.Copy().Width(width).Render(entry.Cmd))
+	// sb.WriteString("\n\n")
 
 	// Metadata
 	// Time
