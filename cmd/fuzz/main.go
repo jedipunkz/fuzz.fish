@@ -35,11 +35,6 @@ const (
 
 var (
 	// Styles for preview window
-	headerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(colorCyan)).
-			Bold(true).
-			Underline(true)
-
 	labelStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color(colorPurple))
 
@@ -143,7 +138,7 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height 
 	sb.WriteString(labelStyle.Render("Time") + "\n")
 	sb.WriteString(contentStyle.Render(formatTime(entry.When)))
 	sb.WriteString("\n")
-	sb.WriteString(contentStyle.Copy().Faint(true).Render(formatRelativeTime(entry.When)))
+	sb.WriteString(contentStyle.Faint(true).Render(formatRelativeTime(entry.When)))
 	sb.WriteString("\n\n")
 
 	// Dir
@@ -172,7 +167,7 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height 
 		if i == idx {
 			cursor := "→ "
 			// Wrap active context line
-			line := activeContextStyle.Copy().Width(width).Render(cursor + cmd)
+			line := activeContextStyle.Width(width).Render(cursor + cmd)
 			sb.WriteString(line + "\n")
 		} else {
 			cursor := "  "
@@ -190,7 +185,10 @@ func generatePreview(entry HistoryEntry, all []HistoryEntry, idx, width, height 
 }
 
 func getHistoryPath() string {
-	home, _ := os.UserHomeDir()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
 	return filepath.Join(home, ".local", "share", "fish", "fish_history")
 }
 
@@ -200,7 +198,7 @@ func parseHistory() []HistoryEntry {
 	if err != nil {
 		return []HistoryEntry{}
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	var entries []HistoryEntry
 	var current *HistoryEntry
@@ -222,8 +220,10 @@ func parseHistory() []HistoryEntry {
 		} else if current != nil {
 			if strings.HasPrefix(line, "  when: ") {
 				whenStr := strings.TrimPrefix(line, "  when: ")
-				when, _ := strconv.ParseInt(whenStr, 10, 64)
-				current.When = when
+				when, err := strconv.ParseInt(whenStr, 10, 64)
+				if err == nil {
+					current.When = when
+				}
 			} else if strings.HasPrefix(line, "    - ") {
 				path := strings.TrimPrefix(line, "    - ")
 				current.Paths = append(current.Paths, path)
@@ -244,8 +244,10 @@ func parseHistory() []HistoryEntry {
 }
 
 func formatDir(path string) string {
-	home, _ := os.UserHomeDir()
-	path = strings.Replace(path, home, "~", 1)
+	home, err := os.UserHomeDir()
+	if err == nil {
+		path = strings.Replace(path, home, "~", 1)
+	}
 	return path
 }
 
