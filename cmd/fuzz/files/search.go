@@ -1,12 +1,10 @@
 package files
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/ui"
-	"github.com/koki-develop/go-fzf"
+	"github.com/ktr0731/go-fuzzyfinder"
 )
 
 // RunSearch runs the interactive file search
@@ -25,42 +23,30 @@ func RunSearch() {
 		os.Exit(1)
 	}
 
-	// Use go-fzf with Tokyo Night theme
-	f, err := ui.NewFinder()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to initialize fzf: %v\n", err)
-		os.Exit(1)
-	}
-
-	idxs, err := f.Find(
+	// Use go-fuzzyfinder
+	idx, err := fuzzyfinder.Find(
 		files,
 		func(i int) string {
 			return FormatEntry(files[i])
 		},
-		fzf.WithPreviewWindow(func(i, w, h int) string {
-			if i < 0 || i >= len(files) {
-				return "No selection"
+		fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
+			if i == -1 {
+				return ""
 			}
 			return GeneratePreview(files[i], w, h)
 		}),
 	)
 
 	if err != nil {
-		if errors.Is(err, fzf.ErrAbort) {
-			// User cancelled
-			os.Exit(0)
-		}
-		fmt.Fprintf(os.Stderr, "fzf error: %v\n", err)
-		os.Exit(1)
+		// User cancelled (Ctrl+C, ESC)
+		os.Exit(0)
 	}
 
 	// Output selected file/dir
-	if len(idxs) > 0 {
-		selected := files[idxs[0]]
-		if selected.IsDir {
-			fmt.Printf("DIR:%s", selected.Path)
-		} else {
-			fmt.Printf("FILE:%s", selected.Path)
-		}
+	selected := files[idx]
+	if selected.IsDir {
+		fmt.Printf("DIR:%s", selected.Path)
+	} else {
+		fmt.Printf("FILE:%s", selected.Path)
 	}
 }
