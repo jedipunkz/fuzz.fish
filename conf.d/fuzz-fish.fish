@@ -113,12 +113,16 @@ if status is-interactive
     _fuzz_fish_ensure_binary
 end
 
-# Set up Ctrl+R key bindings
+# Set up Ctrl+R key bindings for history
+# Set up Ctrl+Alt+F key bindings for file search
 function __fuzz_fish_key_bindings
     bind \cr fh
+    bind \e\cf ff
     if test "$fish_key_bindings" = fish_vi_key_bindings
         bind -M insert \cr fh
         bind -M default \cr fh
+        bind -M insert \e\cf ff
+        bind -M default \e\cf ff
     end
 end
 __fuzz_fish_key_bindings
