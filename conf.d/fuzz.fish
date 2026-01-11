@@ -3,9 +3,9 @@
 
 # Set the binary path
 if set -q __fish_config_dir
-    set -Ux FUZZ_FISH_BIN_PATH "$__fish_config_dir/functions/fhv"
+    set -Ux FUZZ_FISH_BIN_PATH "$__fish_config_dir/functions/fuzz"
 else
-    set -Ux FUZZ_FISH_BIN_PATH "$HOME/.config/fish/functions/fhv"
+    set -Ux FUZZ_FISH_BIN_PATH "$HOME/.config/fish/functions/fuzz"
 end
 
 # Internal function to build/install the binary
@@ -92,7 +92,7 @@ function _fuzz_fish_rebuild_binary
     go mod tidy >/dev/null 2>&1
     go mod download >/dev/null 2>&1
 
-    if go build -o "$bin_path" ./cmd/fhv
+    if go build -o "$bin_path" ./cmd/fuzz
         popd >/dev/null
         echo "✅ fuzz.fish: Build successful!"
         echo "   Binary location: $bin_path"
