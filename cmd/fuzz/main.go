@@ -32,18 +32,23 @@ type FileEntry struct {
 
 const (
 	// Tokyo Night color palette
-	colorCyan           = "#7dcfff"
-	colorPurple         = "#bb9af7"
-	colorForeground     = "#c0caf5"
-	colorYellow         = "#e0af68"
-	colorOrange         = "#ff9e64"
-	colorComment        = "#565f89"
-	colorBlue           = "#7aa2f7"
-	colorSelectionBg    = "#543970" // Darker muted purple for selection
+	colorCyan        = "#7dcfff"
+	colorPurple      = "#bb9af7"
+	colorForeground  = "#c0caf5"
+	colorYellow      = "#e0af68"
+	colorOrange      = "#ff9e64"
+	colorComment     = "#565f89"
+	colorBlue        = "#7aa2f7"
+	colorSelectionBg = "#543970" // Darker muted purple for selection
 )
 
 var (
 	// Styles for preview window
+	headerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(colorCyan)).
+			Bold(true).
+			Underline(true)
+
 	labelStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color(colorPurple))
 
@@ -75,7 +80,7 @@ func main() {
 			return
 		default:
 			fmt.Fprintf(os.Stderr, "Unknown subcommand: %s\n", os.Args[1])
-			fmt.Fprintf(os.Stderr, "Usage: fhv [history|files]\n")
+			fmt.Fprintf(os.Stderr, "Usage: fuzz [history|files]\n")
 			os.Exit(1)
 		}
 	}
