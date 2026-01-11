@@ -1,4 +1,4 @@
-function fh --description 'Fish History viewer with context (TUI)'
+function fuzz --description 'Fish History viewer with context (TUI)'
     # Get binary path from environment variable
     set -l bin_path "$FUZZ_FISH_BIN_PATH"
 
