@@ -108,20 +108,76 @@ function _fuzz_fish_rebuild_binary
     end
 end
 
+# Helper function to check binary and rebuild if needed
+function _fuzz_ensure_binary_or_error --description 'Internal: Ensure binary exists'
+    set -l bin_path "$FUZZ_FISH_BIN_PATH"
+
+    if test -z "$bin_path"; or not test -f "$bin_path"
+        if functions -q _fuzz_fish_ensure_binary
+            _fuzz_fish_ensure_binary
+        else
+            echo "❌ fuzz.fish: Binary not found. Please restart your shell." >&2
+            return 1
+        end
+    end
+
+    echo "$bin_path"
+end
+
 # Initialize on startup
 if status is-interactive
     _fuzz_fish_ensure_binary
 end
 
-# Set up Ctrl+R key bindings
+# History search function
+function fh --description 'Fish History viewer with context (TUI)'
+    set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
+
+    # Run the TUI binary
+    # It will print the selected command to stdout on exit
+    set -l cmd ($bin_path)
+
+    if test -n "$cmd"
+        # Insert into command line
+        commandline -r -- "$cmd"
+        commandline -f repaint
+    end
+end
+
+# File/directory search function
+function ff --description 'Search files and directories with preview (TUI)'
+    set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
+
+    # Run the TUI binary with 'files' subcommand
+    # It will print the selected file/dir to stdout on exit
+    set -l result ($bin_path files)
+
+    if test -n "$result"
+        # Parse the result: DIR:<path> or FILE:<path>
+        if string match -q "DIR:*" -- "$result"
+            # It's a directory, cd into it
+            set -l dir_path (string replace "DIR:" "" -- "$result")
+            cd "$dir_path"
+            commandline -f repaint
+        else if string match -q "FILE:*" -- "$result"
+            # It's a file, insert into command line
+            set -l file_path (string replace "FILE:" "" -- "$result")
+            commandline -i -- "$file_path"
+            commandline -f repaint
+        end
+    end
+end
+
+# Set up Ctrl+R key bindings for history
+# Set up Ctrl+Alt+F key bindings for file search
 function __fuzz_fish_key_bindings
-    bind \cr fuzz
+    bind \cr fh
+    bind \e\cf ff
     if test "$fish_key_bindings" = fish_vi_key_bindings
         bind -M insert \cr fh
         bind -M default \cr fh
+        bind -M insert \e\cf ff
+        bind -M default \e\cf ff
     end
 end
 __fuzz_fish_key_bindings
-
-function __fuzz_fish_postexec --on-event fish_prompt
-end
