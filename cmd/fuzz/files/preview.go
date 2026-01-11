@@ -66,18 +66,14 @@ func GetDirectoryListing(path string) string {
 
 	var sb strings.Builder
 	count := 0
-	maxEntries := 20
 
 	for _, entry := range entries {
-		if count >= maxEntries {
-			sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  ... and %d more", len(entries)-maxEntries)) + "\n")
+		if count >= utils.MaxDirectoryEntries {
+			sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  ... and %d more", len(entries)-utils.MaxDirectoryEntries)) + "\n")
 			break
 		}
 
-		icon := "📄"
-		if entry.IsDir() {
-			icon = "📁"
-		}
+		icon := GetFileIcon(entry.IsDir())
 		sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  %s %s", icon, entry.Name())) + "\n")
 		count++
 	}
