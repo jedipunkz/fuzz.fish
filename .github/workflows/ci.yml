@@ -20,8 +20,8 @@ jobs:
           go-version: '1.21'
           cache: true
 
-      - name: Verify dependencies
-        run: go mod verify
+      - name: Download dependencies
+        run: go mod download
 
       - name: Build
         run: go build -v ./cmd/fuzz
@@ -44,6 +44,9 @@ jobs:
         with:
           go-version: '1.21'
           cache: true
+
+      - name: Download dependencies
+        run: go mod download
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
