@@ -22,13 +22,13 @@ function _fuzz_fish_ensure_binary
 end
 
 # Install hook - build binary on initial install
-function _fuzz_fish_install --on-event fuzz_fish_install
+function _fuzz_fish_install --on-event fuzz_install
     echo "📦 fuzz.fish: Running install hook..."
     _fuzz_fish_rebuild_binary
 end
 
 # Update hook - rebuild binary when plugin is updated
-function _fuzz_fish_update --on-event fuzz_fish_update
+function _fuzz_fish_update --on-event fuzz_update
     echo "🔄 fuzz.fish: Running update hook..."
     # Force rebuild by removing existing binary
     if test -f "$FUZZ_FISH_BIN_PATH"
@@ -39,7 +39,7 @@ function _fuzz_fish_update --on-event fuzz_fish_update
 end
 
 # Uninstall hook
-function _fuzz_fish_uninstall --on-event fuzz_fish_uninstall
+function _fuzz_fish_uninstall --on-event fuzz_uninstall
     if test -f "$FUZZ_FISH_BIN_PATH"
         rm -f "$FUZZ_FISH_BIN_PATH"
         echo "🗑️  fuzz.fish: Removed binary"
