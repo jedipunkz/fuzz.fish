@@ -198,7 +198,7 @@ func parseHistory() []HistoryEntry {
 	if err != nil {
 		return []HistoryEntry{}
 	}
-	defer func() { _ = file.Close() }()
+	defer file.Close() //nolint:errcheck
 
 	var entries []HistoryEntry
 	var current *HistoryEntry
