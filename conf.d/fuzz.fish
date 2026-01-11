@@ -108,19 +108,11 @@ function _fuzz_fish_rebuild_binary
     end
 end
 
-# Initialize on startup
-if status is-interactive
-    _fuzz_fish_ensure_binary
-end
-
-# History search function
-function fh --description 'Fish History viewer with context (TUI)'
-    # Get binary path from environment variable
+# Helper function to check binary and rebuild if needed
+function _fuzz_ensure_binary_or_error --description 'Internal: Ensure binary exists'
     set -l bin_path "$FUZZ_FISH_BIN_PATH"
 
-    # Check if binary exists
     if test -z "$bin_path"; or not test -f "$bin_path"
-        # Try to build if missing
         if functions -q _fuzz_fish_ensure_binary
             _fuzz_fish_ensure_binary
         else
@@ -128,6 +120,18 @@ function fh --description 'Fish History viewer with context (TUI)'
             return 1
         end
     end
+
+    echo "$bin_path"
+end
+
+# Initialize on startup
+if status is-interactive
+    _fuzz_fish_ensure_binary
+end
+
+# History search function
+function fh --description 'Fish History viewer with context (TUI)'
+    set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
 
     # Run the TUI binary
     # It will print the selected command to stdout on exit
@@ -142,19 +146,7 @@ end
 
 # File/directory search function
 function ff --description 'Search files and directories with preview (TUI)'
-    # Get binary path from environment variable
-    set -l bin_path "$FUZZ_FISH_BIN_PATH"
-
-    # Check if binary exists
-    if test -z "$bin_path"; or not test -f "$bin_path"
-        # Try to build if missing
-        if functions -q _fuzz_fish_ensure_binary
-            _fuzz_fish_ensure_binary
-        else
-            echo "❌ fuzz.fish: Binary not found. Please restart your shell." >&2
-            return 1
-        end
-    end
+    set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
 
     # Run the TUI binary with 'files' subcommand
     # It will print the selected file/dir to stdout on exit
@@ -189,6 +181,3 @@ function __fuzz_fish_key_bindings
     end
 end
 __fuzz_fish_key_bindings
-
-function __fuzz_fish_postexec --on-event fish_prompt
-end
