@@ -11,8 +11,8 @@ import (
 
 // IsBinary checks if the given content appears to be binary
 func IsBinary(content []byte) bool {
-	// Simple binary detection: check for null bytes in first 8KB
-	checkSize := 8192
+	// Simple binary detection: check for null bytes in first BinaryDetectionBytes
+	checkSize := BinaryDetectionBytes
 	if len(content) < checkSize {
 		checkSize = len(content)
 	}
@@ -52,13 +52,10 @@ func GetFilePreview(path string, maxLines int) string {
 	}
 
 	var sb strings.Builder
-	for i, line := range lines {
-		if i >= maxLines {
-			break
-		}
+	for _, line := range lines {
 		// Truncate long lines
-		if len(line) > 120 {
-			line = line[:120] + "..."
+		if len(line) > MaxLineLength {
+			line = line[:MaxLineLength] + "..."
 		}
 		sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  %s", line)) + "\n")
 	}

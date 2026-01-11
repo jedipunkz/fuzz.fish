@@ -15,6 +15,14 @@ func FormatTime(timestamp int64) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
+// formatTimeAgo formats a time value with the appropriate unit and singular/plural form
+func formatTimeAgo(value int, unit string) string {
+	if value == 1 {
+		return fmt.Sprintf("1 %s ago", unit)
+	}
+	return fmt.Sprintf("%d %ss ago", value, unit)
+}
+
 // FormatRelativeTime formats a Unix timestamp as a human-readable relative time
 func FormatRelativeTime(timestamp int64) string {
 	if timestamp == 0 {
@@ -35,39 +43,18 @@ func FormatRelativeTime(timestamp int64) string {
 
 	switch {
 	case seconds < 60:
-		if seconds == 1 {
-			return "1 second ago"
-		}
-		return fmt.Sprintf("%d seconds ago", seconds)
+		return formatTimeAgo(seconds, "second")
 	case minutes < 60:
-		if minutes == 1 {
-			return "1 minute ago"
-		}
-		return fmt.Sprintf("%d minutes ago", minutes)
+		return formatTimeAgo(minutes, "minute")
 	case hours < 24:
-		if hours == 1 {
-			return "1 hour ago"
-		}
-		return fmt.Sprintf("%d hours ago", hours)
+		return formatTimeAgo(hours, "hour")
 	case days < 7:
-		if days == 1 {
-			return "1 day ago"
-		}
-		return fmt.Sprintf("%d days ago", days)
+		return formatTimeAgo(days, "day")
 	case weeks < 4:
-		if weeks == 1 {
-			return "1 week ago"
-		}
-		return fmt.Sprintf("%d weeks ago", weeks)
+		return formatTimeAgo(weeks, "week")
 	case months < 12:
-		if months == 1 {
-			return "1 month ago"
-		}
-		return fmt.Sprintf("%d months ago", months)
+		return formatTimeAgo(months, "month")
 	default:
-		if years == 1 {
-			return "1 year ago"
-		}
-		return fmt.Sprintf("%d years ago", years)
+		return formatTimeAgo(years, "year")
 	}
 }

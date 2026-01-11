@@ -3,8 +3,8 @@ package history
 import (
 	"fmt"
 	"os"
-	"syscall"
 
+	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/utils"
 	"github.com/ktr0731/go-fuzzyfinder"
 )
 
@@ -17,28 +17,13 @@ func RunSearch() {
 		os.Exit(1)
 	}
 
-	// Save original stdout fd to output the result later
-	origStdoutFd, err := syscall.Dup(int(os.Stdout.Fd()))
+	// Setup TTY for interactive TUI
+	origStdoutFd, err := utils.SetupTTY()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to dup stdout: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	defer syscall.Close(origStdoutFd)
-
-	// Open /dev/tty for interactive TUI
-	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open /dev/tty: %v\n", err)
-		os.Exit(1)
-	}
-	defer tty.Close()
-
-	ttyFd := int(tty.Fd())
-
-	// Redirect stdin, stdout, stderr to /dev/tty at fd level
-	syscall.Dup2(ttyFd, int(os.Stdin.Fd()))
-	syscall.Dup2(ttyFd, int(os.Stdout.Fd()))
-	syscall.Dup2(ttyFd, int(os.Stderr.Fd()))
+	defer utils.RestoreTTY(origStdoutFd)
 
 	// Use go-fuzzyfinder
 	idx, err := fuzzyfinder.Find(
@@ -59,7 +44,6 @@ func RunSearch() {
 		os.Exit(0)
 	}
 
-	// Restore stdout and output selected command
-	syscall.Dup2(origStdoutFd, int(os.Stdout.Fd()))
+	// Output selected command (stdout will be restored by defer)
 	fmt.Print(entries[idx].Cmd)
 }

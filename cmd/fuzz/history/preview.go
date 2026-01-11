@@ -12,12 +12,6 @@ import (
 func GeneratePreview(entry Entry, all []Entry, idx, width, height int) string {
 	var sb strings.Builder
 
-	// Header
-	// sb.WriteString(ui.HeaderStyle.Render("Command") + "\n")
-	// Wrap command to fit width
-	// sb.WriteString(ui.ContentStyle.Copy().Width(width).Render(entry.Cmd))
-	// sb.WriteString("\n\n")
-
 	// Metadata
 	// Time
 	sb.WriteString(ui.LabelStyle.Render("Time") + "\n")
@@ -36,11 +30,11 @@ func GeneratePreview(entry Entry, all []Entry, idx, width, height int) string {
 
 	// Context (commands before/after)
 	sb.WriteString(ui.ContextHeaderStyle.Render("Context") + "\n")
-	start := idx - 3
+	start := idx - utils.HistoryContextLinesBefore
 	if start < 0 {
 		start = 0
 	}
-	end := idx + 4
+	end := idx + utils.HistoryContextLinesAfter
 	if end > len(all) {
 		end = len(all)
 	}
