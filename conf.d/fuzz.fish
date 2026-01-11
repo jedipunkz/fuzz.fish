@@ -175,16 +175,36 @@ function ff --description 'Search files and directories with preview (TUI)'
     end
 end
 
+# Git branch search function
+function gb --description 'Git branch search with fuzzy finder (TUI)'
+    set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
+
+    # Run the TUI binary with 'git branch' subcommand
+    # Redirect stdin/stderr to /dev/tty for TUI interaction,
+    # while capturing stdout for the selected branch name
+    set -l branch ($bin_path git branch </dev/tty 2>/dev/tty)
+
+    if test -n "$branch"
+        # Checkout the selected branch
+        git checkout "$branch"
+        commandline -f repaint
+    end
+end
+
 # Set up Ctrl+R key bindings for history
 # Set up Ctrl+Alt+F key bindings for file search
+# Set up Ctrl+Cmd+B key bindings for git branch search
 function __fuzz_fish_key_bindings
     bind \cr fh
     bind \e\cf ff
+    bind \e\c\cb gb
     if test "$fish_key_bindings" = fish_vi_key_bindings
         bind -M insert \cr fh
         bind -M default \cr fh
         bind -M insert \e\cf ff
         bind -M default \e\cf ff
+        bind -M insert \e\c\cb gb
+        bind -M default \e\c\cb gb
     end
 end
 __fuzz_fish_key_bindings
