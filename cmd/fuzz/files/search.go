@@ -3,6 +3,7 @@ package files
 import (
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/ktr0731/go-fuzzyfinder"
 )
@@ -23,6 +24,29 @@ func RunSearch() {
 		os.Exit(1)
 	}
 
+	// Save original stdout fd to output the result later
+	origStdoutFd, err := syscall.Dup(int(os.Stdout.Fd()))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to dup stdout: %v\n", err)
+		os.Exit(1)
+	}
+	defer syscall.Close(origStdoutFd)
+
+	// Open /dev/tty for interactive TUI
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open /dev/tty: %v\n", err)
+		os.Exit(1)
+	}
+	defer tty.Close()
+
+	ttyFd := int(tty.Fd())
+
+	// Redirect stdin, stdout, stderr to /dev/tty at fd level
+	syscall.Dup2(ttyFd, int(os.Stdin.Fd()))
+	syscall.Dup2(ttyFd, int(os.Stdout.Fd()))
+	syscall.Dup2(ttyFd, int(os.Stderr.Fd()))
+
 	// Use go-fuzzyfinder
 	idx, err := fuzzyfinder.Find(
 		files,
@@ -42,7 +66,8 @@ func RunSearch() {
 		os.Exit(0)
 	}
 
-	// Output selected file/dir
+	// Restore stdout and output selected file/dir
+	syscall.Dup2(origStdoutFd, int(os.Stdout.Fd()))
 	selected := files[idx]
 	if selected.IsDir {
 		fmt.Printf("DIR:%s", selected.Path)
