@@ -1,6 +1,7 @@
 # Binary output
 bin/
 /fhv
+/fuzz
 
 # Go
 *.exe
@@ -10,7 +11,6 @@ bin/
 *.dylib
 *.test
 *.out
-go.sum
 
 # IDE
 .vscode/
