@@ -1,6 +1,7 @@
 # Binary output
 bin/
 /fhv
+/fuzz
 
 # Go
 *.exe
