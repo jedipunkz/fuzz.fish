@@ -139,8 +139,9 @@ function fh --description 'Fish History viewer with context (TUI)'
     set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
 
     # Run the TUI binary
-    # It will print the selected command to stdout on exit
-    set -l cmd ($bin_path)
+    # Redirect stdin/stderr to /dev/tty for TUI interaction,
+    # while capturing stdout for the selected command
+    set -l cmd ($bin_path </dev/tty 2>/dev/tty)
 
     if test -n "$cmd"
         # Insert into command line
@@ -154,8 +155,9 @@ function ff --description 'Search files and directories with preview (TUI)'
     set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
 
     # Run the TUI binary with 'files' subcommand
-    # It will print the selected file/dir to stdout on exit
-    set -l result ($bin_path files)
+    # Redirect stdin/stderr to /dev/tty for TUI interaction,
+    # while capturing stdout for the selected file/dir
+    set -l result ($bin_path files </dev/tty 2>/dev/tty)
 
     if test -n "$result"
         # Parse the result: DIR:<path> or FILE:<path>
