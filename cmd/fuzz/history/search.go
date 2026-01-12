@@ -23,7 +23,6 @@ func RunSearch() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	defer utils.RestoreTTY(origStdoutFd)
 
 	// Use go-fuzzyfinder
 	idx, err := fuzzyfinder.Find(
@@ -41,9 +40,13 @@ func RunSearch() {
 
 	if err != nil {
 		// User cancelled (Ctrl+C, ESC)
+		utils.RestoreTTY(origStdoutFd)
 		os.Exit(0)
 	}
 
-	// Output selected command (stdout will be restored by defer)
+	// Restore stdout BEFORE outputting the command
+	utils.RestoreTTY(origStdoutFd)
+
+	// Output selected command
 	fmt.Print(entries[idx].Cmd)
 }
