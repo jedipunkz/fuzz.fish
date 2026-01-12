@@ -185,9 +185,8 @@ function gb --description 'Git branch search with fuzzy finder (TUI)'
     set -l branch ($bin_path git branch </dev/tty 2>/dev/tty)
 
     if test -n "$branch"
-        # Checkout the selected branch
-        git checkout "$branch"
-        commandline -f repaint
+        # Execute git switch quietly
+        git switch --quiet "$branch"
     end
 end
 
