@@ -193,18 +193,18 @@ end
 
 # Set up Ctrl+R key bindings for history
 # Set up Ctrl+Alt+F key bindings for file search
-# Set up Ctrl+Cmd+B key bindings for git branch search
+# Set up Alt+B key bindings for git branch search
 function __fuzz_fish_key_bindings
     bind \cr fh
     bind \e\cf ff
-    bind \e\c\cb gb
+    bind \eb gb
     if test "$fish_key_bindings" = fish_vi_key_bindings
         bind -M insert \cr fh
         bind -M default \cr fh
         bind -M insert \e\cf ff
         bind -M default \e\cf ff
-        bind -M insert \e\c\cb gb
-        bind -M default \e\c\cb gb
+        bind -M insert \eb gb
+        bind -M default \eb gb
     end
 end
 __fuzz_fish_key_bindings
