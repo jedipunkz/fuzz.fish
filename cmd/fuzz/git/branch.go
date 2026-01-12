@@ -14,8 +14,9 @@ func CollectBranches() []Branch {
 	currentBranch := getCurrentBranch()
 
 	// Get all branches with their last commit info
+	// Include full refname to distinguish between local and remote branches
 	cmd := exec.Command("git", "for-each-ref", "--sort=-committerdate",
-		"--format=%(refname:short)|%(objectname:short)|%(subject)|%(committerdate:iso8601)",
+		"--format=%(refname)|%(refname:short)|%(objectname:short)|%(subject)|%(committerdate:iso8601)",
 		"refs/heads/", "refs/remotes/")
 	output, err := cmd.Output()
 	if err != nil {
@@ -28,26 +29,28 @@ func CollectBranches() []Branch {
 			continue
 		}
 
-		parts := strings.SplitN(line, "|", 4)
-		if len(parts) != 4 {
+		parts := strings.SplitN(line, "|", 5)
+		if len(parts) != 5 {
 			continue
 		}
 
-		name := parts[0]
-		commit := parts[1]
-		message := parts[2]
-		dateStr := parts[3]
+		refname := parts[0]      // Full ref name (e.g., "refs/heads/main" or "refs/remotes/origin/main")
+		name := parts[1]         // Short name (e.g., "main" or "origin/main")
+		commit := parts[2]
+		message := parts[3]
+		dateStr := parts[4]
 
 		// Parse date
 		commitDate := formatDate(dateStr)
 
-		// Determine if remote
-		isRemote := strings.HasPrefix(name, "origin/")
-
-		// Skip HEAD references
-		if strings.Contains(name, "HEAD") {
+		// Skip HEAD references (check full refname, not short name)
+		// e.g., "refs/remotes/origin/HEAD" has short name "origin"
+		if strings.Contains(refname, "HEAD") {
 			continue
 		}
+
+		// Determine if remote based on full refname
+		isRemote := strings.HasPrefix(refname, "refs/remotes/")
 
 		branches = append(branches, Branch{
 			Name:              name,

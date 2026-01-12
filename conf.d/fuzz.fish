@@ -185,8 +185,11 @@ function gb --description 'Git branch search with fuzzy finder (TUI)'
     set -l branch ($bin_path git branch </dev/tty 2>/dev/tty)
 
     if test -n "$branch"
-        # Execute git switch quietly
-        git switch --quiet "$branch"
+        # Execute git switch quietly in a subshell to avoid affecting the command line
+        fish -c "git switch --quiet '$branch'" >/dev/null 2>&1
+
+        # Force repaint to update the prompt (which may show the new branch)
+        commandline -f repaint
     end
 end
 
