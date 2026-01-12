@@ -31,7 +31,6 @@ func RunBranchSearch() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	defer utils.RestoreTTY(origStdoutFd)
 
 	// Use go-fuzzyfinder
 	idx, err := fuzzyfinder.Find(
@@ -49,10 +48,14 @@ func RunBranchSearch() {
 
 	if err != nil {
 		// User cancelled (Ctrl+C, ESC)
+		utils.RestoreTTY(origStdoutFd)
 		os.Exit(0)
 	}
 
-	// Output selected branch name (stdout will be restored by defer)
+	// Restore stdout BEFORE outputting the branch name
+	utils.RestoreTTY(origStdoutFd)
+
+	// Output selected branch name
 	selectedBranch := branches[idx]
 
 	// If it's a remote branch, extract the branch name without remote prefix
