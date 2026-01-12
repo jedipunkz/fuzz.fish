@@ -1,6 +1,5 @@
-
 <p align="center">
-  <img src="./assets/fuzz.png" />
+  <img src="./assets/fuzz.png" width="300" height="300" />
 </p>
 
 # fuzz.fish
