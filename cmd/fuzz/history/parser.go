@@ -66,5 +66,15 @@ func Parse() []Entry {
 		entries[i], entries[j] = entries[j], entries[i]
 	}
 
-	return entries
+	// Deduplicate commands - keep only the newest occurrence
+	seen := make(map[string]bool)
+	deduplicated := make([]Entry, 0, len(entries))
+	for _, entry := range entries {
+		if !seen[entry.Cmd] {
+			seen[entry.Cmd] = true
+			deduplicated = append(deduplicated, entry)
+		}
+	}
+
+	return deduplicated
 }
