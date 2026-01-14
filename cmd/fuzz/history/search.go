@@ -36,6 +36,7 @@ func RunSearch() {
 			}
 			return GeneratePreview(entries[i], entries, i, w, h)
 		}),
+		fuzzyfinder.WithCursorPosition(fuzzyfinder.CursorPositionBottom),
 	)
 
 	if err != nil {
