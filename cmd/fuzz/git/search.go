@@ -322,7 +322,7 @@ func filterBranches(branches []Branch, query string) []item {
 
 // RunBranchSearch runs the interactive git branch search
 func RunBranchSearch() {
-	if !isGitRepo() {
+	if !IsGitRepo() {
 		fmt.Fprintln(os.Stderr, "Not a git repository")
 		os.Exit(1)
 	}
@@ -383,8 +383,8 @@ func RunBranchSearch() {
 	}
 }
 
-// isGitRepo checks if the current directory is inside a git repository
-func isGitRepo() bool {
+// IsGitRepo checks if the current directory is inside a git repository
+func IsGitRepo() bool {
 	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
 	err := cmd.Run()
 	return err == nil
