@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/atotto/clipboard"
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,29 +17,246 @@ import (
 	"github.com/sahilm/fuzzy"
 )
 
-// item implements list.Item
+// item represents a search result item
 type item struct {
 	entry Entry
 	index int // Index in the original entries slice
 }
 
-func (i item) Title() string       { return i.entry.Cmd }
-func (i item) Description() string { return "" }
-func (i item) FilterValue() string { return i.entry.Cmd }
+type model struct {
+	input    textinput.Model
+	viewport viewport.Model
+	entries  []Entry
+	filtered []item // Filtered items
+	cursor   int    // Index of selected item in 'filtered'
+	offset   int    // Scroll offset (index of the top item being displayed in the list view)
+	choice   *Entry
+	quitting bool
+	width    int
+	height   int
+	ready    bool
 
-type itemDelegate struct{}
+	// Layout
+	listWidth  int
+	mainHeight int
+}
 
-func (d itemDelegate) Height() int                             { return 1 }
-func (d itemDelegate) Spacing() int                            { return 0 }
-func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(item)
-	if !ok {
+func (m model) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.ready = true
+
+		// Layout: Input (3 lines) + Main Area
+		inputHeight := 3
+		mainHeight := msg.Height - inputHeight
+		if mainHeight < 0 {
+			mainHeight = 0
+		}
+		m.mainHeight = mainHeight
+
+		listWidth := int(float64(msg.Width) * 0.6)
+		previewWidth := msg.Width - listWidth - 2 // -2 for border/gap
+		m.listWidth = listWidth
+
+		m.viewport.Width = previewWidth
+		m.viewport.Height = mainHeight
+
+		// Ensure cursor and offset are valid
+		m.validateCursor()
+		m.updatePreview()
+
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			if len(m.filtered) > 0 {
+				m.choice = &m.filtered[m.cursor].entry
+				m.quitting = true
+				return m, tea.Quit
+			}
+		case tea.KeyCtrlC:
+			m.quitting = true
+			return m, tea.Quit
+		case tea.KeyCtrlY:
+			if len(m.filtered) > 0 {
+				_ = clipboard.WriteAll(m.filtered[m.cursor].entry.Cmd)
+				m.quitting = true
+				return m, tea.Quit
+			}
+		}
+
+		// Custom navigation
+		switch msg.String() {
+		case "down", "ctrl+n":
+			if len(m.filtered) > 0 {
+				m.cursor++
+				if m.cursor >= len(m.filtered) {
+					m.cursor = len(m.filtered) - 1
+				}
+				// Scroll logic: if cursor moves out of view (bottom), move offset
+				if m.cursor >= m.offset+m.mainHeight {
+					m.offset = m.cursor - m.mainHeight + 1
+				}
+				m.updatePreview()
+			}
+			return m, nil
+		case "up", "ctrl+p":
+			if len(m.filtered) > 0 {
+				m.cursor--
+				if m.cursor < 0 {
+					m.cursor = 0
+				}
+				// Scroll logic: if cursor moves out of view (top), move offset
+				if m.cursor < m.offset {
+					m.offset = m.cursor
+				}
+				m.updatePreview()
+			}
+			return m, nil
+		}
+	}
+
+	oldValue := m.input.Value()
+	m.input, cmd = m.input.Update(msg)
+	cmds = append(cmds, cmd)
+
+	newValue := m.input.Value()
+	if oldValue != newValue {
+		m.filtered = filterEntries(m.entries, newValue)
+
+		// Reset state on filter change
+		// We want to select the last item (Newest/Best Match)
+		if len(m.filtered) > 0 {
+			m.cursor = len(m.filtered) - 1
+			// Set offset so that the cursor is visible (ideally at bottom)
+			m.offset = m.cursor - m.mainHeight + 1
+			if m.offset < 0 {
+				m.offset = 0
+			}
+		} else {
+			m.cursor = 0
+			m.offset = 0
+		}
+
+		m.updatePreview()
+	}
+
+	m.viewport, cmd = m.viewport.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m *model) validateCursor() {
+	if len(m.filtered) == 0 {
+		m.cursor = 0
+		m.offset = 0
+		return
+	}
+	if m.cursor >= len(m.filtered) {
+		m.cursor = len(m.filtered) - 1
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+	// Adjust offset if needed
+	if m.offset < 0 {
+		m.offset = 0
+	}
+	// Ensure cursor is visible?
+	// Not strictly necessary here unless window resized drastically, but good practice.
+	if m.cursor < m.offset {
+		m.offset = m.cursor
+	}
+	if m.cursor >= m.offset+m.mainHeight {
+		m.offset = m.cursor - m.mainHeight + 1
+		if m.offset < 0 {
+			m.offset = 0
+		}
+	}
+}
+
+func (m *model) updatePreview() {
+	if len(m.filtered) == 0 {
+		m.viewport.SetContent("")
 		return
 	}
 
+	i := m.filtered[m.cursor]
+	content := GeneratePreview(i.entry, m.entries, i.index, m.viewport.Width, m.viewport.Height)
+	m.viewport.SetContent(content)
+}
+
+func (m model) View() string {
+	if !m.ready {
+		return "Initializing..."
+	}
+
+	// Render input
+	inputView := m.input.View()
+
+	// Render list manually
+	var listBuilder strings.Builder
+
+	// Determine visible range
+	start := m.offset
+	end := start + m.mainHeight
+	if end > len(m.filtered) {
+		end = len(m.filtered)
+	}
+
+	// Padding calculation for "Bottom Alignment" behavior
+	// If we have fewer items than mainHeight, we render them, but we want them at the bottom.
+	// Actually, the visible range logic above (offset=0 if items < height) handles content.
+	// We just need to prepend newlines if necessary.
+
+	visibleCount := end - start
+	padding := m.mainHeight - visibleCount
+	if padding > 0 {
+		listBuilder.WriteString(strings.Repeat("\n", padding))
+	}
+
+	for i := start; i < end; i++ {
+		item := m.filtered[i]
+		renderItem(&listBuilder, m, i, item)
+		if i < end-1 {
+			listBuilder.WriteString("\n")
+		}
+	}
+
+	listView := listBuilder.String()
+
+	// Ensure list view matches height exactly
+	// (strings.Repeat logic above ensures we have at least mainHeight lines if padding > 0)
+	// But lipgloss might help ensure exact box size.
+	// Actually, if we just output text, it should be fine.
+
+	// Render Preview
+	previewView := m.viewport.View()
+
+	mainView := lipgloss.JoinHorizontal(lipgloss.Top,
+		lipgloss.NewStyle().Width(m.listWidth).Height(m.mainHeight).Render(listView),
+		"  ", // Gap
+		previewView,
+	)
+
+	return lipgloss.JoinVertical(lipgloss.Left,
+		mainView,
+		inputView,
+	)
+}
+
+func renderItem(w io.Writer, m model, index int, i item) {
 	// Calculate available width
-	width := m.Width()
+	width := m.listWidth
 	if width <= 0 {
 		return
 	}
@@ -51,18 +267,16 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		cursor   string
 	)
 
-	isSelected := index == m.Index()
+	isSelected := index == m.cursor
 
 	if isSelected {
 		cursor = "│" // Active cursor
-		// Selected style: Bright foreground, distinct background
 		cmdStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color(ui.ColorCyan)).
 			Background(lipgloss.Color(ui.ColorSelectionBg)).
 			Bold(true)
 	} else {
 		cursor = " "
-		// Normal style
 		cmdStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color(ui.ColorForeground))
 	}
@@ -70,9 +284,6 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	// Prepare content
 	cmd := i.entry.Cmd
 	cmd = strings.ReplaceAll(cmd, "\n", " ")
-
-	// Layout calculation
-	// Cursor (1 char + 1 space padding) + Content
 
 	cursorStr := cursor + " "
 	cursorWidth := lipgloss.Width(cursorStr)
@@ -93,12 +304,8 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	var line string
 
 	if isSelected {
-		// For selected item, we want the background to span the entire content width
-		// Construct the full string first
 		fullContent := fmt.Sprintf("%-*s", cmdWidth, cmd)
 
-		// Render cursor with selection background for continuity, or keep distinct?
-		// Let's keep cursor distinct foreground, but same background
 		renderedCursor := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(ui.ColorPurple)).
 			Background(lipgloss.Color(ui.ColorSelectionBg)).
@@ -107,168 +314,38 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		renderedContent := cmdStyle.Width(contentWidth).Render(fullContent)
 		line = renderedCursor + renderedContent
 	} else {
-		// For normal items
 		renderedCursor := cursorStr
-
-		// Render parts separately to apply different text colors
 		renderedCmd := cmdStyle.Render(fmt.Sprintf("%-*s", cmdWidth, cmd))
-
 		line = renderedCursor + renderedCmd
 	}
 
 	fmt.Fprint(w, line)
 }
 
-type model struct {
-	list     list.Model
-	input    textinput.Model
-	viewport viewport.Model
-	entries  []Entry
-	choice   *Entry
-	quitting bool
-	width    int
-	height   int
-	ready    bool
-}
-
-func (m model) Init() tea.Cmd {
-	return textinput.Blink
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	var cmds []tea.Cmd
-
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		m.ready = true
-
-		// Layout: Input (3 lines) + Main Area
-		// Main Area: List (60%) | Preview (40%)
-
-		inputHeight := 3
-		mainHeight := msg.Height - inputHeight
-
-		listWidth := int(float64(msg.Width) * 0.6)
-		previewWidth := msg.Width - listWidth - 2 // -2 for border/gap
-
-		m.list.SetSize(listWidth, mainHeight)
-		m.viewport.Width = previewWidth
-		m.viewport.Height = mainHeight
-
-		// Refresh preview on resize
-		m.updatePreview()
-
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
-			if i, ok := m.list.SelectedItem().(item); ok {
-				m.choice = &i.entry
-				m.quitting = true
-				return m, tea.Quit
-			}
-		case tea.KeyCtrlC:
-			m.quitting = true
-			return m, tea.Quit
-		case tea.KeyCtrlY:
-			if i, ok := m.list.SelectedItem().(item); ok {
-				_ = clipboard.WriteAll(i.entry.Cmd)
-				m.quitting = true
-				return m, tea.Quit
-			}
-		}
-		// Custom navigation
-		switch msg.String() {
-		case "down", "ctrl+n":
-			m.list.CursorDown()
-			m.updatePreview()
-			return m, nil
-		case "up", "ctrl+p":
-			m.list.CursorUp()
-			m.updatePreview()
-			return m, nil
-		}
-	}
-
-	oldValue := m.input.Value()
-	m.input, cmd = m.input.Update(msg)
-	cmds = append(cmds, cmd)
-
-	newValue := m.input.Value()
-	if oldValue != newValue {
-		m.list.SetItems(filterEntries(m.entries, newValue))
-		m.list.ResetSelected()
-		m.updatePreview()
-	}
-
-	m.list, cmd = m.list.Update(msg)
-	cmds = append(cmds, cmd)
-
-	m.viewport, cmd = m.viewport.Update(msg)
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
-}
-
-func (m *model) updatePreview() {
-	sel := m.list.SelectedItem()
-	if sel == nil {
-		m.viewport.SetContent("")
-		return
-	}
-	i, ok := sel.(item)
-	if !ok {
-		return
-	}
-
-	content := GeneratePreview(i.entry, m.entries, i.index, m.viewport.Width, m.viewport.Height)
-	m.viewport.SetContent(content)
-}
-
-func (m model) View() string {
-	if !m.ready {
-		return "Initializing..."
-	}
-
-	// Render input
-	inputView := m.input.View()
-
-	// Render list and preview side-by-side
-	listView := m.list.View()
-	previewView := m.viewport.View()
-
-	// Add a border or separator to preview if desired, or just space
-	// Currently just side by side
-	mainView := lipgloss.JoinHorizontal(lipgloss.Top,
-		listView,
-		"  ", // Gap
-		previewView,
-	)
-
-	return lipgloss.JoinVertical(lipgloss.Left,
-		inputView,
-		mainView,
-	)
-}
-
-func filterEntries(entries []Entry, query string) []list.Item {
+func filterEntries(entries []Entry, query string) []item {
 	tokens := strings.Fields(query)
-	if len(tokens) == 0 {
-		items := make([]list.Item, len(entries))
-		for i, e := range entries {
-			items[i] = item{entry: e, index: i}
-		}
-		return items
-	}
+	var matches fuzzy.Matches
 
+	// Generate source slice for fuzzy matching
 	src := make([]string, len(entries))
 	for i, e := range entries {
 		src[i] = e.Cmd
 	}
 
-	matches := fuzzy.Find(tokens[0], src)
+	if len(tokens) == 0 {
+		// No query: Return all items
+		// We want Newest at Bottom. 'entries' is Newest->Oldest.
+		// So we reverse it: Oldest (index 0) ... Newest (index N)
+		items := make([]item, len(entries))
+		for i := range entries {
+			// index in 'filtered' is i
+			// index in 'entries' is len-1-i
+			items[i] = item{entry: entries[len(entries)-1-i], index: len(entries) - 1 - i}
+		}
+		return items
+	}
+
+	matches = fuzzy.Find(tokens[0], src)
 
 	for _, token := range tokens[1:] {
 		if len(matches) == 0 {
@@ -289,40 +366,23 @@ func filterEntries(entries []Entry, query string) []list.Item {
 		matches = newMatches
 	}
 
-	// Calculate custom score: Fuzzy Score + Time Bonus
-	// fuzzy score is usually 0 to len(str) or so.
-	// We want to give a bonus for recent items.
-	// Let's normalize time.
-	// We can use the index in 'entries' as a proxy for recency if 'entries' is sorted by time (newest first).
-	// Parser() sorts entries newest first. So index 0 is the newest.
-	//
-	// Score calculation:
-	// Base Score = matches[i].Score
-	// Time Bonus = (Total Entries - Index) / Total Entries * Max Bonus
-	// Let's say Max Bonus is equivalent to matching 2-3 characters?
-
-	// Since fuzzy.Match.Score is unexported or hard to modify directly in the struct locally without copying,
-	// we will use a custom sort.
-
 	totalEntries := float64(len(entries))
-	maxBonus := 100.0 // Increased weight to prioritize recency significantly
+	maxBonus := 100.0
 
 	sort.SliceStable(matches, func(i, j int) bool {
-		// Calculate score for i
 		idxI := matches[i].Index
 		recencyI := (totalEntries - float64(idxI)) / totalEntries
 		scoreI := float64(matches[i].Score) + (recencyI * maxBonus)
 
-		// Calculate score for j
 		idxJ := matches[j].Index
 		recencyJ := (totalEntries - float64(idxJ)) / totalEntries
 		scoreJ := float64(matches[j].Score) + (recencyJ * maxBonus)
 
-		// Descending sort
-		return scoreI > scoreJ
+		// Ascending sort (Lower score first) -> Best match (highest score) last
+		return scoreI < scoreJ
 	})
 
-	items := make([]list.Item, len(matches))
+	items := make([]item, len(matches))
 	for i, m := range matches {
 		items[i] = item{entry: entries[m.Index], index: m.Index}
 	}
@@ -337,16 +397,12 @@ func RunSearch() {
 		os.Exit(1)
 	}
 
-	items := make([]list.Item, len(entries))
-	for i, e := range entries {
-		items[i] = item{entry: e, index: i}
+	// Initial items: entries is Newest->Oldest
+	// We want to show Newest at Bottom.
+	items := make([]item, len(entries))
+	for i := range entries {
+		items[i] = item{entry: entries[len(entries)-1-i], index: len(entries) - 1 - i}
 	}
-
-	l := list.New(items, itemDelegate{}, 0, 0)
-	l.SetShowTitle(false)
-	l.SetShowFilter(false)
-	l.SetShowHelp(false)
-	l.SetFilteringEnabled(false)
 
 	ti := textinput.New()
 	ti.Placeholder = "Search history..."
@@ -357,11 +413,14 @@ func RunSearch() {
 	ti.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorForeground))
 
 	m := model{
-		list:     l,
 		input:    ti,
 		entries:  entries,
+		filtered: items,
+		cursor:   len(items) - 1, // Start at bottom (Newest)
 		viewport: viewport.New(0, 0),
 	}
+	// Initial offset logic will be handled in first Update/Resize or we set it here approximately
+	// But mainHeight is unknown until WindowSizeMsg.
 
 	// Open /dev/tty for interactive TUI
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
