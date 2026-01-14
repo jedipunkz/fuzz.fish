@@ -11,6 +11,7 @@ const (
 	ColorOrange      = "#ff9e64"
 	ColorComment     = "#9aa5ce"
 	ColorBlue        = "#7aa2f7"
+	ColorPink        = "#f7768e" // Tokyo Night pink/magenta for highlights
 	ColorSelectionBg = "#414868" // Tokyo Night selection color for better visibility
 )
 

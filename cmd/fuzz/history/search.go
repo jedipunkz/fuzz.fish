@@ -19,8 +19,9 @@ import (
 
 // item represents a search result item
 type item struct {
-	entry Entry
-	index int // Index in the original entries slice
+	entry          Entry
+	index          int   // Index in the original entries slice
+	matchedIndexes []int // Indexes of matched characters for highlighting
 }
 
 type model struct {
@@ -304,19 +305,73 @@ func renderItem(w io.Writer, m model, index int, i item) {
 	var line string
 
 	if isSelected {
-		fullContent := fmt.Sprintf("%-*s", cmdWidth, cmd)
-
 		renderedCursor := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(ui.ColorPurple)).
 			Background(lipgloss.Color(ui.ColorSelectionBg)).
 			Render(cursorStr)
 
-		renderedContent := cmdStyle.Width(contentWidth).Render(fullContent)
-		line = renderedCursor + renderedContent
+		// Render command with match highlighting
+		var cmdBuilder strings.Builder
+		matchSet := make(map[int]bool)
+		for _, idx := range i.matchedIndexes {
+			matchSet[idx] = true
+		}
+
+		// Convert cmd string to runes for proper indexing
+		runes := []rune(cmd)
+		for runeIdx := 0; runeIdx < len(runes); runeIdx++ {
+			var charStyle lipgloss.Style
+			if matchSet[runeIdx] {
+				// Matched character: Orange color
+				charStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color(ui.ColorOrange)).
+					Background(lipgloss.Color(ui.ColorSelectionBg)).
+					Bold(true)
+			} else {
+				// Non-matched character: Cyan color
+				charStyle = cmdStyle
+			}
+			cmdBuilder.WriteString(charStyle.Render(string(runes[runeIdx])))
+		}
+
+		// Pad to full width
+		rendered := cmdBuilder.String()
+		renderedWidth := lipgloss.Width(rendered)
+		padding := contentWidth - renderedWidth
+		if padding > 0 {
+			paddingStyle := lipgloss.NewStyle().
+				Background(lipgloss.Color(ui.ColorSelectionBg))
+			rendered += paddingStyle.Render(strings.Repeat(" ", padding))
+		}
+
+		line = renderedCursor + rendered
 	} else {
 		renderedCursor := cursorStr
-		renderedCmd := cmdStyle.Render(fmt.Sprintf("%-*s", cmdWidth, cmd))
-		line = renderedCursor + renderedCmd
+
+		// Render command with match highlighting for non-selected items
+		var cmdBuilder strings.Builder
+		matchSet := make(map[int]bool)
+		for _, idx := range i.matchedIndexes {
+			matchSet[idx] = true
+		}
+
+		// Convert cmd string to runes for proper indexing
+		runes := []rune(cmd)
+		for runeIdx := 0; runeIdx < len(runes); runeIdx++ {
+			var charStyle lipgloss.Style
+			if matchSet[runeIdx] {
+				// Matched character: Yellow color
+				charStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color(ui.ColorYellow)).
+					Bold(true)
+			} else {
+				// Non-matched character: Default color
+				charStyle = cmdStyle
+			}
+			cmdBuilder.WriteString(charStyle.Render(string(runes[runeIdx])))
+		}
+
+		line = renderedCursor + cmdBuilder.String()
 	}
 
 	fmt.Fprint(w, line)
@@ -340,7 +395,7 @@ func filterEntries(entries []Entry, query string) []item {
 		for i := range entries {
 			// index in 'filtered' is i
 			// index in 'entries' is len-1-i
-			items[i] = item{entry: entries[len(entries)-1-i], index: len(entries) - 1 - i}
+			items[i] = item{entry: entries[len(entries)-1-i], index: len(entries) - 1 - i, matchedIndexes: nil}
 		}
 		return items
 	}
@@ -361,7 +416,18 @@ func filterEntries(entries []Entry, query string) []item {
 
 		newMatches := make(fuzzy.Matches, len(subMatches))
 		for i, sm := range subMatches {
-			newMatches[i] = matches[sm.Index]
+			// Merge matched indexes from both matches
+			origMatch := matches[sm.Index]
+			mergedIndexes := make([]int, 0, len(origMatch.MatchedIndexes)+len(sm.MatchedIndexes))
+			mergedIndexes = append(mergedIndexes, origMatch.MatchedIndexes...)
+			mergedIndexes = append(mergedIndexes, sm.MatchedIndexes...)
+
+			newMatches[i] = fuzzy.Match{
+				Str:            origMatch.Str,
+				Index:          origMatch.Index,
+				MatchedIndexes: mergedIndexes,
+				Score:          origMatch.Score + sm.Score,
+			}
 		}
 		matches = newMatches
 	}
@@ -384,7 +450,7 @@ func filterEntries(entries []Entry, query string) []item {
 
 	items := make([]item, len(matches))
 	for i, m := range matches {
-		items[i] = item{entry: entries[m.Index], index: m.Index}
+		items[i] = item{entry: entries[m.Index], index: m.Index, matchedIndexes: m.MatchedIndexes}
 	}
 	return items
 }
