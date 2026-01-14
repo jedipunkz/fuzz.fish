@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -171,6 +172,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC:
 			m.quitting = true
 			return m, tea.Quit
+		case tea.KeyCtrlY:
+			if i, ok := m.list.SelectedItem().(item); ok {
+				_ = clipboard.WriteAll(i.entry.Cmd)
+				m.quitting = true
+				return m, tea.Quit
+			}
 		}
 		// Custom navigation
 		switch msg.String() {

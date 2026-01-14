@@ -33,6 +33,7 @@ Search through your command history with context:
 - Type to fuzzy search through your command history
 - Use arrow keys or ctrl-n, p to navigate
 - Press `Enter` to insert the command into your prompt
+- Press `Ctrl+Y` to copy the selected command to clipboard
 - Press `ESC` to cancel
 
 #### `alt+b` - Git Branch Search
