@@ -28,11 +28,12 @@ const (
 
 // Item represents a search result item
 type Item struct {
-	Text      string
-	Index     int         // Index in the original source slice
-	Original  interface{} // The original object (history.Entry or git.Branch)
-	IsCurrent bool        // For git branch (icon logic)
-	IsRemote  bool        // For git branch (icon logic)
+	Text           string
+	Index          int         // Index in the original source slice
+	Original       interface{} // The original object (history.Entry or git.Branch)
+	IsCurrent      bool        // For git branch (icon logic)
+	IsRemote       bool        // For git branch (icon logic)
+	MatchedIndexes []int       // Indexes of matched characters for highlighting
 }
 
 type model struct {
@@ -305,7 +306,9 @@ func (m *model) updateFilter(query string) {
 
 			m.filtered = make([]Item, len(matches))
 			for i, mat := range matches {
-				m.filtered[i] = m.allItems[mat.Index]
+				item := m.allItems[mat.Index]
+				item.MatchedIndexes = mat.MatchedIndexes
+				m.filtered[i] = item
 			}
 		} else {
 			// Query is just whitespace, treat as empty
@@ -499,16 +502,52 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 		text = text[:contentWidth-1] + "…"
 	}
 
+	renderedCursor := cursorStr
 	if isSelected {
-		fullContent := fmt.Sprintf("%-*s", contentWidth, text)
-		renderedCursor := lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorPurple)).Background(lipgloss.Color(ui.ColorSelectionBg)).Render(cursorStr)
-		renderedContent := cmdStyle.Width(contentWidth).Render(fullContent)
-		fmt.Fprint(w, renderedCursor+renderedContent)
-	} else {
-		renderedCursor := cursorStr
-		renderedContent := cmdStyle.Render(fmt.Sprintf("%-*s", contentWidth, text))
-		fmt.Fprint(w, renderedCursor+renderedContent)
+		renderedCursor = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorPurple)).Background(lipgloss.Color(ui.ColorSelectionBg)).Render(cursorStr)
 	}
+
+	// Render text with match highlighting
+	var textBuilder strings.Builder
+	matchSet := make(map[int]bool)
+	for _, idx := range i.MatchedIndexes {
+		matchSet[idx] = true
+	}
+
+	runes := []rune(text)
+	for runeIdx := 0; runeIdx < len(runes); runeIdx++ {
+		var charStyle lipgloss.Style
+		if matchSet[runeIdx] {
+			// Matched character
+			if isSelected {
+				charStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color(ui.ColorPink)).
+					Background(lipgloss.Color(ui.ColorSelectionBg)).
+					Bold(true)
+			} else {
+				charStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color(ui.ColorPink)).
+					Bold(true)
+			}
+		} else {
+			// Non-matched character
+			charStyle = cmdStyle
+		}
+		textBuilder.WriteString(charStyle.Render(string(runes[runeIdx])))
+	}
+
+	rendered := textBuilder.String()
+	renderedWidth := lipgloss.Width(rendered)
+	padding := contentWidth - renderedWidth
+	if padding > 0 {
+		paddingStyle := lipgloss.NewStyle()
+		if isSelected {
+			paddingStyle = paddingStyle.Background(lipgloss.Color(ui.ColorSelectionBg))
+		}
+		rendered += paddingStyle.Render(strings.Repeat(" ", padding))
+	}
+
+	fmt.Fprint(w, renderedCursor+rendered)
 }
 
 func Run() {
