@@ -9,9 +9,9 @@ const (
 	ColorForeground  = "#c0caf5"
 	ColorYellow      = "#e0af68"
 	ColorOrange      = "#ff9e64"
-	ColorComment     = "#565f89"
+	ColorComment     = "#9aa5ce"
 	ColorBlue        = "#7aa2f7"
-	ColorSelectionBg = "#543970" // Darker muted purple for selection
+	ColorSelectionBg = "#414868" // Tokyo Night selection color for better visibility
 )
 
 // Styles for preview window and TUI elements
