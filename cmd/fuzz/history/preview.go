@@ -17,7 +17,7 @@ func GeneratePreview(entry Entry, all []Entry, idx, width, height int) string {
 	sb.WriteString(ui.LabelStyle.Render("Time") + "\n")
 	sb.WriteString(ui.ContentStyle.Render(utils.FormatTime(entry.When)))
 	sb.WriteString("\n")
-	sb.WriteString(ui.ContentStyle.Faint(true).Render(utils.FormatRelativeTime(entry.When)))
+	sb.WriteString(ui.ContentStyle.Render(utils.FormatRelativeTime(entry.When)))
 	sb.WriteString("\n\n")
 
 	// Dir
