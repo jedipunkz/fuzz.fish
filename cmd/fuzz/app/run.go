@@ -166,7 +166,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) toggleMode() {
-	newMode := ModeHistory
+	var newMode SearchMode
 	if m.mode == ModeHistory {
 		newMode = ModeGitBranch
 		// Check if git repo
