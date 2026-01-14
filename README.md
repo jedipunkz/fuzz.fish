@@ -26,23 +26,17 @@ fisher install jedipunkz/fuzz.fish
 
 fuzz.fish provides three interactive fuzzy finders:
 
-#### `ctrl+r` - Command History Search
+#### `ctrl+r` - Command History & Git Branch Search
 
-Search through your command history with context:
+Search through your command history with context, or switch git branches.
 
-- Type to fuzzy search through your command history
+- Type to fuzzy search
+- **Press `Ctrl+R` again** to toggle between **History Search** and **Git Branch Search** (in git repositories)
 - Use arrow keys or ctrl-n, p to navigate
-- Press `Enter` to insert the command into your prompt
-- Press `Ctrl+Y` to copy the selected command to clipboard
-- Press `ESC` to cancel
-
-#### `alt+b` - Git Branch Search
-
-Search and switch git branches:
-
-- Type to fuzzy search through local and remote branches
-- Use arrow keys or ctrl-n, p to navigate
-- Press `Enter` to switch to the selected branch
+- Press `Enter`:
+  - History mode: insert the command into your prompt
+  - Git Branch mode: switch to the selected branch
+- Press `Ctrl+Y` to copy the selected item to clipboard
 - Press `ESC` to cancel
 
 

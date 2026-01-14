@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/app"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/files"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
 )
 
 func main() {
@@ -17,14 +17,20 @@ func main() {
 			files.RunSearch()
 			return
 		case "history":
-			// Explicit history mode (default)
-			history.RunSearch()
+			// Explicit history mode (using unified app)
+			app.Run()
 			return
 		case "git":
 			// Git subcommand - check for git-specific action
 			if len(os.Args) > 2 {
 				switch os.Args[2] {
 				case "branch":
+					// Using unified app but could force git mode if implemented
+					// For now, let's keep git.RunBranchSearch for backward compatibility
+					// OR better: use app.Run() and switch to git mode initially?
+					// The user requested 'ctrl-r' to switch.
+					// If they invoke 'git branch' directly, maybe they want just that.
+					// Let's stick to user request: "ctrl-r" launches history, then toggle.
 					git.RunBranchSearch()
 					return
 				default:
@@ -33,7 +39,6 @@ func main() {
 					os.Exit(1)
 				}
 			}
-			// Default git action: branch search
 			git.RunBranchSearch()
 			return
 		default:
@@ -43,6 +48,6 @@ func main() {
 		}
 	}
 
-	// Default: history search
-	history.RunSearch()
+	// Default: unified app
+	app.Run()
 }

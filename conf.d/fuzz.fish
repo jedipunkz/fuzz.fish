@@ -140,13 +140,23 @@ function fh --description 'Fish History viewer with context (TUI)'
 
     # Run the TUI binary
     # Redirect stdin/stderr to /dev/tty for TUI interaction,
-    # while capturing stdout for the selected command
-    set -l cmd ($bin_path </dev/tty 2>/dev/tty)
+    # while capturing stdout for the selected command/branch
+    set -l result ($bin_path </dev/tty 2>/dev/tty)
 
-    if test -n "$cmd"
-        # Insert into command line
-        commandline -r -- "$cmd"
-        commandline -f repaint
+    if test -n "$result"
+        if string match -q "CMD:*" -- "$result"
+            # It's a history command, replace command line
+            set -l cmd (string replace "CMD:" "" -- "$result")
+            commandline -r -- "$cmd"
+            commandline -f repaint
+        else if string match -q "BRANCH:*" -- "$result"
+            # It's a git branch, switch to it
+            set -l branch (string replace "BRANCH:" "" -- "$result")
+            # Execute git switch quietly in a subshell
+            fish -c "git switch --quiet '$branch'" >/dev/null 2>&1
+            # Force repaint to update prompt
+            commandline -f repaint
+        end
     end
 end
 
@@ -195,18 +205,14 @@ end
 
 # Set up Ctrl+R key bindings for history
 # Set up Ctrl+Alt+F key bindings for file search
-# Set up Alt+B key bindings for git branch search
 function __fuzz_fish_key_bindings
     bind \cr fh
     bind \e\cf ff
-    bind \eb gb
     if test "$fish_key_bindings" = fish_vi_key_bindings
         bind -M insert \cr fh
         bind -M default \cr fh
         bind -M insert \e\cf ff
         bind -M default \e\cf ff
-        bind -M insert \eb gb
-        bind -M default \eb gb
     end
 end
 __fuzz_fish_key_bindings
