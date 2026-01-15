@@ -374,12 +374,9 @@ func (m *model) updatePreview() {
 		// No, GeneratePreview takes (entry, allEntries, index, ...)
 		// The index is used for Context.
 		// We passed m.historyEntries (Newest->Oldest).
-		// We need index in that slice.
-		// Item.Index was calculated as len - 1 - originalIndex.
-		// So originalIndex = len - 1 - Item.Index.
+		// Item.Index is the index in m.historyEntries.
 
-		origIndex := len(m.historyEntries) - 1 - item.Index
-		content = history.GeneratePreview(entry, m.historyEntries, origIndex, m.viewport.Width, m.viewport.Height)
+		content = history.GeneratePreview(entry, m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
 	} else {
 		branch := item.Original.(git.Branch)
 		content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
