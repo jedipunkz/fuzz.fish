@@ -20,8 +20,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.ready = true
 
-		// Account for borders: input box has top/bottom borders (2), plus 1 line for input
-		inputHeight := 3 + 2 // input line + top/bottom borders
+		// Input box: top border (1) + input line (1) + bottom border (1) = 3
+		inputHeight := 3
 		mainHeight := msg.Height - inputHeight
 		if mainHeight < 0 {
 			mainHeight = 0
