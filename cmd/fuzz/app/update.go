@@ -20,20 +20,34 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.ready = true
 
+		// Input box: top border (1) + input line (1) + bottom border (1) = 3
 		inputHeight := 3
 		mainHeight := msg.Height - inputHeight
 		if mainHeight < 0 {
 			mainHeight = 0
 		}
-		m.mainHeight = mainHeight
+		// Subtract top/bottom borders from main panes
+		m.mainHeight = mainHeight - 2
+		if m.mainHeight < 0 {
+			m.mainHeight = 0
+		}
 
-		listWidth := int(float64(msg.Width) * 0.6) // 60% split for list, 40% for preview
+		// 60% split for list, 40% for preview
+		listWidth := int(float64(msg.Width) * 0.6)
+		// Subtract left/right borders from list width
+		m.listWidth = listWidth - 2
+		if m.listWidth < 0 {
+			m.listWidth = 0
+		}
 
+		// Preview width: remaining space minus borders
 		previewWidth := msg.Width - listWidth - 2
-		m.listWidth = listWidth
+		if previewWidth < 0 {
+			previewWidth = 0
+		}
 
 		m.viewport.Width = previewWidth
-		m.viewport.Height = mainHeight
+		m.viewport.Height = m.mainHeight
 
 		// Recalculate offset to keep cursor at the bottom of the view
 		if len(m.filtered) > 0 {

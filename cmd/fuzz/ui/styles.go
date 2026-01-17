@@ -13,6 +13,7 @@ const (
 	ColorBlue        = "#7aa2f7"
 	ColorPink        = "#f7768e" // Tokyo Night pink/magenta for highlights
 	ColorSelectionBg = "#414868" // Tokyo Night selection color for better visibility
+	ColorBorder      = "#565f89" // Tokyo Night gray for borders
 )
 
 // Styles for preview window and TUI elements
