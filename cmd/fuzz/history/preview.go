@@ -1,12 +1,22 @@
 package history
 
 import (
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/ui"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/utils"
 )
+
+// formatDir abbreviates a directory path by replacing the home directory with ~
+func formatDir(path string) string {
+	home, err := os.UserHomeDir()
+	if err == nil {
+		path = strings.Replace(path, home, "~", 1)
+	}
+	return path
+}
 
 // GeneratePreview generates a preview of the history entry for the TUI preview window
 func GeneratePreview(entry Entry, all []Entry, idx, width, height int) string {
@@ -23,7 +33,7 @@ func GeneratePreview(entry Entry, all []Entry, idx, width, height int) string {
 	// Dir
 	if len(entry.Paths) > 0 {
 		sb.WriteString(ui.LabelStyle.Render("Directory") + "\n")
-		sb.WriteString(ui.ContentStyle.Render(FormatDir(entry.Paths[0])))
+		sb.WriteString(ui.ContentStyle.Render(formatDir(entry.Paths[0])))
 		sb.WriteString("\n")
 	}
 	sb.WriteString("\n")
