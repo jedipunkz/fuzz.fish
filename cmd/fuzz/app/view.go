@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/ui"
 )
 
@@ -106,8 +108,13 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 	// History: Replace newlines.
 	// Git: Add icons.
 
+	// Calculate time ago string for history mode
+	var timeAgo string
 	if m.mode == ModeHistory {
 		text = strings.ReplaceAll(text, "\n", " ")
+		if entry, ok := i.Original.(history.Entry); ok && entry.When > 0 {
+			timeAgo = formatTimeAgo(entry.When)
+		}
 	} else {
 		var icon string
 		if i.IsCurrent {
@@ -122,7 +129,14 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 
 	cursorStr := cursor + " "
 	cursorWidth := lipgloss.Width(cursorStr)
-	contentWidth := width - cursorWidth
+
+	// Reserve space for time ago display
+	timeAgoWidth := 0
+	if timeAgo != "" {
+		timeAgoWidth = len(timeAgo) + 1 // +1 for spacing
+	}
+
+	contentWidth := width - cursorWidth - timeAgoWidth
 	if contentWidth < 10 {
 		contentWidth = 10
 	}
@@ -176,5 +190,33 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 		rendered += paddingStyle.Render(strings.Repeat(" ", padding))
 	}
 
-	fmt.Fprint(w, renderedCursor+rendered)
+	// Render time ago
+	var timeAgoRendered string
+	if timeAgo != "" {
+		timeAgoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorTimeAgo))
+		if isSelected {
+			timeAgoStyle = timeAgoStyle.Background(lipgloss.Color(ui.ColorSelectionBg))
+		}
+		timeAgoRendered = " " + timeAgoStyle.Render(timeAgo)
+	}
+
+	fmt.Fprint(w, renderedCursor+rendered+timeAgoRendered)
+}
+
+// formatTimeAgo formats a Unix timestamp as a relative time string
+func formatTimeAgo(when int64) string {
+	t := time.Unix(when, 0)
+	d := time.Since(t)
+
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%ds ago", int(d.Seconds()))
+	case d < time.Hour:
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
+	default:
+		days := int(d.Hours() / 24)
+		return fmt.Sprintf("%dd ago", days)
+	}
 }
