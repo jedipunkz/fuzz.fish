@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+// IsGitRepo checks if the current directory is a git repository
+func IsGitRepo() bool {
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	err := cmd.Run()
+	return err == nil
+}
+
 // CollectBranches collects all git branches (local and remote)
 func CollectBranches() []Branch {
 	var branches []Branch
