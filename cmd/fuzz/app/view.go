@@ -45,10 +45,32 @@ func (m model) View() string {
 	listView := listBuilder.String()
 	previewView := m.viewport.View()
 
+	// Border style with rounded corners and gray color
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(ui.ColorBorder))
+
+	// List pane with border
+	listBox := boxStyle.
+		Width(m.listWidth).
+		Height(m.mainHeight).
+		Render(listView)
+
+	// Preview pane with border
+	previewBox := boxStyle.
+		Width(m.viewport.Width).
+		Height(m.mainHeight).
+		Render(previewView)
+
+	// Input box with border
+	inputBox := boxStyle.
+		Width(m.width-2).
+		Padding(0, 1).
+		Render(inputView)
+
 	mainView := lipgloss.JoinHorizontal(lipgloss.Top,
-		lipgloss.NewStyle().Width(m.listWidth).Height(m.mainHeight).Render(listView),
-		"  ",
-		previewView,
+		listBox,
+		previewBox,
 	)
 
 	// Add Mode Indicator or Help
@@ -56,7 +78,7 @@ func (m model) View() string {
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		mainView,
-		inputView,
+		inputBox,
 	)
 }
 
