@@ -15,10 +15,6 @@ const (
 	ColorSelectionBg = "#414868" // Tokyo Night selection color for better visibility
 	ColorBorder      = "#565f89" // Tokyo Night gray for borders
 	ColorTimeAgo     = "#7aa2f7" // Blue-ish gray for time ago display
-
-	// Spinner colors
-	ColorSpinnerHistory = "#f7768e" // Tokyo Night pink for history/command search
-	ColorSpinnerBranch  = "#bb9af7" // Tokyo Night purple for branch search
 )
 
 // Styles for preview window and TUI elements

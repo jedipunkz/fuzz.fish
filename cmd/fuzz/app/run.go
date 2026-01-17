@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,18 +26,11 @@ func Run() {
 	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorCyan))
 	ti.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorForeground))
 
-	// Initialize spinner with pink color for history mode
-	sp := spinner.New(
-		spinner.WithSpinner(spinner.MiniDot),
-		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorSpinnerHistory))),
-	)
-
 	m := model{
 		mode:           ModeHistory,
 		input:          ti,
 		historyEntries: entries,
 		viewport:       viewport.New(0, 0),
-		spinner:        sp,
 	}
 
 	m.loadItemsForMode()

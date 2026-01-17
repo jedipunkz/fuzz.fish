@@ -4,12 +4,9 @@ import (
 	"strings"
 
 	"github.com/atotto/clipboard"
-	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/ui"
 )
 
 // Update handles messages and updates the model
@@ -18,11 +15,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case spinner.TickMsg:
-		m.spinner, cmd = m.spinner.Update(msg)
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
-
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -162,13 +154,11 @@ func (m *model) toggleMode() {
 	m.mode = newMode
 	m.input.SetValue("") // Clear input on switch
 
-	// Update placeholder and spinner color based on mode
+	// Update placeholder
 	if m.mode == ModeHistory {
 		m.input.Placeholder = "Search history... (Ctrl+R to switch)"
-		m.spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorSpinnerHistory))
 	} else {
 		m.input.Placeholder = "Search branches... (Ctrl+R to switch)"
-		m.spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorSpinnerBranch))
 	}
 
 	m.loadItemsForMode()
