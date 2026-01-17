@@ -86,8 +86,9 @@ func (m *model) updateFilter(query string) {
 
 				if m.mode == ModeHistory {
 					total := float64(len(m.allItems))
-					// Increase bonus for recency to ensure newer commands appear at the bottom
-					maxBonus := 10000.0
+					// Recency bonus: balance between match quality and recency
+					// fuzzy score ~0-100, recency bonus ~0-500
+					maxBonus := 500.0
 					recencyI := float64(matches[i].Index) / total
 					recencyJ := float64(matches[j].Index) / total
 					scoreI += recencyI * maxBonus
