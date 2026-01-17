@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,6 +32,7 @@ type model struct {
 	mode     SearchMode
 	input    textinput.Model
 	viewport viewport.Model
+	spinner  spinner.Model
 
 	// Data sources
 	historyEntries []history.Entry
@@ -54,5 +56,5 @@ type model struct {
 
 // Init initializes the model
 func (m model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(textinput.Blink, m.spinner.Tick)
 }

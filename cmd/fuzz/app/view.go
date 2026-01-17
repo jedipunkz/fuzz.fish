@@ -17,7 +17,8 @@ func (m model) View() string {
 		return "Initializing..."
 	}
 
-	inputView := m.input.View()
+	// Build input view with spinner
+	inputView := m.spinner.View() + " " + m.input.View()
 
 	// List View
 	var listBuilder strings.Builder
