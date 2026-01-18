@@ -4,6 +4,8 @@
 
 # fuzz.fish
 
+[![CI](https://github.com/jedipunkz/fuzz.fish/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jedipunkz/fuzz.fish/actions/workflows/ci.yml)
+
 fuzz.fish is a Fish Shell plugin that provides fuzzy finding for command history, files, and git branches.
 
 # Screenshot
