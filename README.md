@@ -6,6 +6,9 @@
 
 fuzz.fish is a Fish Shell plugin that provides fuzzy finding for command history, files, and git branches.
 
+<p align="center">
+  <img src="./assets/fuzz.gif" width="500"/>
+</p>
 
 ## Requirements
 
