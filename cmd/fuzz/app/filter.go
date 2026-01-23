@@ -80,20 +80,24 @@ func (m *model) updateFilter(query string) {
 			}
 
 			// Sort logic
+			// Higher combined score should appear at bottom (higher priority)
+			// So we sort ascending: lower scores first, higher scores last (at bottom)
 			sort.SliceStable(matches, func(i, j int) bool {
 				scoreI := float64(matches[i].Score)
 				scoreJ := float64(matches[j].Score)
 
 				if m.mode == ModeHistory {
 					total := float64(len(m.allItems))
-					// Recency bonus: balance between match quality and recency
-					// fuzzy score ~0-100, recency bonus ~0-500
-					maxBonus := 500.0
+					// Recency bonus: newer items (higher Index) get higher bonus
+					// This pushes recent matches toward the bottom (higher priority)
+					// Increased from 500 to 2000 to prioritize recent commands more strongly
+					maxBonus := 2000.0
 					recencyI := float64(matches[i].Index) / total
 					recencyJ := float64(matches[j].Index) / total
 					scoreI += recencyI * maxBonus
 					scoreJ += recencyJ * maxBonus
 				}
+				// Ascending sort: lower scores at top, higher scores at bottom
 				return scoreI < scoreJ
 			})
 
