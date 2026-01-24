@@ -80,12 +80,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 		case tea.KeyCtrlG:
-			// Toggle between History and GitBranch mode
-			m.toggleMode()
+			// Switch to GitBranch mode
+			m.switchToGitBranchMode()
 			return m, nil
 		case tea.KeyCtrlF:
-			// Toggle to Files mode
-			m.toggleFilesMode()
+			// Switch to Files mode
+			m.switchToFilesMode()
+			return m, nil
+		case tea.KeyCtrlR:
+			// Go back to history mode
+			m.switchToHistoryMode()
 			return m, nil
 		}
 		switch msg.String() {
@@ -131,30 +135,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// toggleMode toggles between history and git branch mode (Ctrl+G)
-func (m *model) toggleMode() {
-	var newMode SearchMode
-	if m.mode == ModeHistory {
-		newMode = ModeGitBranch
-		// Check if git repo
-		if len(m.gitBranches) == 0 {
-			if !git.IsGitRepo() {
-				return
-			}
-			branches := git.CollectBranches()
-			if len(branches) == 0 {
-				return
-			}
-			m.gitBranches = branches
-		}
-	} else if m.mode == ModeGitBranch {
-		newMode = ModeHistory
-	} else if m.mode == ModeFiles {
-		// From files mode, go back to history
-		newMode = ModeHistory
+// switchToGitBranchMode switches to git branch mode (Ctrl+G)
+func (m *model) switchToGitBranchMode() {
+	if m.mode == ModeGitBranch {
+		// Already in git branch mode, nothing to do
+		return
 	}
 
-	m.mode = newMode
+	// Check if git repo
+	if len(m.gitBranches) == 0 {
+		if !git.IsGitRepo() {
+			return
+		}
+		branches := git.CollectBranches()
+		if len(branches) == 0 {
+			return
+		}
+		m.gitBranches = branches
+	}
+
+	m.mode = ModeGitBranch
 	m.input.SetValue("") // Clear input on switch
 
 	// Update placeholder
@@ -168,28 +168,48 @@ func (m *model) toggleMode() {
 	m.updatePreview()
 }
 
-// toggleFilesMode switches to files mode (Ctrl+F)
-func (m *model) toggleFilesMode() {
-	if m.mode == ModeFiles {
-		// Already in files mode, go back to history
-		m.mode = ModeHistory
-	} else {
-		// Switch to files mode
-		if len(m.fileEntries) == 0 {
-			// Collect files from current directory
-			cwd, err := os.Getwd()
-			if err != nil {
-				return
-			}
-			entries := files.Collect(cwd)
-			if len(entries) == 0 {
-				return
-			}
-			m.fileEntries = entries
-		}
-		m.mode = ModeFiles
+// switchToHistoryMode switches directly to history mode (Ctrl+R)
+func (m *model) switchToHistoryMode() {
+	if m.mode == ModeHistory {
+		// Already in history mode, nothing to do
+		return
 	}
 
+	m.mode = ModeHistory
+	m.input.SetValue("") // Clear input on switch
+
+	// Update placeholder
+	m.updatePlaceholder()
+
+	m.loadItemsForMode()
+	m.updateFilter("")
+
+	// Reset cursor to bottom explicitly after mode switch
+	m.resetCursorToBottom()
+	m.updatePreview()
+}
+
+// switchToFilesMode switches to files mode (Ctrl+F)
+func (m *model) switchToFilesMode() {
+	if m.mode == ModeFiles {
+		// Already in files mode, nothing to do
+		return
+	}
+
+	// Collect files from current directory if not already done
+	if len(m.fileEntries) == 0 {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return
+		}
+		entries := files.Collect(cwd)
+		if len(entries) == 0 {
+			return
+		}
+		m.fileEntries = entries
+	}
+
+	m.mode = ModeFiles
 	m.input.SetValue("") // Clear input on switch
 
 	// Update placeholder
@@ -209,9 +229,9 @@ func (m *model) updatePlaceholder() {
 	case ModeHistory:
 		m.input.Placeholder = "Search history... (Ctrl+G: git, Ctrl+F: files)"
 	case ModeGitBranch:
-		m.input.Placeholder = "Search branches... (Ctrl+G: history, Ctrl+F: files)"
+		m.input.Placeholder = "Search branches... (Ctrl+R: history, Ctrl+F: files)"
 	case ModeFiles:
-		m.input.Placeholder = "Search files... (Ctrl+G: git, Ctrl+F: toggle)"
+		m.input.Placeholder = "Search files... (Ctrl+R: history, Ctrl+G: git)"
 	}
 }
 
