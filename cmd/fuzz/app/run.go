@@ -27,10 +27,12 @@ func Run() {
 	ti.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorForeground))
 
 	m := model{
-		mode:           ModeHistory,
-		input:          ti,
-		historyEntries: entries,
-		viewport:       viewport.New(0, 0),
+		mode:             ModeHistory,
+		input:            ti,
+		historyEntries:   entries,
+		viewport:         viewport.New(0, 0),
+		previewCache:     make(map[string]string),
+		lastPreviewIndex: -1,
 	}
 
 	m.loadItemsForMode()

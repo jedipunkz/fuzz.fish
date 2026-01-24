@@ -160,6 +160,9 @@ func (m *model) switchToGitBranchMode() {
 	// Update placeholder
 	m.updatePlaceholder()
 
+	// Reset preview state when switching modes
+	m.lastPreviewIndex = -1
+
 	m.loadItemsForMode()
 	m.updateFilter("")
 
@@ -180,6 +183,9 @@ func (m *model) switchToHistoryMode() {
 
 	// Update placeholder
 	m.updatePlaceholder()
+
+	// Reset preview state when switching modes
+	m.lastPreviewIndex = -1
 
 	m.loadItemsForMode()
 	m.updateFilter("")
@@ -214,6 +220,10 @@ func (m *model) switchToFilesMode() {
 
 	// Update placeholder
 	m.updatePlaceholder()
+
+	// Clear preview cache and index when switching modes
+	m.previewCache = make(map[string]string)
+	m.lastPreviewIndex = -1
 
 	m.loadItemsForMode()
 	m.updateFilter("")
@@ -281,29 +291,39 @@ func (m *model) validateCursor() {
 func (m *model) updatePreview() {
 	if len(m.filtered) == 0 {
 		m.viewport.SetContent("")
+		m.lastPreviewIndex = -1
 		return
 	}
+
+	// Skip update if cursor hasn't moved
+	if m.cursor == m.lastPreviewIndex {
+		return
+	}
+	m.lastPreviewIndex = m.cursor
+
 	item := m.filtered[m.cursor]
 
 	var content string
+	var cacheKey string
+
 	switch m.mode {
 	case ModeHistory:
 		entry := item.Original.(history.Entry)
-		// We need original index in historyEntries (which is Newest->Oldest).
-		// Item.Index is index in allItems (Oldest->Newest).
-		// But GeneratePreview expects index in the slice passed to it?
-		// No, GeneratePreview takes (entry, allEntries, index, ...)
-		// The index is used for Context.
-		// We passed m.historyEntries (Newest->Oldest).
-		// Item.Index is the index in m.historyEntries.
-
 		content = history.GeneratePreview(entry, m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
 	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
 		content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
 	case ModeFiles:
 		entry := item.Original.(files.Entry)
-		content = files.GeneratePreview(entry, m.viewport.Width, m.viewport.Height)
+		// Use cache for file previews
+		cacheKey = entry.Path
+		if cached, ok := m.previewCache[cacheKey]; ok {
+			content = cached
+		} else {
+			content = files.GeneratePreview(entry, m.viewport.Width, m.viewport.Height)
+			// Cache the result
+			m.previewCache[cacheKey] = content
+		}
 	}
 	m.viewport.SetContent(content)
 }
