@@ -78,7 +78,7 @@ func getRecentCommits(branchName string, count int) string {
 
 	var sb strings.Builder
 	commitCount := 0
-	err = commits.ForEach(func(c *object.Commit) error {
+	_ = commits.ForEach(func(c *object.Commit) error {
 		if commitCount >= count {
 			return fmt.Errorf("reached limit")
 		}
