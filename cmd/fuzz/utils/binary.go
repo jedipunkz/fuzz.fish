@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/ui"
@@ -24,17 +23,8 @@ func IsBinary(content []byte) bool {
 	return false
 }
 
-// GetFilePreview returns a preview of the file contents
+// GetFilePreview returns a preview of the file contents with syntax highlighting
 func GetFilePreview(path string, maxLines int) string {
-	// Try to use bat for syntax highlighting
-	if hasBat() {
-		content := runBat(path, maxLines)
-		if content != "" {
-			return content
-		}
-	}
-
-	// Fallback to plain cat
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return ""
@@ -45,7 +35,28 @@ func GetFilePreview(path string, maxLines int) string {
 		return ""
 	}
 
-	// Limit lines
+	// Try syntax highlighting with chroma
+	highlighted, err := HighlightCode(string(content), path)
+	if err == nil && highlighted != "" {
+		// Limit lines
+		lines := strings.Split(highlighted, "\n")
+		if len(lines) > maxLines {
+			lines = lines[:maxLines]
+		}
+
+		var sb strings.Builder
+		for _, line := range lines {
+			// Truncate long lines
+			if len(line) > MaxLineLength {
+				line = line[:MaxLineLength] + "..."
+			}
+			sb.WriteString("  " + line + "\n")
+		}
+
+		return sb.String()
+	}
+
+	// Fallback to plain text
 	lines := strings.Split(string(content), "\n")
 	if len(lines) > maxLines {
 		lines = lines[:maxLines]
@@ -58,30 +69,6 @@ func GetFilePreview(path string, maxLines int) string {
 			line = line[:MaxLineLength] + "..."
 		}
 		sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  %s", line)) + "\n")
-	}
-
-	return sb.String()
-}
-
-func hasBat() bool {
-	_, err := exec.LookPath("bat")
-	return err == nil
-}
-
-func runBat(path string, maxLines int) string {
-	cmd := exec.Command("bat", "--color=always", "--style=numbers", fmt.Sprintf("--line-range=:%d", maxLines), path)
-	output, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-
-	// Add indentation
-	lines := strings.Split(string(output), "\n")
-	var sb strings.Builder
-	for _, line := range lines {
-		if line != "" {
-			sb.WriteString("  " + line + "\n")
-		}
 	}
 
 	return sb.String()

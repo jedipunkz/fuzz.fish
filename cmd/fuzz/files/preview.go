@@ -13,18 +13,10 @@ import (
 func GeneratePreview(entry Entry, width, height int) string {
 	var sb strings.Builder
 
-	// Header
-	sb.WriteString(ui.HeaderStyle.Render("File Information") + "\n\n")
-
 	// Path
-	sb.WriteString(ui.LabelStyle.Render("Path") + "\n")
-	sb.WriteString(ui.ContentStyle.Render(entry.Path) + "\n\n")
+	sb.WriteString(ui.LabelStyle.Render(entry.Path) + "\n\n")
 
-	// Type
-	sb.WriteString(ui.LabelStyle.Render("Type") + "\n")
 	if entry.IsDir {
-		sb.WriteString(ui.ContentStyle.Render("Directory") + "\n\n")
-
 		// Directory listing
 		sb.WriteString(ui.ContextHeaderStyle.Render("Contents") + "\n")
 		listing := GetDirectoryListing(entry.Path)
@@ -34,22 +26,9 @@ func GeneratePreview(entry Entry, width, height int) string {
 			sb.WriteString(ui.InactiveContextStyle.Render("  (empty)") + "\n")
 		}
 	} else {
-		sb.WriteString(ui.ContentStyle.Render("File") + "\n\n")
-
-		// Get file info (lazy loading)
-		size, mode := entry.GetInfo()
-
-		// Size
-		sb.WriteString(ui.LabelStyle.Render("Size") + "\n")
-		sb.WriteString(ui.ContentStyle.Render(utils.FormatFileSize(size)) + "\n\n")
-
-		// Permissions
-		sb.WriteString(ui.LabelStyle.Render("Permissions") + "\n")
-		sb.WriteString(ui.ContentStyle.Render(mode.String()) + "\n\n")
-
 		// File preview
 		sb.WriteString(ui.ContextHeaderStyle.Render("Preview") + "\n")
-		preview := utils.GetFilePreview(entry.Path, height-15)
+		preview := utils.GetFilePreview(entry.Path, height-5)
 		if preview != "" {
 			sb.WriteString(preview)
 		} else {
