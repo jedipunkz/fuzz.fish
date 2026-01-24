@@ -55,6 +55,10 @@ type model struct {
 	ready      bool
 	listWidth  int
 	mainHeight int
+
+	// Preview cache
+	previewCache     map[string]string // Cache for file previews
+	lastPreviewIndex int               // Last previewed item index to avoid re-rendering
 }
 
 // Init initializes the model
