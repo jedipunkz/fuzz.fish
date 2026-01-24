@@ -19,7 +19,7 @@ func Run() {
 	entries := history.Parse()
 
 	ti := textinput.New()
-	ti.Placeholder = "Search history... (Ctrl+R to switch)"
+	ti.Placeholder = "Search history... (Ctrl+R: git, Ctrl+F: files)"
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 20
@@ -59,11 +59,20 @@ func Run() {
 		os.Exit(1)
 	}
 
-	if m, ok := finalModel.(model); ok && m.choice != nil {
-		if m.mode == ModeHistory {
-			fmt.Printf("CMD:%s", *m.choice)
-		} else {
-			fmt.Printf("BRANCH:%s", *m.choice)
+	if m, ok := finalModel.(model); ok {
+		if m.choice != nil {
+			switch m.mode {
+			case ModeHistory:
+				fmt.Printf("CMD:%s", *m.choice)
+			case ModeGitBranch:
+				fmt.Printf("BRANCH:%s", *m.choice)
+			case ModeFiles:
+				if m.choiceIsDir {
+					fmt.Printf("DIR:%s", *m.choice)
+				} else {
+					fmt.Printf("FILE:%s", *m.choice)
+				}
+			}
 		}
 	}
 }

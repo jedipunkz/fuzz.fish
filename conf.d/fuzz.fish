@@ -140,7 +140,7 @@ function fh --description 'Fish History viewer with context (TUI)'
 
     # Run the TUI binary
     # Redirect stdin/stderr to /dev/tty for TUI interaction,
-    # while capturing stdout for the selected command/branch
+    # while capturing stdout for the selected command/branch/file
     set -l result ($bin_path </dev/tty 2>/dev/tty)
 
     if test -n "$result"
@@ -156,22 +156,7 @@ function fh --description 'Fish History viewer with context (TUI)'
             fish -c "git switch --quiet '$branch'" >/dev/null 2>&1
             # Force repaint to update prompt
             commandline -f repaint
-        end
-    end
-end
-
-# File/directory search function
-function ff --description 'Search files and directories with preview (TUI)'
-    set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
-
-    # Run the TUI binary with 'files' subcommand
-    # Redirect stdin/stderr to /dev/tty for TUI interaction,
-    # while capturing stdout for the selected file/dir
-    set -l result ($bin_path files </dev/tty 2>/dev/tty)
-
-    if test -n "$result"
-        # Parse the result: DIR:<path> or FILE:<path>
-        if string match -q "DIR:*" -- "$result"
+        else if string match -q "DIR:*" -- "$result"
             # It's a directory, cd into it
             set -l dir_path (string replace "DIR:" "" -- "$result")
             cd "$dir_path"
@@ -185,34 +170,12 @@ function ff --description 'Search files and directories with preview (TUI)'
     end
 end
 
-# Git branch search function
-function gb --description 'Git branch search with fuzzy finder (TUI)'
-    set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
-
-    # Run the TUI binary with 'git branch' subcommand
-    # Redirect stdin/stderr to /dev/tty for TUI interaction,
-    # while capturing stdout for the selected branch name
-    set -l branch ($bin_path git branch </dev/tty 2>/dev/tty)
-
-    if test -n "$branch"
-        # Execute git switch quietly in a subshell to avoid affecting the command line
-        fish -c "git switch --quiet '$branch'" >/dev/null 2>&1
-
-        # Force repaint to update the prompt (which may show the new branch)
-        commandline -f repaint
-    end
-end
-
-# Set up Ctrl+R key bindings for history
-# Set up Ctrl+Alt+F key bindings for file search
+# Set up Ctrl+R key bindings for history/git/files unified search
 function __fuzz_fish_key_bindings
     bind \cr fh
-    bind \e\cf ff
     if test "$fish_key_bindings" = fish_vi_key_bindings
         bind -M insert \cr fh
         bind -M default \cr fh
-        bind -M insert \e\cf ff
-        bind -M default \e\cf ff
     end
 end
 __fuzz_fish_key_bindings

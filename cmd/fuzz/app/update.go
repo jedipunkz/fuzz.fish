@@ -1,10 +1,12 @@
 package app
 
 import (
+	"os"
 	"strings"
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/files"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
 )
@@ -78,8 +80,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 		case tea.KeyCtrlR:
-			// Toggle mode
+			// Toggle between History and GitBranch mode
 			m.toggleMode()
+			return m, nil
+		case tea.KeyCtrlF:
+			// Toggle to Files mode
+			m.toggleFilesMode()
 			return m, nil
 		}
 		switch msg.String() {
@@ -125,20 +131,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// toggleMode toggles between history and git branch mode
+// toggleMode toggles between history and git branch mode (Ctrl+R)
 func (m *model) toggleMode() {
 	var newMode SearchMode
 	if m.mode == ModeHistory {
 		newMode = ModeGitBranch
 		// Check if git repo
 		if len(m.gitBranches) == 0 {
-			// Try to collect branches if not already done?
-			// But maybe we should have collected at start if possible.
-			// Or check isGitRepo here.
-			// Since we want seamless switching, we can try to fetch now.
 			if !git.IsGitRepo() {
-				// Cannot switch to git mode
-				// Maybe show a flash message? For now just ignore or print to debug.
 				return
 			}
 			branches := git.CollectBranches()
@@ -147,7 +147,10 @@ func (m *model) toggleMode() {
 			}
 			m.gitBranches = branches
 		}
-	} else {
+	} else if m.mode == ModeGitBranch {
+		newMode = ModeHistory
+	} else if m.mode == ModeFiles {
+		// From files mode, go back to history
 		newMode = ModeHistory
 	}
 
@@ -155,16 +158,65 @@ func (m *model) toggleMode() {
 	m.input.SetValue("") // Clear input on switch
 
 	// Update placeholder
-	if m.mode == ModeHistory {
-		m.input.Placeholder = "Search history... (Ctrl+R to switch)"
-	} else {
-		m.input.Placeholder = "Search branches... (Ctrl+R to switch)"
-	}
+	m.updatePlaceholder()
 
 	m.loadItemsForMode()
 	m.updateFilter("")
 
 	// Reset cursor to bottom explicitly after mode switch
+	m.resetCursorToBottom()
+	m.updatePreview()
+}
+
+// toggleFilesMode switches to files mode (Ctrl+F)
+func (m *model) toggleFilesMode() {
+	if m.mode == ModeFiles {
+		// Already in files mode, go back to history
+		m.mode = ModeHistory
+	} else {
+		// Switch to files mode
+		if len(m.fileEntries) == 0 {
+			// Collect files from current directory
+			cwd, err := os.Getwd()
+			if err != nil {
+				return
+			}
+			entries := files.Collect(cwd)
+			if len(entries) == 0 {
+				return
+			}
+			m.fileEntries = entries
+		}
+		m.mode = ModeFiles
+	}
+
+	m.input.SetValue("") // Clear input on switch
+
+	// Update placeholder
+	m.updatePlaceholder()
+
+	m.loadItemsForMode()
+	m.updateFilter("")
+
+	// Reset cursor to bottom explicitly after mode switch
+	m.resetCursorToBottom()
+	m.updatePreview()
+}
+
+// updatePlaceholder updates the input placeholder based on current mode
+func (m *model) updatePlaceholder() {
+	switch m.mode {
+	case ModeHistory:
+		m.input.Placeholder = "Search history... (Ctrl+R: git, Ctrl+F: files)"
+	case ModeGitBranch:
+		m.input.Placeholder = "Search branches... (Ctrl+R: history, Ctrl+F: files)"
+	case ModeFiles:
+		m.input.Placeholder = "Search files... (Ctrl+R: history, Ctrl+F: toggle)"
+	}
+}
+
+// resetCursorToBottom resets the cursor to the bottom of the list
+func (m *model) resetCursorToBottom() {
 	if len(m.filtered) > 0 {
 		m.cursor = len(m.filtered) - 1
 		m.offset = m.cursor - m.mainHeight + 1
@@ -175,7 +227,6 @@ func (m *model) toggleMode() {
 		m.cursor = 0
 		m.offset = 0
 	}
-	m.updatePreview()
 }
 
 // validateCursor ensures the cursor is within valid bounds
@@ -226,9 +277,12 @@ func (m *model) updatePreview() {
 		// Item.Index is the index in m.historyEntries.
 
 		content = history.GeneratePreview(entry, m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
-	} else {
+	} else if m.mode == ModeGitBranch {
 		branch := item.Original.(git.Branch)
 		content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
+	} else if m.mode == ModeFiles {
+		entry := item.Original.(files.Entry)
+		content = files.GeneratePreview(entry, m.viewport.Width, m.viewport.Height)
 	}
 	m.viewport.SetContent(content)
 }
@@ -239,7 +293,7 @@ func (m *model) selectItem() {
 	if m.mode == ModeHistory {
 		res := item.Text
 		m.choice = &res
-	} else {
+	} else if m.mode == ModeGitBranch {
 		branch := item.Original.(git.Branch)
 		res := branch.Name
 		if branch.IsRemote {
@@ -249,5 +303,12 @@ func (m *model) selectItem() {
 			}
 		}
 		m.choice = &res
+	} else if m.mode == ModeFiles {
+		entry, ok := item.Original.(files.Entry)
+		if ok {
+			res := entry.Path
+			m.choice = &res
+			m.choiceIsDir = entry.IsDir
+		}
 	}
 }

@@ -1,25 +1,49 @@
 package files
 
 import (
-	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 )
+
+// Maximum number of files to collect
+const MaxFiles = 5000
+
+// Directories to skip during collection
+var skipDirs = map[string]bool{
+	".git":         true,
+	"node_modules": true,
+	"vendor":       true,
+	"__pycache__":  true,
+	".venv":        true,
+	"venv":         true,
+	".cache":       true,
+	"dist":         true,
+	"build":        true,
+	".next":        true,
+	".nuxt":        true,
+	"target":       true, // Rust/Java
+}
 
 // Collect walks the directory tree and collects all files and directories
 func Collect(root string) []Entry {
 	var files []Entry
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // Skip errors
 		}
 
-		// Skip .git directory
-		if d.IsDir() && d.Name() == ".git" {
-			return filepath.SkipDir
+		// Check file limit
+		if len(files) >= MaxFiles {
+			return filepath.SkipAll
+		}
+
+		// Skip known heavy directories
+		if d.IsDir() {
+			if skipDirs[d.Name()] {
+				return filepath.SkipDir
+			}
 		}
 
 		// Skip hidden files/directories (except current dir)
@@ -41,24 +65,13 @@ func Collect(root string) []Entry {
 			return nil
 		}
 
-		info, err := d.Info()
-		if err != nil {
-			return nil
-		}
-
 		files = append(files, Entry{
 			Path:  relPath,
 			IsDir: d.IsDir(),
-			Size:  info.Size(),
-			Mode:  info.Mode(),
 		})
 
 		return nil
 	})
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error walking directory: %v\n", err)
-	}
 
 	return files
 }
