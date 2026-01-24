@@ -10,7 +10,7 @@ import (
 )
 
 // Tokyo Night colors for syntax highlighting
-var tokyoNightStyle = styles.Register(chroma.MustNewStyle("tokyonight", chroma.StyleEntries{
+var _ = styles.Register(chroma.MustNewStyle("tokyonight", chroma.StyleEntries{
 	chroma.Comment:           "#9aa5ce italic",
 	chroma.CommentPreproc:    "#7dcfff",
 	chroma.Keyword:           "#bb9af7 bold",
