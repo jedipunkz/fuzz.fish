@@ -209,7 +209,7 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 		timeAgoRendered = " " + timeAgoStyle.Render(timeAgo)
 	}
 
-	fmt.Fprint(w, renderedCursor+rendered+timeAgoRendered)
+	_, _ = fmt.Fprint(w, renderedCursor+rendered+timeAgoRendered)
 }
 
 // formatTimeAgo formats a Unix timestamp as a relative time string

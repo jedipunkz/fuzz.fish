@@ -286,7 +286,8 @@ func (m *model) updatePreview() {
 	item := m.filtered[m.cursor]
 
 	var content string
-	if m.mode == ModeHistory {
+	switch m.mode {
+	case ModeHistory:
 		entry := item.Original.(history.Entry)
 		// We need original index in historyEntries (which is Newest->Oldest).
 		// Item.Index is index in allItems (Oldest->Newest).
@@ -297,10 +298,10 @@ func (m *model) updatePreview() {
 		// Item.Index is the index in m.historyEntries.
 
 		content = history.GeneratePreview(entry, m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
-	} else if m.mode == ModeGitBranch {
+	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
 		content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
-	} else if m.mode == ModeFiles {
+	case ModeFiles:
 		entry := item.Original.(files.Entry)
 		content = files.GeneratePreview(entry, m.viewport.Width, m.viewport.Height)
 	}
@@ -310,10 +311,11 @@ func (m *model) updatePreview() {
 // selectItem handles item selection
 func (m *model) selectItem() {
 	item := m.filtered[m.cursor]
-	if m.mode == ModeHistory {
+	switch m.mode {
+	case ModeHistory:
 		res := item.Text
 		m.choice = &res
-	} else if m.mode == ModeGitBranch {
+	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
 		res := branch.Name
 		if branch.IsRemote {
@@ -323,7 +325,7 @@ func (m *model) selectItem() {
 			}
 		}
 		m.choice = &res
-	} else if m.mode == ModeFiles {
+	case ModeFiles:
 		entry, ok := item.Original.(files.Entry)
 		if ok {
 			res := entry.Path

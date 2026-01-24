@@ -11,7 +11,8 @@ import (
 func (m *model) loadItemsForMode() {
 	m.allItems = []Item{}
 
-	if m.mode == ModeHistory {
+	switch m.mode {
+	case ModeHistory:
 		// History: entries are Newest -> Oldest
 		// We want Newest at Bottom.
 		// Item[0] should be Oldest, Item[N] should be Newest.
@@ -23,7 +24,7 @@ func (m *model) loadItemsForMode() {
 				Original: e,
 			})
 		}
-	} else if m.mode == ModeGitBranch {
+	case ModeGitBranch:
 		// Git: branches are collected.
 		// Sort? CollectBranches usually returns some order.
 		// We want Default/Current at bottom?
@@ -39,7 +40,7 @@ func (m *model) loadItemsForMode() {
 				IsRemote:  b.IsRemote,
 			})
 		}
-	} else if m.mode == ModeFiles {
+	case ModeFiles:
 		// Files: entries are in directory order
 		// We reverse them to put first item at bottom.
 		for i := range m.fileEntries {
