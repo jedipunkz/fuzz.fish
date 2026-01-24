@@ -111,12 +111,13 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 
 	// Calculate time ago string for history mode
 	var timeAgo string
-	if m.mode == ModeHistory {
+	switch m.mode {
+	case ModeHistory:
 		text = strings.ReplaceAll(text, "\n", " ")
 		if entry, ok := i.Original.(history.Entry); ok && entry.When > 0 {
 			timeAgo = formatTimeAgo(entry.When)
 		}
-	} else if m.mode == ModeGitBranch {
+	case ModeGitBranch:
 		var icon string
 		if i.IsCurrent {
 			icon = "*"
@@ -126,7 +127,7 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 			icon = " "
 		}
 		text = fmt.Sprintf("%s %s", icon, text)
-	} else if m.mode == ModeFiles {
+	case ModeFiles:
 		var icon string
 		if i.IsDir {
 			icon = "📁"
