@@ -1,15 +1,17 @@
 package git
 
 import (
-	"os/exec"
+	"sort"
 	"strings"
 	"time"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 )
 
 // IsGitRepo checks if the current directory is a git repository
 func IsGitRepo() bool {
-	cmd := exec.Command("git", "rev-parse", "--git-dir")
-	err := cmd.Run()
+	_, err := git.PlainOpen(".")
 	return err == nil
 }
 
@@ -17,56 +19,93 @@ func IsGitRepo() bool {
 func CollectBranches() []Branch {
 	var branches []Branch
 
-	// Get current branch
-	currentBranch := getCurrentBranch()
-
-	// Get all branches with their last commit info
-	// Include full refname to distinguish between local and remote branches
-	cmd := exec.Command("git", "for-each-ref", "--sort=-committerdate",
-		"--format=%(refname)|%(refname:short)|%(objectname:short)|%(subject)|%(committerdate:iso8601)",
-		"refs/heads/", "refs/remotes/")
-	output, err := cmd.Output()
+	repo, err := git.PlainOpen(".")
 	if err != nil {
 		return branches
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	for _, line := range lines {
-		if line == "" {
-			continue
+	// Get current branch
+	currentBranch := getCurrentBranch()
+
+	// Get all references
+	refs, err := repo.References()
+	if err != nil {
+		return branches
+	}
+
+	// Collect branches with commit info
+	type branchInfo struct {
+		branch     Branch
+		commitTime time.Time
+	}
+	var branchInfos []branchInfo
+
+	err = refs.ForEach(func(ref *plumbing.Reference) error {
+		refName := ref.Name().String()
+
+		// Skip HEAD and other non-branch references
+		if strings.Contains(refName, "HEAD") {
+			return nil
 		}
 
-		parts := strings.SplitN(line, "|", 5)
-		if len(parts) != 5 {
-			continue
+		// Only process branches (local and remote)
+		if !strings.HasPrefix(refName, "refs/heads/") && !strings.HasPrefix(refName, "refs/remotes/") {
+			return nil
 		}
 
-		refname := parts[0]      // Full ref name (e.g., "refs/heads/main" or "refs/remotes/origin/main")
-		name := parts[1]         // Short name (e.g., "main" or "origin/main")
-		commit := parts[2]
-		message := parts[3]
-		dateStr := parts[4]
+		// Determine if remote
+		isRemote := strings.HasPrefix(refName, "refs/remotes/")
 
-		// Parse date
-		commitDate := formatDate(dateStr)
-
-		// Skip HEAD references (check full refname, not short name)
-		// e.g., "refs/remotes/origin/HEAD" has short name "origin"
-		if strings.Contains(refname, "HEAD") {
-			continue
+		// Get short name
+		var name string
+		if isRemote {
+			name = strings.TrimPrefix(refName, "refs/remotes/")
+		} else {
+			name = strings.TrimPrefix(refName, "refs/heads/")
 		}
 
-		// Determine if remote based on full refname
-		isRemote := strings.HasPrefix(refname, "refs/remotes/")
+		// Get commit
+		commit, err := repo.CommitObject(ref.Hash())
+		if err != nil {
+			return nil
+		}
 
-		branches = append(branches, Branch{
-			Name:              name,
-			IsCurrent:         name == currentBranch,
-			IsRemote:          isRemote,
-			LastCommit:        commit,
-			LastCommitMessage: message,
-			CommitDate:        commitDate,
+		// Get short hash (7 characters like git)
+		shortHash := ref.Hash().String()[:7]
+
+		// Format commit message (first line only)
+		message := strings.Split(commit.Message, "\n")[0]
+
+		// Format date
+		commitDate := formatDate(commit.Committer.When.Format("2006-01-02 15:04:05 -0700"))
+
+		branchInfos = append(branchInfos, branchInfo{
+			branch: Branch{
+				Name:              name,
+				IsCurrent:         name == currentBranch,
+				IsRemote:          isRemote,
+				LastCommit:        shortHash,
+				LastCommitMessage: message,
+				CommitDate:        commitDate,
+			},
+			commitTime: commit.Committer.When,
 		})
+
+		return nil
+	})
+
+	if err != nil {
+		return branches
+	}
+
+	// Sort by commit date (newest first)
+	sort.Slice(branchInfos, func(i, j int) bool {
+		return branchInfos[i].commitTime.After(branchInfos[j].commitTime)
+	})
+
+	// Extract branches from branchInfos
+	for _, info := range branchInfos {
+		branches = append(branches, info.branch)
 	}
 
 	return branches
@@ -74,12 +113,22 @@ func CollectBranches() []Branch {
 
 // getCurrentBranch returns the current git branch name
 func getCurrentBranch() string {
-	cmd := exec.Command("git", "branch", "--show-current")
-	output, err := cmd.Output()
+	repo, err := git.PlainOpen(".")
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(output))
+
+	head, err := repo.Head()
+	if err != nil {
+		return ""
+	}
+
+	// Get branch name from reference
+	if head.Name().IsBranch() {
+		return head.Name().Short()
+	}
+
+	return ""
 }
 
 // formatDate formats ISO8601 date to a readable format
