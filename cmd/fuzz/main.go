@@ -13,7 +13,7 @@ func main() {
 		switch os.Args[1] {
 		case "history", "git":
 			// Both history and git modes use the unified app
-			// Use Ctrl+R to toggle between them
+			// Use Ctrl+G to toggle between them
 			// Use Ctrl+F to switch to files mode
 			app.Run()
 			return

@@ -41,7 +41,7 @@ Press `Ctrl+R` to open the fuzzy finder. You can switch between different modes:
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+R` | Toggle between History and Git Branch mode |
+| `Ctrl+G` | Toggle between History and Git Branch mode |
 | `Ctrl+F` | Switch to File Search mode |
 | `↑/↓` or `Ctrl+P/N` | Navigate through results |
 | `Enter` | Select item |
@@ -59,7 +59,7 @@ Search through your command history with context.
 
 Search and switch git branches (available in git repositories).
 
-- Press `Ctrl+R` to toggle from History mode
+- Press `Ctrl+G` to toggle from History mode
 - Press `Enter` to switch to the selected branch
 
 #### File Search Mode
