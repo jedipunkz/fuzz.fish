@@ -79,7 +79,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.quitting = true
 				return m, tea.Quit
 			}
-		case tea.KeyCtrlR:
+		case tea.KeyCtrlG:
 			// Toggle between History and GitBranch mode
 			m.toggleMode()
 			return m, nil
@@ -131,7 +131,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// toggleMode toggles between history and git branch mode (Ctrl+R)
+// toggleMode toggles between history and git branch mode (Ctrl+G)
 func (m *model) toggleMode() {
 	var newMode SearchMode
 	if m.mode == ModeHistory {
@@ -207,11 +207,11 @@ func (m *model) toggleFilesMode() {
 func (m *model) updatePlaceholder() {
 	switch m.mode {
 	case ModeHistory:
-		m.input.Placeholder = "Search history... (Ctrl+R: git, Ctrl+F: files)"
+		m.input.Placeholder = "Search history... (Ctrl+G: git, Ctrl+F: files)"
 	case ModeGitBranch:
-		m.input.Placeholder = "Search branches... (Ctrl+R: history, Ctrl+F: files)"
+		m.input.Placeholder = "Search branches... (Ctrl+G: history, Ctrl+F: files)"
 	case ModeFiles:
-		m.input.Placeholder = "Search files... (Ctrl+R: history, Ctrl+F: toggle)"
+		m.input.Placeholder = "Search files... (Ctrl+G: git, Ctrl+F: toggle)"
 	}
 }
 

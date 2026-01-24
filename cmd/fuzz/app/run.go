@@ -19,7 +19,7 @@ func Run() {
 	entries := history.Parse()
 
 	ti := textinput.New()
-	ti.Placeholder = "Search history... (Ctrl+R: git, Ctrl+F: files)"
+	ti.Placeholder = "Search history... (Ctrl+G: git, Ctrl+F: files)"
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 20
