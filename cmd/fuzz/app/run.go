@@ -48,7 +48,7 @@ func Run() {
 		fmt.Fprintf(os.Stderr, "failed to open /dev/tty: %v\n", err)
 		os.Exit(1)
 	}
-	defer tty.Close()
+	defer func() { _ = tty.Close() }()
 
 	lipgloss.SetColorProfile(termenv.NewOutput(tty).Profile)
 
