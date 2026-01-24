@@ -107,6 +107,7 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 	// Format text based on mode?
 	// History: Replace newlines.
 	// Git: Add icons.
+	// Files: Add icons.
 
 	// Calculate time ago string for history mode
 	var timeAgo string
@@ -115,7 +116,7 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 		if entry, ok := i.Original.(history.Entry); ok && entry.When > 0 {
 			timeAgo = formatTimeAgo(entry.When)
 		}
-	} else {
+	} else if m.mode == ModeGitBranch {
 		var icon string
 		if i.IsCurrent {
 			icon = "*"
@@ -123,6 +124,14 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 			icon = "R"
 		} else {
 			icon = " "
+		}
+		text = fmt.Sprintf("%s %s", icon, text)
+	} else if m.mode == ModeFiles {
+		var icon string
+		if i.IsDir {
+			icon = "📁"
+		} else {
+			icon = "📄"
 		}
 		text = fmt.Sprintf("%s %s", icon, text)
 	}

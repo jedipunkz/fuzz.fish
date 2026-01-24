@@ -23,7 +23,7 @@ func (m *model) loadItemsForMode() {
 				Original: e,
 			})
 		}
-	} else {
+	} else if m.mode == ModeGitBranch {
 		// Git: branches are collected.
 		// Sort? CollectBranches usually returns some order.
 		// We want Default/Current at bottom?
@@ -37,6 +37,18 @@ func (m *model) loadItemsForMode() {
 				Original:  b,
 				IsCurrent: b.IsCurrent,
 				IsRemote:  b.IsRemote,
+			})
+		}
+	} else if m.mode == ModeFiles {
+		// Files: entries are in directory order
+		// We reverse them to put first item at bottom.
+		for i := range m.fileEntries {
+			f := m.fileEntries[len(m.fileEntries)-1-i]
+			m.allItems = append(m.allItems, Item{
+				Text:     f.Path,
+				Index:    len(m.fileEntries) - 1 - i,
+				Original: f,
+				IsDir:    f.IsDir,
 			})
 		}
 	}

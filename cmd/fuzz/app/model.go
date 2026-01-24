@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/files"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
 )
@@ -14,15 +15,17 @@ type SearchMode int
 const (
 	ModeHistory SearchMode = iota
 	ModeGitBranch
+	ModeFiles
 )
 
 // Item represents a search result item
 type Item struct {
 	Text           string
 	Index          int         // Index in the original source slice
-	Original       interface{} // The original object (history.Entry or git.Branch)
+	Original       interface{} // The original object (history.Entry, git.Branch, or files.Entry)
 	IsCurrent      bool        // For git branch (icon logic)
 	IsRemote       bool        // For git branch (icon logic)
+	IsDir          bool        // For files (directory indicator)
 	MatchedIndexes []int       // Indexes of matched characters for highlighting
 }
 
@@ -35,15 +38,17 @@ type model struct {
 	// Data sources
 	historyEntries []history.Entry
 	gitBranches    []git.Branch
+	fileEntries    []files.Entry
 
 	// Items state
 	allItems []Item // All items for current mode (sorted newest/priority first)
 	filtered []Item // Filtered items
 
-	cursor   int
-	offset   int
-	choice   *string // Result string to print
-	quitting bool
+	cursor      int
+	offset      int
+	choice      *string // Result string to print
+	choiceIsDir bool    // For files mode: whether the choice is a directory
+	quitting    bool
 
 	width      int
 	height     int

@@ -36,13 +36,16 @@ func GeneratePreview(entry Entry, width, height int) string {
 	} else {
 		sb.WriteString(ui.ContentStyle.Render("File") + "\n\n")
 
+		// Get file info (lazy loading)
+		size, mode := entry.GetInfo()
+
 		// Size
 		sb.WriteString(ui.LabelStyle.Render("Size") + "\n")
-		sb.WriteString(ui.ContentStyle.Render(utils.FormatFileSize(entry.Size)) + "\n\n")
+		sb.WriteString(ui.ContentStyle.Render(utils.FormatFileSize(size)) + "\n\n")
 
 		// Permissions
 		sb.WriteString(ui.LabelStyle.Render("Permissions") + "\n")
-		sb.WriteString(ui.ContentStyle.Render(entry.Mode.String()) + "\n\n")
+		sb.WriteString(ui.ContentStyle.Render(mode.String()) + "\n\n")
 
 		// File preview
 		sb.WriteString(ui.ContextHeaderStyle.Render("Preview") + "\n")
