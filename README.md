@@ -33,20 +33,45 @@ fisher install jedipunkz/fuzz.fish
 
 ### Keyboard Shortcuts
 
-fuzz.fish provides three interactive fuzzy finders:
+fuzz.fish provides three interactive fuzzy finders accessible through a unified interface:
 
-#### `ctrl+r` - Command History & Git Branch Search
+#### `Ctrl+R` - Unified Fuzzy Finder
 
-Search through your command history with context, or switch git branches.
+Press `Ctrl+R` to open the fuzzy finder. You can switch between different modes:
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+R` | Toggle between History and Git Branch mode |
+| `Ctrl+F` | Switch to File Search mode |
+| `↑/↓` or `Ctrl+P/N` | Navigate through results |
+| `Enter` | Select item |
+| `Ctrl+Y` | Copy selected item to clipboard |
+| `ESC` or `Ctrl+C` | Cancel |
+
+#### History Search Mode (default)
+
+Search through your command history with context.
 
 - Type to fuzzy search
-- **Press `Ctrl+R` again** to toggle between **History Search** and **Git Branch Search** (in git repositories)
-- Use arrow keys or ctrl-n, p to navigate
+- Press `Enter` to insert the selected command into your prompt
+
+#### Git Branch Mode
+
+Search and switch git branches (available in git repositories).
+
+- Press `Ctrl+R` to toggle from History mode
+- Press `Enter` to switch to the selected branch
+
+#### File Search Mode
+
+Search files and directories in the current directory.
+
+- Press `Ctrl+F` to switch to File Search mode
+- Type to fuzzy search files and directories
 - Press `Enter`:
-  - History mode: insert the command into your prompt
-  - Git Branch mode: switch to the selected branch
-- Press `Ctrl+Y` to copy the selected item to clipboard
-- Press `ESC` to cancel
+  - File: insert the file path into your prompt
+  - Directory: cd into the selected directory
+- Hidden files and common build directories (node_modules, vendor, etc.) are automatically excluded
 
 
 ## License
