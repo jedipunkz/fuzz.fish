@@ -83,7 +83,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Switch to GitBranch mode
 			m.switchToGitBranchMode()
 			return m, nil
-		case tea.KeyCtrlF:
+		case tea.KeyCtrlS:
 			// Switch to Files mode
 			m.switchToFilesMode()
 			return m, nil
@@ -195,7 +195,7 @@ func (m *model) switchToHistoryMode() {
 	m.updatePreview()
 }
 
-// switchToFilesMode switches to files mode (Ctrl+F)
+// switchToFilesMode switches to files mode (Ctrl+S)
 func (m *model) switchToFilesMode() {
 	if m.mode == ModeFiles {
 		// Already in files mode, nothing to do
@@ -237,9 +237,9 @@ func (m *model) switchToFilesMode() {
 func (m *model) updatePlaceholder() {
 	switch m.mode {
 	case ModeHistory:
-		m.input.Placeholder = "Search history... (Ctrl+G: git, Ctrl+F: files)"
+		m.input.Placeholder = "Search history... (Ctrl+G: git, Ctrl+S: files)"
 	case ModeGitBranch:
-		m.input.Placeholder = "Search branches... (Ctrl+R: history, Ctrl+F: files)"
+		m.input.Placeholder = "Search branches... (Ctrl+R: history, Ctrl+S: files)"
 	case ModeFiles:
 		m.input.Placeholder = "Search files... (Ctrl+R: history, Ctrl+G: git)"
 	}
