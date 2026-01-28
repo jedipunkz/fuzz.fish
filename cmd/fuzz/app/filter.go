@@ -3,7 +3,9 @@ package app
 import (
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
 	"github.com/sahilm/fuzzy"
 )
 
@@ -100,15 +102,29 @@ func (m *model) updateFilter(query string) {
 				scoreJ := float64(matches[j].Score)
 
 				if m.mode == ModeHistory {
-					total := float64(len(m.allItems))
-					// Recency bonus: newer items (higher Index) get higher bonus
-					// This pushes recent matches toward the bottom (higher priority)
-					// Increased from 500 to 2000 to prioritize recent commands more strongly
-					maxBonus := 2000.0
-					recencyI := float64(matches[i].Index) / total
-					recencyJ := float64(matches[j].Index) / total
-					scoreI += recencyI * maxBonus
-					scoreJ += recencyJ * maxBonus
+					// Time-based recency bonus using actual timestamps
+					// Hyperbolic decay: bonus = maxBonus / (1 + ageInHours)
+					// This strongly prioritizes recent commands:
+					//   0h ago -> 3000, 1h -> 1500, 2h -> 1000, 6h -> 429, 24h -> 120
+					now := time.Now().Unix()
+					maxBonus := 3000.0
+
+					recencyBonus := func(idx int) float64 {
+						item := m.allItems[idx]
+						if entry, ok := item.Original.(history.Entry); ok && entry.When > 0 {
+							ageHours := float64(now-entry.When) / 3600.0
+							if ageHours < 0 {
+								ageHours = 0
+							}
+							return maxBonus / (1.0 + ageHours)
+						}
+						// Fallback: position-based bonus
+						total := float64(len(m.allItems))
+						return float64(idx) / total * maxBonus * 0.1
+					}
+
+					scoreI += recencyBonus(matches[i].Index)
+					scoreJ += recencyBonus(matches[j].Index)
 				}
 				// Ascending sort: lower scores at top, higher scores at bottom
 				return scoreI < scoreJ
