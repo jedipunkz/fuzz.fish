@@ -63,36 +63,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updatePreview()
 
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
+		switch msg.String() {
+		case "enter":
 			if len(m.filtered) > 0 {
 				m.selectItem()
 				m.quitting = true
 				return m, tea.Quit
 			}
-		case tea.KeyCtrlC:
+		case "ctrl+c", "esc":
 			m.quitting = true
 			return m, tea.Quit
-		case tea.KeyCtrlY:
+		case "ctrl+y":
 			if len(m.filtered) > 0 {
 				_ = clipboard.WriteAll(m.filtered[m.cursor].Text)
 				m.quitting = true
 				return m, tea.Quit
 			}
-		case tea.KeyCtrlG:
-			// Switch to GitBranch mode
-			m.switchToGitBranchMode()
+		case "ctrl+g":
+			// Toggle between History and GitBranch mode
+			if m.mode == ModeGitBranch {
+				m.switchToHistoryMode()
+			} else {
+				m.switchToGitBranchMode()
+			}
 			return m, nil
-		case tea.KeyCtrlS:
+		case "ctrl+s":
 			// Switch to Files mode
 			m.switchToFilesMode()
 			return m, nil
-		case tea.KeyCtrlR:
-			// Go back to history mode
+		case "ctrl+r":
+			// Switch to History mode
 			m.switchToHistoryMode()
 			return m, nil
-		}
-		switch msg.String() {
 		case "down", "ctrl+n":
 			if len(m.filtered) > 0 {
 				m.cursor++
