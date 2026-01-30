@@ -87,6 +87,7 @@ func CollectBranches() []Branch {
 				LastCommit:        shortHash,
 				LastCommitMessage: message,
 				CommitDate:        commitDate,
+				CommitTimestamp:   commit.Committer.When.Unix(),
 			},
 			commitTime: commit.Committer.When,
 		})
