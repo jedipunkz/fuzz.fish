@@ -3,9 +3,7 @@ package app
 import (
 	"sort"
 	"strings"
-	"time"
 
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
 	"github.com/sahilm/fuzzy"
 )
 
@@ -94,38 +92,25 @@ func (m *model) updateFilter(query string) {
 				matches = newMatches
 			}
 
-			// Sort logic
+			// Sort logic using unified scoring algorithm
 			// Higher combined score should appear at bottom (higher priority)
 			// So we sort ascending: lower scores first, higher scores last (at bottom)
+			config := DefaultScoringConfig()
+			now := GetCurrentTimestamp()
+
 			sort.SliceStable(matches, func(i, j int) bool {
-				scoreI := float64(matches[i].Score)
-				scoreJ := float64(matches[j].Score)
+				itemI := m.allItems[matches[i].Index]
+				itemJ := m.allItems[matches[j].Index]
 
-				if m.mode == ModeHistory {
-					// Time-based recency bonus using actual timestamps
-					// Hyperbolic decay: bonus = maxBonus / (1 + ageInHours)
-					// This strongly prioritizes recent commands:
-					//   0h ago -> 3000, 1h -> 1500, 2h -> 1000, 6h -> 429, 24h -> 120
-					now := time.Now().Unix()
-					maxBonus := 3000.0
+				// Calculate unified scores including:
+				// - Base fuzzy match score
+				// - Word boundary bonuses (fzy/fzf-inspired)
+				// - Consecutive match bonuses
+				// - Recency bonuses (for history and git branches)
+				// - Current branch bonus (for git)
+				scoreI := CalculateItemScore(itemI, matches[i].Score, matches[i].MatchedIndexes, m.mode, config, now)
+				scoreJ := CalculateItemScore(itemJ, matches[j].Score, matches[j].MatchedIndexes, m.mode, config, now)
 
-					recencyBonus := func(idx int) float64 {
-						item := m.allItems[idx]
-						if entry, ok := item.Original.(history.Entry); ok && entry.When > 0 {
-							ageHours := float64(now-entry.When) / 3600.0
-							if ageHours < 0 {
-								ageHours = 0
-							}
-							return maxBonus / (1.0 + ageHours)
-						}
-						// Fallback: position-based bonus
-						total := float64(len(m.allItems))
-						return float64(idx) / total * maxBonus * 0.1
-					}
-
-					scoreI += recencyBonus(matches[i].Index)
-					scoreJ += recencyBonus(matches[j].Index)
-				}
 				// Ascending sort: lower scores at top, higher scores at bottom
 				return scoreI < scoreJ
 			})

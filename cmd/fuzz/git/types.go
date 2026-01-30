@@ -8,4 +8,5 @@ type Branch struct {
 	LastCommit        string
 	LastCommitMessage string
 	CommitDate        string
+	CommitTimestamp   int64 // Unix timestamp for recency scoring
 }
