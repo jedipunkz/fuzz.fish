@@ -19,7 +19,7 @@ fuzz.fish is a Fish Shell plugin that provides fuzzy finding for command history
 ## Requirements
 
 - [Fish Shell](https://fishshell.com/) 3.0+
-- [Go](https://golang.org/) 1.21+ (for building)
+- [Go](https://golang.org/) 1.24+ (for building)
 
 ## Installation
 
