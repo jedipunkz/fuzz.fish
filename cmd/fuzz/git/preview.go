@@ -28,14 +28,7 @@ func GeneratePreview(branch Branch, width, height int) string {
 	// Recent commits
 	sb.WriteString(ui.ContextHeaderStyle.Render("Recent Commits") + "\n")
 	commits := getRecentCommits(branch.Name, 5)
-	sb.WriteString(commits + "\n")
-
-	// Changed files (if not current branch)
-	if !branch.IsCurrent {
-		sb.WriteString(ui.ContextHeaderStyle.Render("Changes from Current Branch") + "\n")
-		diff := getBranchDiff(branch.Name)
-		sb.WriteString(diff)
-	}
+	sb.WriteString(commits)
 
 	return sb.String()
 }
@@ -149,94 +142,3 @@ func getRelativeTime(t time.Time) string {
 	}
 }
 
-// getBranchDiff returns the diff summary between current branch and target branch
-func getBranchDiff(branchName string) string {
-	repo, err := git.PlainOpen(".")
-	if err != nil {
-		return ui.InactiveContextStyle.Render("  Could not open repository")
-	}
-
-	currentBranch := getCurrentBranch()
-	if currentBranch == "" {
-		return ui.InactiveContextStyle.Render("  Could not determine current branch")
-	}
-
-	// Get current branch reference
-	currentRef, err := repo.Reference(plumbing.NewBranchReferenceName(currentBranch), true)
-	if err != nil {
-		return ui.InactiveContextStyle.Render("  Could not get current branch reference")
-	}
-
-	// Get target branch reference
-	var targetRef *plumbing.Reference
-	targetRef, err = repo.Reference(plumbing.NewBranchReferenceName(branchName), true)
-	if err != nil {
-		// Try as remote branch
-		if strings.Contains(branchName, "/") {
-			parts := strings.SplitN(branchName, "/", 2)
-			if len(parts) == 2 {
-				targetRef, err = repo.Reference(plumbing.NewRemoteReferenceName(parts[0], parts[1]), true)
-			}
-		}
-		if err != nil {
-			return ui.InactiveContextStyle.Render("  Could not get target branch reference")
-		}
-	}
-
-	// Get commits
-	currentCommit, err := repo.CommitObject(currentRef.Hash())
-	if err != nil {
-		return ui.InactiveContextStyle.Render("  Could not get current commit")
-	}
-
-	targetCommit, err := repo.CommitObject(targetRef.Hash())
-	if err != nil {
-		return ui.InactiveContextStyle.Render("  Could not get target commit")
-	}
-
-	// Get trees
-	currentTree, err := currentCommit.Tree()
-	if err != nil {
-		return ui.InactiveContextStyle.Render("  Could not get current tree")
-	}
-
-	targetTree, err := targetCommit.Tree()
-	if err != nil {
-		return ui.InactiveContextStyle.Render("  Could not get target tree")
-	}
-
-	// Get diff
-	changes, err := currentTree.Diff(targetTree)
-	if err != nil {
-		return ui.InactiveContextStyle.Render("  Could not compute diff")
-	}
-
-	if len(changes) == 0 {
-		return ui.InactiveContextStyle.Render("  No differences")
-	}
-
-	var sb strings.Builder
-	maxLines := 15
-	for i, change := range changes {
-		if i >= maxLines {
-			sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  ... and %d more files", len(changes)-maxLines)) + "\n")
-			break
-		}
-
-		// Determine status (A=Added, M=Modified, D=Deleted)
-		var status string
-		from, to := change.From, change.To
-		if from.Name == "" {
-			status = "A"
-			sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  %s\t%s", status, to.Name)) + "\n")
-		} else if to.Name == "" {
-			status = "D"
-			sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  %s\t%s", status, from.Name)) + "\n")
-		} else {
-			status = "M"
-			sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  %s\t%s", status, to.Name)) + "\n")
-		}
-	}
-
-	return sb.String()
-}
