@@ -20,30 +20,3 @@ func TestGetCurrentBranch(t *testing.T) {
 	_ = result // Just ensure it runs without error
 }
 
-func TestFormatDate(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "valid date",
-			input:    "2024-01-15 10:30:45 +0900",
-			expected: "2024-01-15 10:30",
-		},
-		{
-			name:     "invalid date returns original",
-			input:    "invalid",
-			expected: "invalid",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := formatDate(tt.input)
-			if result != tt.expected {
-				t.Errorf("formatDate(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
-	}
-}

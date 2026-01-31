@@ -3,7 +3,6 @@ package git
 import (
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -16,6 +15,7 @@ func IsGitRepo() bool {
 }
 
 // CollectBranches collects all git branches (local and remote)
+// Lightweight version: does not fetch commit objects for performance
 func CollectBranches() []Branch {
 	var branches []Branch
 
@@ -33,12 +33,9 @@ func CollectBranches() []Branch {
 		return branches
 	}
 
-	// Collect branches with commit info
-	type branchInfo struct {
-		branch     Branch
-		commitTime time.Time
-	}
-	var branchInfos []branchInfo
+	// Collect local branches first, then remote branches
+	var localBranches []Branch
+	var remoteBranches []Branch
 
 	err = refs.ForEach(func(ref *plumbing.Reference) error {
 		refName := ref.Name().String()
@@ -64,32 +61,23 @@ func CollectBranches() []Branch {
 			name = strings.TrimPrefix(refName, "refs/heads/")
 		}
 
-		// Get commit
-		commit, err := repo.CommitObject(ref.Hash())
-		if err != nil {
-			return nil
-		}
-
-		// Get short hash (7 characters like git)
+		// Get short hash only (no commit object fetch)
 		shortHash := ref.Hash().String()[:7]
 
-		// Format commit message (first line only)
-		message := strings.Split(commit.Message, "\n")[0]
+		branch := Branch{
+			Name:              name,
+			IsCurrent:         name == currentBranch,
+			IsRemote:          isRemote,
+			LastCommit:        shortHash,
+			LastCommitMessage: "",
+			CommitDate:        "",
+		}
 
-		// Format date
-		commitDate := formatDate(commit.Committer.When.Format("2006-01-02 15:04:05 -0700"))
-
-		branchInfos = append(branchInfos, branchInfo{
-			branch: Branch{
-				Name:              name,
-				IsCurrent:         name == currentBranch,
-				IsRemote:          isRemote,
-				LastCommit:        shortHash,
-				LastCommitMessage: message,
-				CommitDate:        commitDate,
-			},
-			commitTime: commit.Committer.When,
-		})
+		if isRemote {
+			remoteBranches = append(remoteBranches, branch)
+		} else {
+			localBranches = append(localBranches, branch)
+		}
 
 		return nil
 	})
@@ -98,15 +86,17 @@ func CollectBranches() []Branch {
 		return branches
 	}
 
-	// Sort by commit date (newest first)
-	sort.Slice(branchInfos, func(i, j int) bool {
-		return branchInfos[i].commitTime.After(branchInfos[j].commitTime)
+	// Sort alphabetically
+	sort.Slice(localBranches, func(i, j int) bool {
+		return localBranches[i].Name < localBranches[j].Name
+	})
+	sort.Slice(remoteBranches, func(i, j int) bool {
+		return remoteBranches[i].Name < remoteBranches[j].Name
 	})
 
-	// Extract branches from branchInfos
-	for _, info := range branchInfos {
-		branches = append(branches, info.branch)
-	}
+	// Local branches first, then remote
+	branches = append(branches, localBranches...)
+	branches = append(branches, remoteBranches...)
 
 	return branches
 }
@@ -131,11 +121,3 @@ func getCurrentBranch() string {
 	return ""
 }
 
-// formatDate formats ISO8601 date to a readable format
-func formatDate(dateStr string) string {
-	t, err := time.Parse("2006-01-02 15:04:05 -0700", dateStr)
-	if err != nil {
-		return dateStr
-	}
-	return t.Format("2006-01-02 15:04")
-}
