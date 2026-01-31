@@ -3,7 +3,7 @@ package git
 import (
 	"sort"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -16,6 +16,7 @@ func IsGitRepo() bool {
 }
 
 // CollectBranches collects all git branches (local and remote)
+// Optimized version: opens repo once and uses parallel commit fetching
 func CollectBranches() []Branch {
 	var branches []Branch
 
@@ -24,8 +25,8 @@ func CollectBranches() []Branch {
 		return branches
 	}
 
-	// Get current branch
-	currentBranch := getCurrentBranch()
+	// Get current branch (reusing the repo object)
+	currentBranch := getCurrentBranchFromRepo(repo)
 
 	// Get all references
 	refs, err := repo.References()
@@ -33,12 +34,13 @@ func CollectBranches() []Branch {
 		return branches
 	}
 
-	// Collect branches with commit info
-	type branchInfo struct {
-		branch     Branch
-		commitTime time.Time
+	// First pass: collect all branch references without fetching commits
+	type refInfo struct {
+		name     string
+		isRemote bool
+		hash     plumbing.Hash
 	}
-	var branchInfos []branchInfo
+	var refInfos []refInfo
 
 	err = refs.ForEach(func(ref *plumbing.Reference) error {
 		refName := ref.Name().String()
@@ -64,61 +66,105 @@ func CollectBranches() []Branch {
 			name = strings.TrimPrefix(refName, "refs/heads/")
 		}
 
-		// Get commit
-		commit, err := repo.CommitObject(ref.Hash())
-		if err != nil {
-			return nil
-		}
-
-		// Get short hash (7 characters like git)
-		shortHash := ref.Hash().String()[:7]
-
-		// Format commit message (first line only)
-		message := strings.Split(commit.Message, "\n")[0]
-
-		// Format date
-		commitDate := formatDate(commit.Committer.When.Format("2006-01-02 15:04:05 -0700"))
-
-		branchInfos = append(branchInfos, branchInfo{
-			branch: Branch{
-				Name:              name,
-				IsCurrent:         name == currentBranch,
-				IsRemote:          isRemote,
-				LastCommit:        shortHash,
-				LastCommitMessage: message,
-				CommitDate:        commitDate,
-				CommitTimestamp:   commit.Committer.When.Unix(),
-			},
-			commitTime: commit.Committer.When,
+		refInfos = append(refInfos, refInfo{
+			name:     name,
+			isRemote: isRemote,
+			hash:     ref.Hash(),
 		})
 
 		return nil
 	})
 
-	if err != nil {
+	if err != nil || len(refInfos) == 0 {
 		return branches
 	}
 
-	// Sort by commit date (newest first)
-	sort.Slice(branchInfos, func(i, j int) bool {
-		return branchInfos[i].commitTime.After(branchInfos[j].commitTime)
-	})
-
-	// Extract branches from branchInfos
-	for _, info := range branchInfos {
-		branches = append(branches, info.branch)
+	// Second pass: fetch commit info in parallel using worker pool
+	type branchResult struct {
+		index  int
+		branch Branch
+		valid  bool
 	}
+
+	results := make([]branchResult, len(refInfos))
+	var wg sync.WaitGroup
+
+	// Use a worker pool to limit concurrent goroutines
+	// This prevents too many concurrent file descriptor operations
+	workerCount := 8
+	if len(refInfos) < workerCount {
+		workerCount = len(refInfos)
+	}
+
+	jobs := make(chan int, len(refInfos))
+
+	// Start workers
+	for w := 0; w < workerCount; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range jobs {
+				info := refInfos[i]
+
+				// Get commit
+				commit, err := repo.CommitObject(info.hash)
+				if err != nil {
+					results[i] = branchResult{index: i, valid: false}
+					continue
+				}
+
+				// Get short hash (7 characters like git)
+				shortHash := info.hash.String()[:7]
+
+				// Format commit message (first line only)
+				message := strings.Split(commit.Message, "\n")[0]
+
+				// Format date directly (no intermediate parsing)
+				commitDate := commit.Committer.When.Format("2006-01-02 15:04")
+
+				results[i] = branchResult{
+					index: i,
+					valid: true,
+					branch: Branch{
+						Name:              info.name,
+						IsCurrent:         info.name == currentBranch,
+						IsRemote:          info.isRemote,
+						LastCommit:        shortHash,
+						LastCommitMessage: message,
+						CommitDate:        commitDate,
+						CommitTimestamp:   commit.Committer.When.Unix(),
+					},
+				}
+			}
+		}()
+	}
+
+	// Send jobs
+	for i := range refInfos {
+		jobs <- i
+	}
+	close(jobs)
+
+	// Wait for all workers to complete
+	wg.Wait()
+
+	// Collect valid results
+	for _, result := range results {
+		if result.valid {
+			branches = append(branches, result.branch)
+		}
+	}
+
+	// Sort by commit date (newest first)
+	sort.Slice(branches, func(i, j int) bool {
+		return branches[i].CommitTimestamp > branches[j].CommitTimestamp
+	})
 
 	return branches
 }
 
-// getCurrentBranch returns the current git branch name
-func getCurrentBranch() string {
-	repo, err := git.PlainOpen(".")
-	if err != nil {
-		return ""
-	}
-
+// getCurrentBranchFromRepo returns the current git branch name using existing repo
+func getCurrentBranchFromRepo(repo *git.Repository) string {
 	head, err := repo.Head()
 	if err != nil {
 		return ""
@@ -132,11 +178,18 @@ func getCurrentBranch() string {
 	return ""
 }
 
-// formatDate formats ISO8601 date to a readable format
-func formatDate(dateStr string) string {
-	t, err := time.Parse("2006-01-02 15:04:05 -0700", dateStr)
+// getCurrentBranch returns the current git branch name (opens repo internally)
+func getCurrentBranch() string {
+	repo, err := git.PlainOpen(".")
 	if err != nil {
-		return dateStr
+		return ""
 	}
-	return t.Format("2006-01-02 15:04")
+	return getCurrentBranchFromRepo(repo)
+}
+
+// sortBranchesByDate sorts branches by commit timestamp (newest first)
+func sortBranchesByDate(branches []Branch) {
+	sort.Slice(branches, func(i, j int) bool {
+		return branches[i].CommitTimestamp > branches[j].CommitTimestamp
+	})
 }

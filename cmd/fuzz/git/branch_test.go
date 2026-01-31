@@ -20,30 +20,32 @@ func TestGetCurrentBranch(t *testing.T) {
 	_ = result // Just ensure it runs without error
 }
 
-func TestFormatDate(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "valid date",
-			input:    "2024-01-15 10:30:45 +0900",
-			expected: "2024-01-15 10:30",
-		},
-		{
-			name:     "invalid date returns original",
-			input:    "invalid",
-			expected: "invalid",
-		},
+func TestCollectBranches(t *testing.T) {
+	// This test depends on the environment (being in a git repo)
+	// We just check that the function doesn't panic and returns expected structure
+	branches := CollectBranches()
+	// In a git repo, we should have at least the current branch
+	// but we don't assume any specific state
+	_ = branches // Just ensure it runs without error
+}
+
+func TestSortBranchesByDate(t *testing.T) {
+	branches := []Branch{
+		{Name: "old", CommitTimestamp: 1000},
+		{Name: "new", CommitTimestamp: 3000},
+		{Name: "mid", CommitTimestamp: 2000},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := formatDate(tt.input)
-			if result != tt.expected {
-				t.Errorf("formatDate(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
+	sortBranchesByDate(branches)
+
+	// Should be sorted newest first
+	if branches[0].Name != "new" {
+		t.Errorf("Expected first branch to be 'new', got '%s'", branches[0].Name)
+	}
+	if branches[1].Name != "mid" {
+		t.Errorf("Expected second branch to be 'mid', got '%s'", branches[1].Name)
+	}
+	if branches[2].Name != "old" {
+		t.Errorf("Expected third branch to be 'old', got '%s'", branches[2].Name)
 	}
 }
