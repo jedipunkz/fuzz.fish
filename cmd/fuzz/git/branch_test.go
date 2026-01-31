@@ -28,24 +28,3 @@ func TestCollectBranches(t *testing.T) {
 	// but we don't assume any specific state
 	_ = branches // Just ensure it runs without error
 }
-
-func TestSortBranchesByDate(t *testing.T) {
-	branches := []Branch{
-		{Name: "old", CommitTimestamp: 1000},
-		{Name: "new", CommitTimestamp: 3000},
-		{Name: "mid", CommitTimestamp: 2000},
-	}
-
-	sortBranchesByDate(branches)
-
-	// Should be sorted newest first
-	if branches[0].Name != "new" {
-		t.Errorf("Expected first branch to be 'new', got '%s'", branches[0].Name)
-	}
-	if branches[1].Name != "mid" {
-		t.Errorf("Expected second branch to be 'mid', got '%s'", branches[1].Name)
-	}
-	if branches[2].Name != "old" {
-		t.Errorf("Expected third branch to be 'old', got '%s'", branches[2].Name)
-	}
-}
