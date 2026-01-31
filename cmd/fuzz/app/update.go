@@ -162,7 +162,8 @@ func (m *model) switchToGitBranchMode() {
 	// Update placeholder
 	m.updatePlaceholder()
 
-	// Reset preview state when switching modes
+	// Clear preview cache and index when switching modes
+	m.previewCache = make(map[string]string)
 	m.lastPreviewIndex = -1
 
 	m.loadItemsForMode()
@@ -186,7 +187,8 @@ func (m *model) switchToHistoryMode() {
 	// Update placeholder
 	m.updatePlaceholder()
 
-	// Reset preview state when switching modes
+	// Clear preview cache and index when switching modes
+	m.previewCache = make(map[string]string)
 	m.lastPreviewIndex = -1
 
 	m.loadItemsForMode()
@@ -314,7 +316,13 @@ func (m *model) updatePreview() {
 		content = history.GeneratePreview(entry, m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
 	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
-		content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
+		cacheKey = branch.Name
+		if cached, ok := m.previewCache[cacheKey]; ok {
+			content = cached
+		} else {
+			content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
+			m.previewCache[cacheKey] = content
+		}
 	case ModeFiles:
 		entry := item.Original.(files.Entry)
 		// Use cache for file previews
