@@ -63,36 +63,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updatePreview()
 
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
+		switch msg.String() {
+		case "enter":
 			if len(m.filtered) > 0 {
 				m.selectItem()
 				m.quitting = true
 				return m, tea.Quit
 			}
-		case tea.KeyCtrlC:
+		case "ctrl+c", "esc":
 			m.quitting = true
 			return m, tea.Quit
-		case tea.KeyCtrlY:
+		case "ctrl+y":
 			if len(m.filtered) > 0 {
 				_ = clipboard.WriteAll(m.filtered[m.cursor].Text)
 				m.quitting = true
 				return m, tea.Quit
 			}
-		case tea.KeyCtrlG:
-			// Switch to GitBranch mode
-			m.switchToGitBranchMode()
+		case "ctrl+g":
+			// Toggle between History and GitBranch mode
+			if m.mode == ModeGitBranch {
+				m.switchToHistoryMode()
+			} else {
+				m.switchToGitBranchMode()
+			}
 			return m, nil
-		case tea.KeyCtrlF:
+		case "ctrl+s":
 			// Switch to Files mode
 			m.switchToFilesMode()
 			return m, nil
-		case tea.KeyCtrlR:
-			// Go back to history mode
+		case "ctrl+r":
+			// Switch to History mode
 			m.switchToHistoryMode()
 			return m, nil
-		}
-		switch msg.String() {
 		case "down", "ctrl+n":
 			if len(m.filtered) > 0 {
 				m.cursor++
@@ -160,7 +162,8 @@ func (m *model) switchToGitBranchMode() {
 	// Update placeholder
 	m.updatePlaceholder()
 
-	// Reset preview state when switching modes
+	// Clear preview cache and index when switching modes
+	m.previewCache = make(map[string]string)
 	m.lastPreviewIndex = -1
 
 	m.loadItemsForMode()
@@ -184,7 +187,8 @@ func (m *model) switchToHistoryMode() {
 	// Update placeholder
 	m.updatePlaceholder()
 
-	// Reset preview state when switching modes
+	// Clear preview cache and index when switching modes
+	m.previewCache = make(map[string]string)
 	m.lastPreviewIndex = -1
 
 	m.loadItemsForMode()
@@ -195,7 +199,7 @@ func (m *model) switchToHistoryMode() {
 	m.updatePreview()
 }
 
-// switchToFilesMode switches to files mode (Ctrl+F)
+// switchToFilesMode switches to files mode (Ctrl+S)
 func (m *model) switchToFilesMode() {
 	if m.mode == ModeFiles {
 		// Already in files mode, nothing to do
@@ -237,9 +241,9 @@ func (m *model) switchToFilesMode() {
 func (m *model) updatePlaceholder() {
 	switch m.mode {
 	case ModeHistory:
-		m.input.Placeholder = "Search history... (Ctrl+G: git, Ctrl+F: files)"
+		m.input.Placeholder = "Search history... (Ctrl+G: git, Ctrl+S: files)"
 	case ModeGitBranch:
-		m.input.Placeholder = "Search branches... (Ctrl+R: history, Ctrl+F: files)"
+		m.input.Placeholder = "Search branches... (Ctrl+R: history, Ctrl+S: files)"
 	case ModeFiles:
 		m.input.Placeholder = "Search files... (Ctrl+R: history, Ctrl+G: git)"
 	}
@@ -312,7 +316,13 @@ func (m *model) updatePreview() {
 		content = history.GeneratePreview(entry, m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
 	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
-		content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
+		cacheKey = branch.Name
+		if cached, ok := m.previewCache[cacheKey]; ok {
+			content = cached
+		} else {
+			content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
+			m.previewCache[cacheKey] = content
+		}
 	case ModeFiles:
 		entry := item.Original.(files.Entry)
 		// Use cache for file previews

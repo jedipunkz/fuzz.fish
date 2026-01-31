@@ -20,3 +20,11 @@ func TestGetCurrentBranch(t *testing.T) {
 	_ = result // Just ensure it runs without error
 }
 
+func TestCollectBranches(t *testing.T) {
+	// This test depends on the environment (being in a git repo)
+	// We just check that the function doesn't panic and returns expected structure
+	branches := CollectBranches()
+	// In a git repo, we should have at least the current branch
+	// but we don't assume any specific state
+	_ = branches // Just ensure it runs without error
+}

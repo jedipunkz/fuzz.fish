@@ -24,8 +24,8 @@ func CollectBranches() []Branch {
 		return branches
 	}
 
-	// Get current branch
-	currentBranch := getCurrentBranch()
+	// Get current branch (reusing the repo object)
+	currentBranch := getCurrentBranchFromRepo(repo)
 
 	// Get all references
 	refs, err := repo.References()
@@ -101,13 +101,8 @@ func CollectBranches() []Branch {
 	return branches
 }
 
-// getCurrentBranch returns the current git branch name
-func getCurrentBranch() string {
-	repo, err := git.PlainOpen(".")
-	if err != nil {
-		return ""
-	}
-
+// getCurrentBranchFromRepo returns the current git branch name using existing repo
+func getCurrentBranchFromRepo(repo *git.Repository) string {
 	head, err := repo.Head()
 	if err != nil {
 		return ""
@@ -121,3 +116,11 @@ func getCurrentBranch() string {
 	return ""
 }
 
+// getCurrentBranch returns the current git branch name (opens repo internally)
+func getCurrentBranch() string {
+	repo, err := git.PlainOpen(".")
+	if err != nil {
+		return ""
+	}
+	return getCurrentBranchFromRepo(repo)
+}

@@ -92,24 +92,25 @@ func (m *model) updateFilter(query string) {
 				matches = newMatches
 			}
 
-			// Sort logic
+			// Sort logic using unified scoring algorithm
 			// Higher combined score should appear at bottom (higher priority)
 			// So we sort ascending: lower scores first, higher scores last (at bottom)
-			sort.SliceStable(matches, func(i, j int) bool {
-				scoreI := float64(matches[i].Score)
-				scoreJ := float64(matches[j].Score)
+			config := DefaultScoringConfig()
+			now := GetCurrentTimestamp()
 
-				if m.mode == ModeHistory {
-					total := float64(len(m.allItems))
-					// Recency bonus: newer items (higher Index) get higher bonus
-					// This pushes recent matches toward the bottom (higher priority)
-					// Increased from 500 to 2000 to prioritize recent commands more strongly
-					maxBonus := 2000.0
-					recencyI := float64(matches[i].Index) / total
-					recencyJ := float64(matches[j].Index) / total
-					scoreI += recencyI * maxBonus
-					scoreJ += recencyJ * maxBonus
-				}
+			sort.SliceStable(matches, func(i, j int) bool {
+				itemI := m.allItems[matches[i].Index]
+				itemJ := m.allItems[matches[j].Index]
+
+				// Calculate unified scores including:
+				// - Base fuzzy match score
+				// - Word boundary bonuses (fzy/fzf-inspired)
+				// - Consecutive match bonuses
+				// - Recency bonuses (for history and git branches)
+				// - Current branch bonus (for git)
+				scoreI := CalculateItemScore(itemI, matches[i].Score, matches[i].MatchedIndexes, m.mode, config, now)
+				scoreJ := CalculateItemScore(itemJ, matches[j].Score, matches[j].MatchedIndexes, m.mode, config, now)
+
 				// Ascending sort: lower scores at top, higher scores at bottom
 				return scoreI < scoreJ
 			})

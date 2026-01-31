@@ -19,7 +19,7 @@ fuzz.fish is a Fish Shell plugin that provides fuzzy finding for command history
 ## Requirements
 
 - [Fish Shell](https://fishshell.com/) 3.0+
-- [Go](https://golang.org/) 1.21+ (for building)
+- [Go](https://golang.org/) 1.24+ (for building)
 
 ## Installation
 
@@ -42,7 +42,7 @@ Press `Ctrl+R` to open the fuzzy finder. You can switch between different modes:
 | Key | Action |
 |-----|--------|
 | `Ctrl+G` | Toggle between History and Git Branch mode |
-| `Ctrl+F` | Switch to File Search mode |
+| `Ctrl+S` | Switch to File Search mode |
 | `↑/↓` or `Ctrl+P/N` | Navigate through results |
 | `Enter` | Select item |
 | `Ctrl+Y` | Copy selected item to clipboard |
@@ -66,7 +66,7 @@ Search and switch git branches (available in git repositories).
 
 Search files and directories in the current directory.
 
-- Press `Ctrl+F` to switch to File Search mode
+- Press `Ctrl+S` to switch to File Search mode
 - Type to fuzzy search files and directories
 - Press `Enter`:
   - File: insert the file path into your prompt
