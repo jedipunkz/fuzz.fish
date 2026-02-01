@@ -98,18 +98,26 @@ func (m *model) updateFilter(query string) {
 				scores[i] = CalculateItemScore(item, mat.Score, mat.MatchedIndexes, m.mode, config, now)
 			}
 
-			// Sort using pre-calculated scores
+			// Create index array for sorting (scores array must stay aligned with original matches)
+			indices := make([]int, len(matches))
+			for i := range indices {
+				indices[i] = i
+			}
+
+			// Sort indices by pre-calculated scores
 			// Higher combined score should appear at bottom (higher priority)
 			// So we sort ascending: lower scores first, higher scores last (at bottom)
-			sort.SliceStable(matches, func(i, j int) bool {
-				return scores[i] < scores[j]
+			sort.SliceStable(indices, func(i, j int) bool {
+				return scores[indices[i]] < scores[indices[j]]
 			})
 
-			m.filtered = make([]Item, len(matches))
-			for i, mat := range matches {
+			// Build filtered list using sorted indices
+			m.filtered = make([]Item, len(indices))
+			for rank, idx := range indices {
+				mat := matches[idx]
 				item := m.allItems[mat.Index]
 				item.MatchedIndexes = mat.MatchedIndexes
-				m.filtered[i] = item
+				m.filtered[rank] = item
 			}
 		} else {
 			// Query is just whitespace, treat as empty
