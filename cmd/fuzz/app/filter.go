@@ -53,6 +53,12 @@ func (m *model) loadItemsForMode() {
 			})
 		}
 	}
+
+	// Pre-build search strings to avoid per-keystroke allocation
+	m.allItemsStr = make([]string, len(m.allItems))
+	for i, item := range m.allItems {
+		m.allItemsStr[i] = item.Text
+	}
 }
 
 // updateFilter updates the filtered items based on the query
@@ -62,19 +68,10 @@ func (m *model) updateFilter(query string) {
 		m.filtered = make([]Item, len(m.allItems))
 		copy(m.filtered, m.allItems)
 	} else {
-		// Fuzzy search
-		src := make([]string, len(m.allItems))
-		// We need search against original list order?
-		// m.allItems is already reversed for display.
-		// Usually we search against the "source of truth".
-		// Let's search against m.allItems text.
-		for i, item := range m.allItems {
-			src[i] = item.Text
-		}
-
+		// Fuzzy search using pre-built search strings (avoids per-keystroke allocation)
 		tokens := strings.Fields(query)
 		if len(tokens) > 0 {
-			matches := fuzzy.Find(tokens[0], src)
+			matches := fuzzy.Find(tokens[0], m.allItemsStr)
 
 			for _, token := range tokens[1:] {
 				if len(matches) == 0 {
@@ -82,7 +79,7 @@ func (m *model) updateFilter(query string) {
 				}
 				subset := make([]string, len(matches))
 				for i, mat := range matches {
-					subset[i] = src[mat.Index]
+					subset[i] = m.allItemsStr[mat.Index]
 				}
 				subMatches := fuzzy.Find(token, subset)
 				newMatches := make(fuzzy.Matches, len(subMatches))
@@ -92,27 +89,20 @@ func (m *model) updateFilter(query string) {
 				matches = newMatches
 			}
 
-			// Sort logic using unified scoring algorithm
-			// Higher combined score should appear at bottom (higher priority)
-			// So we sort ascending: lower scores first, higher scores last (at bottom)
+			// Pre-calculate scores for all matches (O(n) instead of O(n log n) in comparator)
 			config := DefaultScoringConfig()
 			now := GetCurrentTimestamp()
+			scores := make([]float64, len(matches))
+			for i, mat := range matches {
+				item := m.allItems[mat.Index]
+				scores[i] = CalculateItemScore(item, mat.Score, mat.MatchedIndexes, m.mode, config, now)
+			}
 
+			// Sort using pre-calculated scores
+			// Higher combined score should appear at bottom (higher priority)
+			// So we sort ascending: lower scores first, higher scores last (at bottom)
 			sort.SliceStable(matches, func(i, j int) bool {
-				itemI := m.allItems[matches[i].Index]
-				itemJ := m.allItems[matches[j].Index]
-
-				// Calculate unified scores including:
-				// - Base fuzzy match score
-				// - Word boundary bonuses (fzy/fzf-inspired)
-				// - Consecutive match bonuses
-				// - Recency bonuses (for history and git branches)
-				// - Current branch bonus (for git)
-				scoreI := CalculateItemScore(itemI, matches[i].Score, matches[i].MatchedIndexes, m.mode, config, now)
-				scoreJ := CalculateItemScore(itemJ, matches[j].Score, matches[j].MatchedIndexes, m.mode, config, now)
-
-				// Ascending sort: lower scores at top, higher scores at bottom
-				return scoreI < scoreJ
+				return scores[i] < scores[j]
 			})
 
 			m.filtered = make([]Item, len(matches))
