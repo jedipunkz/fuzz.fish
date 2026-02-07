@@ -41,8 +41,8 @@ Press `Ctrl+R` to open the fuzzy finder. You can switch between different modes:
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+G` | Toggle between History and Git Branch mode |
-| `Ctrl+S` | Switch to File Search mode |
+| `Ctrl+G` | Switch to Git Branch Search Mode |
+| `Ctrl+S` | Switch to File Search Mode |
 | `↑/↓` or `Ctrl+P/N` | Navigate through results |
 | `Enter` | Select item |
 | `Ctrl+Y` | Copy selected item to clipboard |
