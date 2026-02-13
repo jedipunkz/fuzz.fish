@@ -1,6 +1,8 @@
 package app
 
 import (
+	"os"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -8,6 +10,14 @@ import (
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
 	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
 )
+
+// Async load completion messages
+type historyLoadedMsg struct{ entries []history.Entry }
+type branchesLoadedMsg struct{ branches []git.Branch }
+type filesLoadedMsg struct{ entries []files.Entry }
+
+// Filter debounce message
+type filterTickMsg struct{ query string }
 
 // SearchMode represents the current search mode
 type SearchMode int
@@ -50,6 +60,9 @@ type model struct {
 	choice      *string // Result string to print
 	choiceIsDir bool    // For files mode: whether the choice is a directory
 	quitting    bool
+	loading     bool   // True while async data loading is in progress
+
+	pendingQuery string // For filter debounce
 
 	width      int
 	height     int
@@ -64,5 +77,27 @@ type model struct {
 
 // Init initializes the model
 func (m model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(textinput.Blink, loadHistoryCmd())
+}
+
+func loadHistoryCmd() tea.Cmd {
+	return func() tea.Msg {
+		return historyLoadedMsg{entries: history.Parse()}
+	}
+}
+
+func loadBranchesCmd() tea.Cmd {
+	return func() tea.Msg {
+		return branchesLoadedMsg{branches: git.CollectBranches()}
+	}
+}
+
+func loadFilesCmd() tea.Cmd {
+	return func() tea.Msg {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return filesLoadedMsg{}
+		}
+		return filesLoadedMsg{entries: files.Collect(cwd)}
+	}
 }
