@@ -4,6 +4,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jedipunkz/fuzz.fish/internal/git"
+	"github.com/jedipunkz/fuzz.fish/internal/history"
+	"github.com/jedipunkz/fuzz.fish/internal/scoring"
 	"github.com/sahilm/fuzzy"
 )
 
@@ -26,9 +29,6 @@ func (m *model) loadItemsForMode() {
 		}
 	case ModeGitBranch:
 		// Git: branches are collected.
-		// Sort? CollectBranches usually returns some order.
-		// We want Default/Current at bottom?
-		// Let's assume input branches are standard.
 		// We reverse them to put first item at bottom.
 		for i := range m.gitBranches {
 			b := m.gitBranches[len(m.gitBranches)-1-i]
@@ -90,12 +90,25 @@ func (m *model) updateFilter(query string) {
 			}
 
 			// Pre-calculate scores for all matches (O(n) instead of O(n log n) in comparator)
-			config := DefaultScoringConfig()
-			now := GetCurrentTimestamp()
+			config := scoring.DefaultConfig()
+			now := scoring.CurrentTimestamp()
 			scores := make([]float64, len(matches))
 			for i, mat := range matches {
 				item := m.allItems[mat.Index]
-				scores[i] = CalculateItemScore(item, mat.Score, mat.MatchedIndexes, m.mode, config, now)
+				var timestamp int64
+				var isCurrent bool
+				switch m.mode {
+				case ModeHistory:
+					if entry, ok := item.Original.(history.Entry); ok {
+						timestamp = entry.When
+					}
+				case ModeGitBranch:
+					if branch, ok := item.Original.(git.Branch); ok {
+						timestamp = branch.CommitTimestamp
+						isCurrent = branch.IsCurrent
+					}
+				}
+				scores[i] = config.ItemScore(item.Text, mat.Score, mat.MatchedIndexes, timestamp, isCurrent, now)
 			}
 
 			// Create index array for sorting (scores array must stay aligned with original matches)

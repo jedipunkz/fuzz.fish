@@ -6,9 +6,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/files"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
+	"github.com/jedipunkz/fuzz.fish/internal/files"
+	"github.com/jedipunkz/fuzz.fish/internal/git"
+	"github.com/jedipunkz/fuzz.fish/internal/history"
 )
 
 // Async load completion messages
@@ -82,13 +82,16 @@ func (m model) Init() tea.Cmd {
 
 func loadHistoryCmd() tea.Cmd {
 	return func() tea.Msg {
-		return historyLoadedMsg{entries: history.Parse()}
+		p := history.NewParser()
+		return historyLoadedMsg{entries: p.Parse()}
 	}
 }
 
 func loadBranchesCmd() tea.Cmd {
 	return func() tea.Msg {
-		return branchesLoadedMsg{branches: git.CollectBranches()}
+		r := git.NewRepository(".")
+		branches, _ := r.Branches()
+		return branchesLoadedMsg{branches: branches}
 	}
 }
 
@@ -98,6 +101,7 @@ func loadFilesCmd() tea.Cmd {
 		if err != nil {
 			return filesLoadedMsg{}
 		}
-		return filesLoadedMsg{entries: files.Collect(cwd)}
+		c := files.NewCollector(cwd)
+		return filesLoadedMsg{entries: c.Collect()}
 	}
 }

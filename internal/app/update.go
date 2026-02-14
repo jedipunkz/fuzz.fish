@@ -6,9 +6,9 @@ import (
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/files"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
+	"github.com/jedipunkz/fuzz.fish/internal/files"
+	"github.com/jedipunkz/fuzz.fish/internal/git"
+	"github.com/jedipunkz/fuzz.fish/internal/history"
 )
 
 // Update handles messages and updates the model
@@ -204,24 +204,18 @@ func (m *model) switchToGitBranchMode() tea.Cmd {
 // switchToHistoryMode switches directly to history mode (Ctrl+R)
 func (m *model) switchToHistoryMode() {
 	if m.mode == ModeHistory {
-		// Already in history mode, nothing to do
 		return
 	}
 
 	m.mode = ModeHistory
-	m.input.SetValue("") // Clear input on switch
-
-	// Update placeholder
+	m.input.SetValue("")
 	m.updatePlaceholder()
-
-	// Clear preview cache and index when switching modes
 	m.previewCache = make(map[string]string)
 	m.lastPreviewIndex = -1
 
 	m.loadItemsForMode()
 	m.updateFilter("")
 
-	// Reset cursor to bottom explicitly after mode switch
 	m.resetCursorToBottom()
 	m.updatePreview()
 }
@@ -330,25 +324,23 @@ func (m *model) updatePreview() {
 	switch m.mode {
 	case ModeHistory:
 		entry := item.Original.(history.Entry)
-		content = history.GeneratePreview(entry, m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
+		content = entry.GeneratePreview(m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
 	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
 		cacheKey = branch.Name
 		if cached, ok := m.previewCache[cacheKey]; ok {
 			content = cached
 		} else {
-			content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
+			content = branch.GeneratePreview(m.viewport.Width, m.viewport.Height)
 			m.previewCache[cacheKey] = content
 		}
 	case ModeFiles:
 		entry := item.Original.(files.Entry)
-		// Use cache for file previews
 		cacheKey = entry.Path
 		if cached, ok := m.previewCache[cacheKey]; ok {
 			content = cached
 		} else {
-			content = files.GeneratePreview(entry, m.viewport.Width, m.viewport.Height)
-			// Cache the result
+			content = entry.GeneratePreview(m.viewport.Width, m.viewport.Height)
 			m.previewCache[cacheKey] = content
 		}
 	}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/app"
+	"github.com/jedipunkz/fuzz.fish/internal/app"
 )
 
 func main() {

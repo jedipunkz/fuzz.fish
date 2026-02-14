@@ -1,4 +1,4 @@
-package utils
+package ui
 
 // Binary detection and preview constants
 const (

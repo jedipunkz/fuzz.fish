@@ -5,8 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/ui"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/utils"
+	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
 // formatDir abbreviates a directory path by replacing the home directory with ~
@@ -19,39 +18,38 @@ func formatDir(path string) string {
 }
 
 // GeneratePreview generates a preview of the history entry for the TUI preview window
-func GeneratePreview(entry Entry, all []Entry, idx, width, height int) string {
+func (e Entry) GeneratePreview(all []Entry, idx, width, height int) string {
 	var sb strings.Builder
 
 	// Metadata
 	// Time
 	sb.WriteString(ui.LabelStyle.Render("Time") + "\n")
-	sb.WriteString(ui.ContentStyle.Render(utils.FormatTime(entry.When)))
+	sb.WriteString(ui.ContentStyle.Render(ui.FormatTime(e.When)))
 	sb.WriteString("\n")
-	sb.WriteString(ui.ContentStyle.Render(utils.FormatRelativeTime(entry.When)))
+	sb.WriteString(ui.ContentStyle.Render(ui.FormatRelativeTime(e.When)))
 	sb.WriteString("\n\n")
 
 	// Dir
-	if len(entry.Paths) > 0 {
+	if len(e.Paths) > 0 {
 		sb.WriteString(ui.LabelStyle.Render("Directory") + "\n")
-		sb.WriteString(ui.ContentStyle.Render(formatDir(entry.Paths[0])))
+		sb.WriteString(ui.ContentStyle.Render(formatDir(e.Paths[0])))
 		sb.WriteString("\n")
 	}
 	sb.WriteString("\n")
 
 	// Context (commands before/after)
 	sb.WriteString(ui.ContextHeaderStyle.Render("Context") + "\n")
-	start := idx - utils.HistoryContextLinesBefore
+	start := idx - ui.HistoryContextLinesBefore
 	if start < 0 {
 		start = 0
 	}
-	end := idx + utils.HistoryContextLinesAfter
+	end := idx + ui.HistoryContextLinesAfter
 	if end > len(all) {
 		end = len(all)
 	}
 
 	for i := start; i < end; i++ {
-		e := all[i]
-		cmd := e.Cmd
+		cmd := all[i].Cmd
 
 		if i == idx {
 			cursor := "→ "
