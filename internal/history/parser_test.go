@@ -8,7 +8,8 @@ func TestParse(t *testing.T) {
 	// Test that Parse() doesn't panic
 	// It reads from the actual history file, so we can't make
 	// strong assertions about the result
-	entries := Parse()
+	p := NewParser()
+	entries := p.Parse()
 
 	// Just verify it returns a slice (could be empty if no history)
 	if entries == nil {

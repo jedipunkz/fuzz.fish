@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/ui"
+	"github.com/jedipunkz/fuzz.fish/internal/history"
+	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
 // View renders the application view
@@ -38,7 +38,7 @@ func (m model) View() string {
 
 	for i := start; i < end; i++ {
 		item := m.filtered[i]
-		renderItem(&listBuilder, m, i, item)
+		m.renderItem(&listBuilder, i, item)
 		if i < end-1 {
 			listBuilder.WriteString("\n")
 		}
@@ -75,9 +75,6 @@ func (m model) View() string {
 		previewBox,
 	)
 
-	// Add Mode Indicator or Help
-	// Maybe inside input prompt?
-
 	return lipgloss.JoinVertical(lipgloss.Left,
 		mainView,
 		inputBox,
@@ -85,7 +82,7 @@ func (m model) View() string {
 }
 
 // renderItem renders a single item in the list
-func renderItem(w io.Writer, m model, index int, i Item) {
+func (m model) renderItem(w io.Writer, index int, i Item) {
 	width := m.listWidth
 	if width <= 0 {
 		return
@@ -104,10 +101,6 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 	}
 
 	text := i.Text
-	// Format text based on mode?
-	// History: Replace newlines.
-	// Git: Add icons.
-	// Files: Add icons.
 
 	// Calculate time ago string for history mode
 	var timeAgo string
@@ -191,13 +184,13 @@ func renderItem(w io.Writer, m model, index int, i Item) {
 
 	rendered := textBuilder.String()
 	renderedWidth := lipgloss.Width(rendered)
-	padding := contentWidth - renderedWidth
-	if padding > 0 {
+	padWidth := contentWidth - renderedWidth
+	if padWidth > 0 {
 		paddingStyle := lipgloss.NewStyle()
 		if isSelected {
 			paddingStyle = paddingStyle.Background(lipgloss.Color(ui.ColorSelectionBg))
 		}
-		rendered += paddingStyle.Render(strings.Repeat(" ", padding))
+		rendered += paddingStyle.Render(strings.Repeat(" ", padWidth))
 	}
 
 	// Render time ago

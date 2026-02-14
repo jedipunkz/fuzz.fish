@@ -8,15 +8,16 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/ui"
+	"github.com/jedipunkz/fuzz.fish/internal/history"
+	"github.com/jedipunkz/fuzz.fish/internal/ui"
 	"github.com/muesli/termenv"
 )
 
 // Run starts the application
 func Run() {
 	// Initial Load: History
-	entries := history.Parse()
+	p := history.NewParser()
+	entries := p.Parse()
 
 	ti := textinput.New()
 	ti.Placeholder = "Search history... (Ctrl+G: git, Ctrl+S: files)"
@@ -54,8 +55,8 @@ func Run() {
 
 	lipgloss.SetColorProfile(termenv.NewOutput(tty).Profile)
 
-	p := tea.NewProgram(m, tea.WithInput(tty), tea.WithOutput(tty), tea.WithAltScreen())
-	finalModel, err := p.Run()
+	prog := tea.NewProgram(m, tea.WithInput(tty), tea.WithOutput(tty), tea.WithAltScreen())
+	finalModel, err := prog.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)

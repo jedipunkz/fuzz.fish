@@ -4,9 +4,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/files"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
+	"github.com/jedipunkz/fuzz.fish/internal/files"
+	"github.com/jedipunkz/fuzz.fish/internal/git"
+	"github.com/jedipunkz/fuzz.fish/internal/history"
 )
 
 // SearchMode represents the current search mode

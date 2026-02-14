@@ -1,10 +1,7 @@
-package app
+package scoring
 
 import (
 	"testing"
-
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
 )
 
 func TestIsWordBoundary(t *testing.T) {
@@ -53,8 +50,8 @@ func TestIsCamelCaseBoundary(t *testing.T) {
 	}
 }
 
-func TestCalculateMatchBonus(t *testing.T) {
-	config := DefaultScoringConfig()
+func TestMatchBonus(t *testing.T) {
+	config := DefaultConfig()
 
 	tests := []struct {
 		name           string
@@ -94,15 +91,15 @@ func TestCalculateMatchBonus(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		bonus := CalculateMatchBonus(tt.text, tt.matchedIndexes, config)
+		bonus := config.MatchBonus(tt.text, tt.matchedIndexes)
 		if bonus < tt.minBonus {
-			t.Errorf("%s: CalculateMatchBonus() = %v, want >= %v (%s)", tt.name, bonus, tt.minBonus, tt.description)
+			t.Errorf("%s: MatchBonus() = %v, want >= %v (%s)", tt.name, bonus, tt.minBonus, tt.description)
 		}
 	}
 }
 
-func TestCalculateRecencyBonus(t *testing.T) {
-	maxBonus := 3000.0
+func TestRecencyBonus(t *testing.T) {
+	config := DefaultConfig()
 	now := int64(1000000)
 
 	tests := []struct {
@@ -120,27 +117,18 @@ func TestCalculateRecencyBonus(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		bonus := CalculateRecencyBonus(tt.timestamp, now, maxBonus)
+		bonus := config.RecencyBonus(tt.timestamp, now)
 		if bonus < tt.minBonus || bonus > tt.maxBonus {
-			t.Errorf("%s: CalculateRecencyBonus() = %v, want in range [%v, %v]", tt.name, bonus, tt.minBonus, tt.maxBonus)
+			t.Errorf("%s: RecencyBonus() = %v, want in range [%v, %v]", tt.name, bonus, tt.minBonus, tt.maxBonus)
 		}
 	}
 }
 
-func TestCalculateItemScoreHistory(t *testing.T) {
-	config := DefaultScoringConfig()
+func TestItemScoreHistory(t *testing.T) {
+	config := DefaultConfig()
 	now := int64(1000000)
 
-	item := Item{
-		Text:  "git commit -m 'test'",
-		Index: 0,
-		Original: history.Entry{
-			Cmd:  "git commit -m 'test'",
-			When: now - 3600, // 1 hour ago
-		},
-	}
-
-	score := CalculateItemScore(item, 100, []int{0, 1, 2}, ModeHistory, config, now)
+	score := config.ItemScore("git commit -m 'test'", 100, []int{0, 1, 2}, now-3600, false, now)
 
 	// Should have base score + prefix bonus + consecutive bonus + recency bonus
 	minExpected := 100.0 + config.PrefixBonus + config.ConsecutiveBonus*2 + 1400 // ~1500 recency
@@ -149,35 +137,13 @@ func TestCalculateItemScoreHistory(t *testing.T) {
 	}
 }
 
-func TestCalculateItemScoreGitBranch(t *testing.T) {
-	config := DefaultScoringConfig()
+func TestItemScoreGitBranch(t *testing.T) {
+	config := DefaultConfig()
 	now := int64(1000000)
 
 	// Test current branch bonus
-	currentBranch := Item{
-		Text:      "main",
-		Index:     0,
-		IsCurrent: true,
-		Original: git.Branch{
-			Name:            "main",
-			IsCurrent:       true,
-			CommitTimestamp: now - 3600,
-		},
-	}
-
-	otherBranch := Item{
-		Text:      "feature/test",
-		Index:     1,
-		IsCurrent: false,
-		Original: git.Branch{
-			Name:            "feature/test",
-			IsCurrent:       false,
-			CommitTimestamp: now - 3600,
-		},
-	}
-
-	currentScore := CalculateItemScore(currentBranch, 100, []int{0}, ModeGitBranch, config, now)
-	otherScore := CalculateItemScore(otherBranch, 100, []int{0}, ModeGitBranch, config, now)
+	currentScore := config.ItemScore("main", 100, []int{0}, now-3600, true, now)
+	otherScore := config.ItemScore("feature/test", 100, []int{0}, now-3600, false, now)
 
 	// Current branch should have higher score due to current branch bonus
 	if currentScore <= otherScore {
@@ -191,16 +157,11 @@ func TestCalculateItemScoreGitBranch(t *testing.T) {
 	}
 }
 
-func TestCalculateItemScoreFiles(t *testing.T) {
-	config := DefaultScoringConfig()
+func TestItemScoreFiles(t *testing.T) {
+	config := DefaultConfig()
 	now := int64(1000000)
 
-	item := Item{
-		Text:  "src/components/Button.tsx",
-		Index: 0,
-	}
-
-	score := CalculateItemScore(item, 100, []int{4, 5, 6}, ModeFiles, config, now)
+	score := config.ItemScore("src/components/Button.tsx", 100, []int{4, 5, 6}, 0, false, now)
 
 	// Files should only have match quality bonuses, no recency
 	// Match at position 4 (after src/) should have word boundary bonus

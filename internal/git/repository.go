@@ -4,33 +4,54 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/go-git/go-git/v5"
+	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
-// IsGitRepo checks if the current directory is a git repository
-func IsGitRepo() bool {
-	_, err := git.PlainOpen(".")
+// Branch represents a git branch
+type Branch struct {
+	Name              string
+	IsCurrent         bool
+	IsRemote          bool
+	LastCommit        string
+	LastCommitMessage string
+	CommitDate        string
+	CommitTimestamp   int64 // Unix timestamp for recency scoring
+}
+
+// Repository provides git operations for a working directory
+type Repository struct {
+	Path string
+}
+
+// NewRepository creates a Repository for the given path
+func NewRepository(path string) *Repository {
+	return &Repository{Path: path}
+}
+
+// IsRepo checks if the path is a git repository
+func (r *Repository) IsRepo() bool {
+	_, err := gogit.PlainOpen(r.Path)
 	return err == nil
 }
 
-// CollectBranches collects all git branches (local and remote)
+// Branches collects all git branches (local and remote)
 // Lightweight version: does not fetch commit objects for performance
-func CollectBranches() []Branch {
+func (r *Repository) Branches() ([]Branch, error) {
 	var branches []Branch
 
-	repo, err := git.PlainOpen(".")
+	repo, err := gogit.PlainOpen(r.Path)
 	if err != nil {
-		return branches
+		return branches, err
 	}
 
 	// Get current branch (reusing the repo object)
-	currentBranch := getCurrentBranchFromRepo(repo)
+	currentBranch := r.currentBranch(repo)
 
 	// Get all references
 	refs, err := repo.References()
 	if err != nil {
-		return branches
+		return branches, err
 	}
 
 	// Collect local branches first, then remote branches
@@ -83,7 +104,7 @@ func CollectBranches() []Branch {
 	})
 
 	if err != nil {
-		return branches
+		return branches, err
 	}
 
 	// Sort alphabetically
@@ -98,11 +119,11 @@ func CollectBranches() []Branch {
 	branches = append(branches, localBranches...)
 	branches = append(branches, remoteBranches...)
 
-	return branches
+	return branches, nil
 }
 
-// getCurrentBranchFromRepo returns the current git branch name using existing repo
-func getCurrentBranchFromRepo(repo *git.Repository) string {
+// currentBranch returns the current git branch name using existing repo
+func (r *Repository) currentBranch(repo *gogit.Repository) string {
 	head, err := repo.Head()
 	if err != nil {
 		return ""
@@ -114,13 +135,4 @@ func getCurrentBranchFromRepo(repo *git.Repository) string {
 	}
 
 	return ""
-}
-
-// getCurrentBranch returns the current git branch name (opens repo internally)
-func getCurrentBranch() string {
-	repo, err := git.PlainOpen(".")
-	if err != nil {
-		return ""
-	}
-	return getCurrentBranchFromRepo(repo)
 }

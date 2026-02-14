@@ -6,9 +6,9 @@ import (
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/files"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/git"
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/history"
+	"github.com/jedipunkz/fuzz.fish/internal/files"
+	"github.com/jedipunkz/fuzz.fish/internal/git"
+	"github.com/jedipunkz/fuzz.fish/internal/history"
 )
 
 // Update handles messages and updates the model
@@ -140,17 +140,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // switchToGitBranchMode switches to git branch mode (Ctrl+G)
 func (m *model) switchToGitBranchMode() {
 	if m.mode == ModeGitBranch {
-		// Already in git branch mode, nothing to do
 		return
 	}
 
 	// Check if git repo
 	if len(m.gitBranches) == 0 {
-		if !git.IsGitRepo() {
+		repo := git.NewRepository(".")
+		if !repo.IsRepo() {
 			return
 		}
-		branches := git.CollectBranches()
-		if len(branches) == 0 {
+		branches, err := repo.Branches()
+		if err != nil || len(branches) == 0 {
 			return
 		}
 		m.gitBranches = branches
@@ -177,7 +177,6 @@ func (m *model) switchToGitBranchMode() {
 // switchToHistoryMode switches directly to history mode (Ctrl+R)
 func (m *model) switchToHistoryMode() {
 	if m.mode == ModeHistory {
-		// Already in history mode, nothing to do
 		return
 	}
 
@@ -202,7 +201,6 @@ func (m *model) switchToHistoryMode() {
 // switchToFilesMode switches to files mode (Ctrl+S)
 func (m *model) switchToFilesMode() {
 	if m.mode == ModeFiles {
-		// Already in files mode, nothing to do
 		return
 	}
 
@@ -212,7 +210,8 @@ func (m *model) switchToFilesMode() {
 		if err != nil {
 			return
 		}
-		entries := files.Collect(cwd)
+		c := files.NewCollector(cwd)
+		entries := c.Collect()
 		if len(entries) == 0 {
 			return
 		}
@@ -313,14 +312,14 @@ func (m *model) updatePreview() {
 	switch m.mode {
 	case ModeHistory:
 		entry := item.Original.(history.Entry)
-		content = history.GeneratePreview(entry, m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
+		content = entry.GeneratePreview(m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
 	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
 		cacheKey = branch.Name
 		if cached, ok := m.previewCache[cacheKey]; ok {
 			content = cached
 		} else {
-			content = git.GeneratePreview(branch, m.viewport.Width, m.viewport.Height)
+			content = branch.GeneratePreview(m.viewport.Width, m.viewport.Height)
 			m.previewCache[cacheKey] = content
 		}
 	case ModeFiles:
@@ -330,7 +329,7 @@ func (m *model) updatePreview() {
 		if cached, ok := m.previewCache[cacheKey]; ok {
 			content = cached
 		} else {
-			content = files.GeneratePreview(entry, m.viewport.Width, m.viewport.Height)
+			content = entry.GeneratePreview(m.viewport.Width, m.viewport.Height)
 			// Cache the result
 			m.previewCache[cacheKey] = content
 		}

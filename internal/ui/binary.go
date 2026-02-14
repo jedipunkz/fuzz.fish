@@ -1,11 +1,9 @@
-package utils
+package ui
 
 import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/jedipunkz/fuzz.fish/cmd/fuzz/ui"
 )
 
 // IsBinary checks if the given content appears to be binary
@@ -68,7 +66,7 @@ func GetFilePreview(path string, maxLines int) string {
 		if len(line) > MaxLineLength {
 			line = line[:MaxLineLength] + "..."
 		}
-		sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  %s", line)) + "\n")
+		sb.WriteString(InactiveContextStyle.Render(fmt.Sprintf("  %s", line)) + "\n")
 	}
 
 	return sb.String()

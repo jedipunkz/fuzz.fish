@@ -8,19 +8,29 @@ import (
 	"strings"
 )
 
-// GetPath returns the path to the Fish shell history file
-func GetPath() string {
+// Parser reads and parses Fish shell history
+type Parser struct {
+	Path string // history file path
+}
+
+// NewParser returns a Parser with the default Fish history file path
+func NewParser() *Parser {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return ""
+		return &Parser{}
 	}
-	return filepath.Join(home, ".local", "share", "fish", "fish_history")
+	return &Parser{
+		Path: filepath.Join(home, ".local", "share", "fish", "fish_history"),
+	}
 }
 
 // Parse reads and parses the Fish shell history file
-func Parse() []Entry {
-	histPath := GetPath()
-	file, err := os.Open(histPath)
+func (p *Parser) Parse() []Entry {
+	if p.Path == "" {
+		return []Entry{}
+	}
+
+	file, err := os.Open(p.Path)
 	if err != nil {
 		return []Entry{}
 	}
