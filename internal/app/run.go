@@ -8,17 +8,12 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/jedipunkz/fuzz.fish/internal/history"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 	"github.com/muesli/termenv"
 )
 
 // Run starts the application
 func Run() {
-	// Initial Load: History
-	p := history.NewParser()
-	entries := p.Parse()
-
 	ti := textinput.New()
 	ti.Placeholder = "Search history... (Ctrl+G: git, Ctrl+S: files)"
 	ti.Focus()
@@ -30,20 +25,10 @@ func Run() {
 	m := model{
 		mode:             ModeHistory,
 		input:            ti,
-		historyEntries:   entries,
 		viewport:         viewport.New(0, 0),
 		previewCache:     make(map[string]string),
 		lastPreviewIndex: -1,
-	}
-
-	m.loadItemsForMode()
-	m.updateFilter("")
-
-	// Ensure cursor is at bottom for initial load
-	if len(m.filtered) > 0 {
-		m.cursor = len(m.filtered) - 1
-		// Offset isn't fully calculable yet because height is unknown until WindowSizeMsg,
-		// but we can set cursor index. WindowSizeMsg will fix offset.
+		loading:          true,
 	}
 
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)

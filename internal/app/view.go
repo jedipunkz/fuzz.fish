@@ -22,6 +22,26 @@ func (m model) View() string {
 	// List View
 	var listBuilder strings.Builder
 
+	// Show loading indicator when async loading with no items yet
+	if m.loading && len(m.filtered) == 0 {
+		listBuilder.WriteString(strings.Repeat("\n", m.mainHeight-1))
+		listBuilder.WriteString("Loading...")
+
+		listView := listBuilder.String()
+		previewView := m.viewport.View()
+
+		boxStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(ui.ColorBorder))
+
+		listBox := boxStyle.Width(m.listWidth).Height(m.mainHeight).Render(listView)
+		previewBox := boxStyle.Width(m.viewport.Width).Height(m.mainHeight).Render(previewView)
+		inputBox := boxStyle.Width(m.width - 2).Padding(0, 1).Render(inputView)
+
+		mainView := lipgloss.JoinHorizontal(lipgloss.Top, listBox, previewBox)
+		return lipgloss.JoinVertical(lipgloss.Left, mainView, inputBox)
+	}
+
 	// Determine visible range
 	start := m.offset
 	end := start + m.mainHeight

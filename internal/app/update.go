@@ -1,8 +1,8 @@
 package app
 
 import (
-	"os"
 	"strings"
+	"time"
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,6 +17,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case historyLoadedMsg:
+		m.historyEntries = msg.entries
+		m.loading = false
+		if m.mode == ModeHistory {
+			m.loadItemsForMode()
+			m.updateFilter(m.input.Value())
+		}
+		return m, nil
+
+	case branchesLoadedMsg:
+		m.gitBranches = msg.branches
+		m.loading = false
+		if m.mode == ModeGitBranch {
+			m.loadItemsForMode()
+			m.updateFilter(m.input.Value())
+		}
+		return m, nil
+
+	case filesLoadedMsg:
+		m.fileEntries = msg.entries
+		m.loading = false
+		if m.mode == ModeFiles {
+			m.loadItemsForMode()
+			m.updateFilter(m.input.Value())
+		}
+		return m, nil
+
+	case filterTickMsg:
+		if msg.query == m.pendingQuery {
+			m.updateFilter(msg.query)
+		}
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -83,14 +116,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Toggle between History and GitBranch mode
 			if m.mode == ModeGitBranch {
 				m.switchToHistoryMode()
-			} else {
-				m.switchToGitBranchMode()
+				return m, nil
 			}
-			return m, nil
+			cmd = m.switchToGitBranchMode()
+			return m, cmd
 		case "ctrl+s":
 			// Switch to Files mode
-			m.switchToFilesMode()
-			return m, nil
+			cmd = m.switchToFilesMode()
+			return m, cmd
 		case "ctrl+r":
 			// Switch to History mode
 			m.switchToHistoryMode()
@@ -128,7 +161,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	newValue := m.input.Value()
 	if oldValue != newValue {
-		m.updateFilter(newValue)
+		m.pendingQuery = newValue
+		cmds = append(cmds, tea.Tick(30*time.Millisecond, func(t time.Time) tea.Msg {
+			return filterTickMsg{query: newValue}
+		}))
 	}
 
 	m.viewport, cmd = m.viewport.Update(msg)
@@ -138,40 +174,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // switchToGitBranchMode switches to git branch mode (Ctrl+G)
-func (m *model) switchToGitBranchMode() {
+func (m *model) switchToGitBranchMode() tea.Cmd {
 	if m.mode == ModeGitBranch {
-		return
-	}
-
-	// Check if git repo
-	if len(m.gitBranches) == 0 {
-		repo := git.NewRepository(".")
-		if !repo.IsRepo() {
-			return
-		}
-		branches, err := repo.Branches()
-		if err != nil || len(branches) == 0 {
-			return
-		}
-		m.gitBranches = branches
+		return nil
 	}
 
 	m.mode = ModeGitBranch
-	m.input.SetValue("") // Clear input on switch
-
-	// Update placeholder
+	m.input.SetValue("")
 	m.updatePlaceholder()
-
-	// Clear preview cache and index when switching modes
 	m.previewCache = make(map[string]string)
 	m.lastPreviewIndex = -1
 
-	m.loadItemsForMode()
-	m.updateFilter("")
+	if len(m.gitBranches) > 0 {
+		m.loadItemsForMode()
+		m.updateFilter("")
+		m.resetCursorToBottom()
+		m.updatePreview()
+		return nil
+	}
 
-	// Reset cursor to bottom explicitly after mode switch
-	m.resetCursorToBottom()
-	m.updatePreview()
+	// Async load branches
+	m.loading = true
+	m.filtered = nil
+	m.cursor = 0
+	m.offset = 0
+	return loadBranchesCmd()
 }
 
 // switchToHistoryMode switches directly to history mode (Ctrl+R)
@@ -181,59 +208,44 @@ func (m *model) switchToHistoryMode() {
 	}
 
 	m.mode = ModeHistory
-	m.input.SetValue("") // Clear input on switch
-
-	// Update placeholder
+	m.input.SetValue("")
 	m.updatePlaceholder()
-
-	// Clear preview cache and index when switching modes
 	m.previewCache = make(map[string]string)
 	m.lastPreviewIndex = -1
 
 	m.loadItemsForMode()
 	m.updateFilter("")
 
-	// Reset cursor to bottom explicitly after mode switch
 	m.resetCursorToBottom()
 	m.updatePreview()
 }
 
 // switchToFilesMode switches to files mode (Ctrl+S)
-func (m *model) switchToFilesMode() {
+func (m *model) switchToFilesMode() tea.Cmd {
 	if m.mode == ModeFiles {
-		return
-	}
-
-	// Collect files from current directory if not already done
-	if len(m.fileEntries) == 0 {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return
-		}
-		c := files.NewCollector(cwd)
-		entries := c.Collect()
-		if len(entries) == 0 {
-			return
-		}
-		m.fileEntries = entries
+		return nil
 	}
 
 	m.mode = ModeFiles
-	m.input.SetValue("") // Clear input on switch
-
-	// Update placeholder
+	m.input.SetValue("")
 	m.updatePlaceholder()
-
-	// Clear preview cache and index when switching modes
 	m.previewCache = make(map[string]string)
 	m.lastPreviewIndex = -1
 
-	m.loadItemsForMode()
-	m.updateFilter("")
+	if len(m.fileEntries) > 0 {
+		m.loadItemsForMode()
+		m.updateFilter("")
+		m.resetCursorToBottom()
+		m.updatePreview()
+		return nil
+	}
 
-	// Reset cursor to bottom explicitly after mode switch
-	m.resetCursorToBottom()
-	m.updatePreview()
+	// Async load files
+	m.loading = true
+	m.filtered = nil
+	m.cursor = 0
+	m.offset = 0
+	return loadFilesCmd()
 }
 
 // updatePlaceholder updates the input placeholder based on current mode
@@ -324,13 +336,11 @@ func (m *model) updatePreview() {
 		}
 	case ModeFiles:
 		entry := item.Original.(files.Entry)
-		// Use cache for file previews
 		cacheKey = entry.Path
 		if cached, ok := m.previewCache[cacheKey]; ok {
 			content = cached
 		} else {
 			content = entry.GeneratePreview(m.viewport.Width, m.viewport.Height)
-			// Cache the result
 			m.previewCache[cacheKey] = content
 		}
 	}
