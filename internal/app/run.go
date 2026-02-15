@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -54,7 +55,13 @@ func Run() {
 				fmt.Printf("CMD:%s", *m.choice)
 			case ModeGitBranch:
 				if m.fetchBranch {
-					fmt.Printf("FETCH:%s", *m.choice)
+					cmd := exec.Command("git", "pull", "origin", *m.choice)
+					cmd.Stdin = tty
+					cmd.Stdout = tty
+					cmd.Stderr = tty
+					if err := cmd.Run(); err != nil {
+						fmt.Fprintf(os.Stderr, "git pull failed: %v\n", err)
+					}
 				} else {
 					fmt.Printf("BRANCH:%s", *m.choice)
 				}

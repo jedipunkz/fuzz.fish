@@ -149,11 +149,6 @@ function fh --description 'Fish History viewer with context (TUI)'
             set -l cmd (string replace "CMD:" "" -- "$result")
             commandline -r -- "$cmd"
             commandline -f repaint
-        else if string match -q "FETCH:*" -- "$result"
-            # It's a fetch request, pull the current branch
-            set -l branch (string replace "FETCH:" "" -- "$result")
-            git pull origin "$branch"
-            commandline -f repaint
         else if string match -q "BRANCH:*" -- "$result"
             # It's a git branch, switch to it
             set -l branch (string replace "BRANCH:" "" -- "$result")
