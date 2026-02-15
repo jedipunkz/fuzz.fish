@@ -84,11 +84,18 @@ func (m model) View() string {
 		Height(m.mainHeight).
 		Render(previewView)
 
+	// Build input line with optional status message
+	inputContent := inputView
+	if m.statusMsg != "" {
+		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("220")) // yellow
+		inputContent = inputView + "  " + warningStyle.Render(m.statusMsg)
+	}
+
 	// Input box with border
 	inputBox := boxStyle.
 		Width(m.width-2).
 		Padding(0, 1).
-		Render(inputView)
+		Render(inputContent)
 
 	mainView := lipgloss.JoinHorizontal(lipgloss.Top,
 		listBox,

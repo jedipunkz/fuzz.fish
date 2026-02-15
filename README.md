@@ -61,6 +61,7 @@ Search and switch git branches (available in git repositories).
 
 - Press `Ctrl+G` to toggle from History mode
 - Press `Enter` to switch to the selected branch
+- Press `Ctrl+G` again (while in Git Branch mode) to `git pull origin <branch>` for the current branch
 
 #### File Search Mode
 
