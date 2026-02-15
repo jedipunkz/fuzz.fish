@@ -96,6 +96,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updatePreview()
 
 	case tea.KeyMsg:
+		// Clear status message on any key press
+		m.statusMsg = ""
+
 		switch msg.String() {
 		case "enter":
 			if len(m.filtered) > 0 {
@@ -113,9 +116,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 		case "ctrl+g":
-			// Toggle between History and GitBranch mode
 			if m.mode == ModeGitBranch {
-				m.switchToHistoryMode()
+				// In GitBranch mode: pull current branch or show warning
+				if len(m.filtered) > 0 && m.filtered[m.cursor].IsCurrent {
+					branch := m.filtered[m.cursor].Original.(git.Branch)
+					res := branch.Name
+					m.choice = &res
+					m.fetchBranch = true
+					m.quitting = true
+					return m, tea.Quit
+				}
+				m.statusMsg = "⚠ Select current branch to pull"
 				return m, nil
 			}
 			cmd = m.switchToGitBranchMode()

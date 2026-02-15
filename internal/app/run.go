@@ -53,7 +53,11 @@ func Run() {
 			case ModeHistory:
 				fmt.Printf("CMD:%s", *m.choice)
 			case ModeGitBranch:
-				fmt.Printf("BRANCH:%s", *m.choice)
+				if m.fetchBranch {
+					fmt.Printf("FETCH:%s", *m.choice)
+				} else {
+					fmt.Printf("BRANCH:%s", *m.choice)
+				}
 			case ModeFiles:
 				if m.choiceIsDir {
 					fmt.Printf("DIR:%s", *m.choice)

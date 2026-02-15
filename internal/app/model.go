@@ -59,7 +59,9 @@ type model struct {
 	offset      int
 	choice      *string // Result string to print
 	choiceIsDir bool    // For files mode: whether the choice is a directory
+	fetchBranch bool    // True when ctrl+g selects current branch for git pull
 	quitting    bool
+	statusMsg   string  // Transient status message (e.g., warning)
 	loading     bool   // True while async data loading is in progress
 
 	pendingQuery string // For filter debounce
