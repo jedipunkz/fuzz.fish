@@ -207,6 +207,8 @@ func (m *model) switchToGitBranchMode() tea.Cmd {
 	// Async load branches
 	m.loading = true
 	m.filtered = nil
+	m.allItems = nil
+	m.allItemsStr = nil
 	m.cursor = 0
 	m.offset = 0
 	return loadBranchesCmd()
@@ -254,6 +256,8 @@ func (m *model) switchToFilesMode() tea.Cmd {
 	// Async load files
 	m.loading = true
 	m.filtered = nil
+	m.allItems = nil
+	m.allItemsStr = nil
 	m.cursor = 0
 	m.offset = 0
 	return loadFilesCmd()
