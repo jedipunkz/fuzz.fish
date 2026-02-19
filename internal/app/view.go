@@ -24,7 +24,9 @@ func (m model) View() string {
 
 	// Show loading indicator when async loading with no items yet
 	if m.loading && len(m.filtered) == 0 {
-		listBuilder.WriteString(strings.Repeat("\n", m.mainHeight-1))
+		if m.mainHeight > 1 {
+			listBuilder.WriteString(strings.Repeat("\n", m.mainHeight-1))
+		}
 		listBuilder.WriteString("Loading...")
 
 		listView := listBuilder.String()
