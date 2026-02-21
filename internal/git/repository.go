@@ -83,7 +83,11 @@ func (r *Repository) Branches() ([]Branch, error) {
 		}
 
 		// Get short hash only (no commit object fetch)
-		shortHash := ref.Hash().String()[:7]
+		hashStr := ref.Hash().String()
+		shortHash := hashStr
+		if len(hashStr) > 7 {
+			shortHash = hashStr[:7]
+		}
 
 		branch := Branch{
 			Name:              name,
