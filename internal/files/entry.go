@@ -9,6 +9,12 @@ import (
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
+// iconFile and iconDir are pre-allocated icon strings to avoid repeated allocation
+const (
+	iconFile = "📄"
+	iconDir  = "📁"
+)
+
 // Entry represents a file or directory
 type Entry struct {
 	Path  string
@@ -27,14 +33,14 @@ func (e Entry) GetInfo() (int64, fs.FileMode) {
 // Icon returns the appropriate icon for a file or directory
 func (e Entry) Icon() string {
 	if e.IsDir {
-		return "📁"
+		return iconDir
 	}
-	return "📄"
+	return iconFile
 }
 
 // Format formats the entry for display in the TUI list
 func (e Entry) Format() string {
-	return fmt.Sprintf("%s %s", e.Icon(), e.Path)
+	return e.Icon() + " " + e.Path
 }
 
 // GeneratePreview generates a preview of the file entry for the TUI preview window
@@ -74,21 +80,25 @@ func (e Entry) DirectoryListing() string {
 		return ""
 	}
 
+	limit := ui.MaxDirectoryEntries
+	if limit > len(entries) {
+		limit = len(entries)
+	}
+
 	var sb strings.Builder
-	count := 0
+	sb.Grow(limit * 32) // pre-allocate for typical line length
 
-	for _, dirEntry := range entries {
-		if count >= ui.MaxDirectoryEntries {
-			sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  ... and %d more", len(entries)-ui.MaxDirectoryEntries)) + "\n")
-			break
-		}
-
-		icon := "📄"
+	for i := 0; i < limit; i++ {
+		dirEntry := entries[i]
+		icon := iconFile
 		if dirEntry.IsDir() {
-			icon = "📁"
+			icon = iconDir
 		}
-		sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  %s %s", icon, dirEntry.Name())) + "\n")
-		count++
+		sb.WriteString(ui.InactiveContextStyle.Render("  "+icon+" "+dirEntry.Name()) + "\n")
+	}
+
+	if len(entries) > ui.MaxDirectoryEntries {
+		sb.WriteString(ui.InactiveContextStyle.Render(fmt.Sprintf("  ... and %d more", len(entries)-ui.MaxDirectoryEntries)) + "\n")
 	}
 
 	return sb.String()
