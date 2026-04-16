@@ -164,9 +164,9 @@ func (m model) inputCursor() *tea.Cursor {
 		return nil
 	}
 	// X: left border (1) + left padding (1)
-	c.Position.X += 2
+	c.X += 2
 	// Y: main panes height (mainHeight + 2 borders) + input box top border (1)
-	c.Position.Y += m.mainHeight + 2 + 1
+	c.Y += m.mainHeight + 2 + 1
 	return c
 }
 
