@@ -36,37 +36,42 @@ func GetFilePreview(path string, maxLines int) string {
 	// Try syntax highlighting with chroma
 	highlighted, err := HighlightCode(string(content), path)
 	if err == nil && highlighted != "" {
-		// Limit lines
-		lines := strings.Split(highlighted, "\n")
+		// Limit lines using SplitN to avoid splitting the entire file
+		lines := strings.SplitN(highlighted, "\n", maxLines+1)
 		if len(lines) > maxLines {
 			lines = lines[:maxLines]
 		}
 
 		var sb strings.Builder
+		sb.Grow(len(lines) * (MaxLineLength + 4))
 		for _, line := range lines {
 			// Truncate long lines
 			if len(line) > MaxLineLength {
 				line = line[:MaxLineLength] + "..."
 			}
-			sb.WriteString("  " + line + "\n")
+			sb.WriteString("  ")
+			sb.WriteString(line)
+			sb.WriteByte('\n')
 		}
 
 		return sb.String()
 	}
 
-	// Fallback to plain text
-	lines := strings.Split(string(content), "\n")
+	// Fallback to plain text using SplitN to avoid splitting the entire file
+	lines := strings.SplitN(string(content), "\n", maxLines+1)
 	if len(lines) > maxLines {
 		lines = lines[:maxLines]
 	}
 
 	var sb strings.Builder
+	sb.Grow(len(lines) * (MaxLineLength + 4))
 	for _, line := range lines {
 		// Truncate long lines
 		if len(line) > MaxLineLength {
 			line = line[:MaxLineLength] + "..."
 		}
-		sb.WriteString(InactiveContextStyle.Render(fmt.Sprintf("  %s", line)) + "\n")
+		sb.WriteString(InactiveContextStyle.Render(fmt.Sprintf("  %s", line)))
+		sb.WriteByte('\n')
 	}
 
 	return sb.String()

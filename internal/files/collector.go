@@ -37,7 +37,8 @@ func NewCollector(root string) *Collector {
 
 // Collect walks the directory tree and returns all collected entries
 func (c *Collector) Collect() []Entry {
-	var files []Entry
+	// Pre-allocate with a reasonable initial capacity to reduce re-allocations
+	files := make([]Entry, 0, 512)
 
 	_ = filepath.WalkDir(c.Root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

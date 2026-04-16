@@ -39,6 +39,9 @@ func isWordBoundary(text string, idx int) bool {
 	if idx == 0 {
 		return true // Start of string is always a boundary
 	}
+	if idx > len(text) {
+		return false // Out-of-range index is not a valid boundary
+	}
 	prev := rune(text[idx-1])
 	return prev == '/' || prev == '-' || prev == '_' || prev == '.' || prev == ' '
 }

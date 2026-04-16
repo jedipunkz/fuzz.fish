@@ -31,7 +31,7 @@ func NewRepository(path string) *Repository {
 
 // IsRepo checks if the path is a git repository
 func (r *Repository) IsRepo() bool {
-	_, err := gogit.PlainOpen(r.Path)
+	_, err := gogit.PlainOpenWithOptions(r.Path, &gogit.PlainOpenOptions{DetectDotGit: true, EnableDotGitCommonDir: true})
 	return err == nil
 }
 
@@ -40,7 +40,7 @@ func (r *Repository) IsRepo() bool {
 func (r *Repository) Branches() ([]Branch, error) {
 	var branches []Branch
 
-	repo, err := gogit.PlainOpen(r.Path)
+	repo, err := gogit.PlainOpenWithOptions(r.Path, &gogit.PlainOpenOptions{DetectDotGit: true, EnableDotGitCommonDir: true})
 	if err != nil {
 		return branches, err
 	}
@@ -83,7 +83,11 @@ func (r *Repository) Branches() ([]Branch, error) {
 		}
 
 		// Get short hash only (no commit object fetch)
-		shortHash := ref.Hash().String()[:7]
+		hashStr := ref.Hash().String()
+		shortHash := hashStr
+		if len(hashStr) > 7 {
+			shortHash = hashStr[:7]
+		}
 
 		branch := Branch{
 			Name:              name,
