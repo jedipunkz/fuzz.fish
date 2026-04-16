@@ -79,7 +79,7 @@ type model struct {
 
 // Init initializes the model
 func (m model) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, loadHistoryCmd())
+	return loadHistoryCmd()
 }
 
 func loadHistoryCmd() tea.Cmd {
