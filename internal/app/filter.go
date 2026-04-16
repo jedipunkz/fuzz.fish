@@ -12,46 +12,64 @@ import (
 
 // loadItemsForMode loads all items for the current mode
 func (m *model) loadItemsForMode() {
-	m.allItems = []Item{}
-
 	switch m.mode {
 	case ModeHistory:
 		// History: entries are Newest -> Oldest
 		// We want Newest at Bottom.
 		// Item[0] should be Oldest, Item[N] should be Newest.
+		n := len(m.historyEntries)
+		if cap(m.allItems) >= n {
+			m.allItems = m.allItems[:n]
+		} else {
+			m.allItems = make([]Item, n)
+		}
 		for i := range m.historyEntries {
-			e := m.historyEntries[len(m.historyEntries)-1-i]
-			m.allItems = append(m.allItems, Item{
+			e := m.historyEntries[n-1-i]
+			m.allItems[i] = Item{
 				Text:     e.Cmd,
-				Index:    len(m.historyEntries) - 1 - i,
+				Index:    n - 1 - i,
 				Original: e,
-			})
+			}
 		}
 	case ModeGitBranch:
 		// Git: branches are collected.
 		// We reverse them to put first item at bottom.
+		n := len(m.gitBranches)
+		if cap(m.allItems) >= n {
+			m.allItems = m.allItems[:n]
+		} else {
+			m.allItems = make([]Item, n)
+		}
 		for i := range m.gitBranches {
-			b := m.gitBranches[len(m.gitBranches)-1-i]
-			m.allItems = append(m.allItems, Item{
+			b := m.gitBranches[n-1-i]
+			m.allItems[i] = Item{
 				Text:      b.Name,
-				Index:     len(m.gitBranches) - 1 - i,
+				Index:     n - 1 - i,
 				Original:  b,
 				IsCurrent: b.IsCurrent,
 				IsRemote:  b.IsRemote,
-			})
+			}
 		}
 	case ModeFiles:
 		// Files: entries are in directory order
 		// We reverse them to put first item at bottom.
+		n := len(m.fileEntries)
+		if cap(m.allItems) >= n {
+			m.allItems = m.allItems[:n]
+		} else {
+			m.allItems = make([]Item, n)
+		}
 		for i := range m.fileEntries {
-			f := m.fileEntries[len(m.fileEntries)-1-i]
-			m.allItems = append(m.allItems, Item{
+			f := m.fileEntries[n-1-i]
+			m.allItems[i] = Item{
 				Text:     f.Path,
-				Index:    len(m.fileEntries) - 1 - i,
+				Index:    n - 1 - i,
 				Original: f,
 				IsDir:    f.IsDir,
-			})
+			}
 		}
+	default:
+		m.allItems = m.allItems[:0]
 	}
 
 	// Pre-build search strings to avoid per-keystroke allocation
@@ -65,7 +83,12 @@ func (m *model) loadItemsForMode() {
 func (m *model) updateFilter(query string) {
 	if query == "" {
 		// Return all items (which are already in display order)
-		m.filtered = make([]Item, len(m.allItems))
+		// Reuse existing slice if capacity allows
+		if cap(m.filtered) >= len(m.allItems) {
+			m.filtered = m.filtered[:len(m.allItems)]
+		} else {
+			m.filtered = make([]Item, len(m.allItems))
+		}
 		copy(m.filtered, m.allItems)
 	} else {
 		// Fuzzy search using pre-built search strings (avoids per-keystroke allocation)
@@ -134,7 +157,11 @@ func (m *model) updateFilter(query string) {
 			}
 		} else {
 			// Query is just whitespace, treat as empty
-			m.filtered = make([]Item, len(m.allItems))
+			if cap(m.filtered) >= len(m.allItems) {
+				m.filtered = m.filtered[:len(m.allItems)]
+			} else {
+				m.filtered = make([]Item, len(m.allItems))
+			}
 			copy(m.filtered, m.allItems)
 		}
 	}

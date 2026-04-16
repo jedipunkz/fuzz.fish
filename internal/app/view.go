@@ -11,6 +11,52 @@ import (
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
+// Pre-computed styles to avoid per-render allocation (lipgloss.NewStyle is expensive)
+var (
+	boxStyle = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(ui.ColorBorder))
+
+	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("220"))
+
+	// Item list styles
+	itemSelectedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(ui.ColorCyan)).
+				Background(lipgloss.Color(ui.ColorSelectionBg)).
+				Bold(true)
+
+	itemNormalStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(ui.ColorForeground))
+
+	cursorSelectedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(ui.ColorPurple)).
+				Background(lipgloss.Color(ui.ColorSelectionBg))
+
+	// Match highlight styles
+	matchSelectedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(ui.ColorPink)).
+				Background(lipgloss.Color(ui.ColorSelectionBg)).
+				Bold(true)
+
+	matchNormalStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(ui.ColorPink)).
+				Bold(true)
+
+	// Padding styles
+	paddingSelectedStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color(ui.ColorSelectionBg))
+
+	paddingNormalStyle = lipgloss.NewStyle()
+
+	// Time ago styles
+	timeAgoSelectedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(ui.ColorTimeAgo)).
+				Background(lipgloss.Color(ui.ColorSelectionBg))
+
+	timeAgoNormalStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(ui.ColorTimeAgo))
+)
+
 // View renders the application view
 func (m model) View() string {
 	if !m.ready {
@@ -31,10 +77,6 @@ func (m model) View() string {
 
 		listView := listBuilder.String()
 		previewView := m.viewport.View()
-
-		boxStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(ui.ColorBorder))
 
 		listBox := boxStyle.Width(m.listWidth).Height(m.mainHeight).Render(listView)
 		previewBox := boxStyle.Width(m.viewport.Width).Height(m.mainHeight).Render(previewView)
@@ -69,11 +111,6 @@ func (m model) View() string {
 	listView := listBuilder.String()
 	previewView := m.viewport.View()
 
-	// Border style with rounded corners and gray color
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(ui.ColorBorder))
-
 	// List pane with border
 	listBox := boxStyle.
 		Width(m.listWidth).
@@ -89,7 +126,6 @@ func (m model) View() string {
 	// Build input line with optional status message
 	inputContent := inputView
 	if m.statusMsg != "" {
-		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("220")) // yellow
 		inputContent = inputView + "  " + warningStyle.Render(m.statusMsg)
 	}
 
@@ -117,16 +153,16 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		return
 	}
 
+	isSelected := index == m.cursor
+
 	var cmdStyle lipgloss.Style
 	var cursor string
-
-	isSelected := index == m.cursor
 	if isSelected {
 		cursor = "│"
-		cmdStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorCyan)).Background(lipgloss.Color(ui.ColorSelectionBg)).Bold(true)
+		cmdStyle = itemSelectedStyle
 	} else {
 		cursor = " "
-		cmdStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorForeground))
+		cmdStyle = itemNormalStyle
 	}
 
 	text := i.Text
@@ -148,7 +184,7 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		} else {
 			icon = " "
 		}
-		text = fmt.Sprintf("%s %s", icon, text)
+		text = icon + " " + text
 	case ModeFiles:
 		var icon string
 		if i.IsDir {
@@ -156,7 +192,7 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		} else {
 			icon = "📄"
 		}
-		text = fmt.Sprintf("%s %s", icon, text)
+		text = icon + " " + text
 	}
 
 	cursorStr := cursor + " "
@@ -177,59 +213,71 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		text = text[:contentWidth-1] + "…"
 	}
 
-	renderedCursor := cursorStr
+	var renderedCursor string
 	if isSelected {
-		renderedCursor = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorPurple)).Background(lipgloss.Color(ui.ColorSelectionBg)).Render(cursorStr)
+		renderedCursor = cursorSelectedStyle.Render(cursorStr)
+	} else {
+		renderedCursor = cursorStr
+	}
+
+	// Build match set as bool slice for O(1) lookup without map overhead
+	runes := []rune(text)
+	var matchBits []bool
+	if len(i.MatchedIndexes) > 0 {
+		// Find max index to size the bool slice
+		maxIdx := 0
+		for _, idx := range i.MatchedIndexes {
+			if idx > maxIdx {
+				maxIdx = idx
+			}
+		}
+		if maxIdx < len(runes) {
+			matchBits = make([]bool, maxIdx+1)
+			for _, idx := range i.MatchedIndexes {
+				if idx < len(matchBits) {
+					matchBits[idx] = true
+				}
+			}
+		}
 	}
 
 	// Render text with match highlighting
 	var textBuilder strings.Builder
-	matchSet := make(map[int]bool)
-	for _, idx := range i.MatchedIndexes {
-		matchSet[idx] = true
-	}
-
-	runes := []rune(text)
-	for runeIdx := 0; runeIdx < len(runes); runeIdx++ {
+	textBuilder.Grow(len(text) * 20) // estimate: each char may get ANSI escape codes
+	for runeIdx, r := range runes {
 		var charStyle lipgloss.Style
-		if matchSet[runeIdx] {
-			// Matched character
+		isMatch := runeIdx < len(matchBits) && matchBits[runeIdx]
+		if isMatch {
 			if isSelected {
-				charStyle = lipgloss.NewStyle().
-					Foreground(lipgloss.Color(ui.ColorPink)).
-					Background(lipgloss.Color(ui.ColorSelectionBg)).
-					Bold(true)
+				charStyle = matchSelectedStyle
 			} else {
-				charStyle = lipgloss.NewStyle().
-					Foreground(lipgloss.Color(ui.ColorPink)).
-					Bold(true)
+				charStyle = matchNormalStyle
 			}
 		} else {
-			// Non-matched character
 			charStyle = cmdStyle
 		}
-		textBuilder.WriteString(charStyle.Render(string(runes[runeIdx])))
+		textBuilder.WriteString(charStyle.Render(string(r)))
 	}
 
 	rendered := textBuilder.String()
 	renderedWidth := lipgloss.Width(rendered)
 	padWidth := contentWidth - renderedWidth
 	if padWidth > 0 {
-		paddingStyle := lipgloss.NewStyle()
 		if isSelected {
-			paddingStyle = paddingStyle.Background(lipgloss.Color(ui.ColorSelectionBg))
+			rendered += paddingSelectedStyle.Render(strings.Repeat(" ", padWidth))
+		} else {
+			rendered += paddingNormalStyle.Render(strings.Repeat(" ", padWidth))
 		}
-		rendered += paddingStyle.Render(strings.Repeat(" ", padWidth))
 	}
 
 	// Render time ago
 	var timeAgoRendered string
 	if timeAgo != "" {
-		timeAgoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorTimeAgo))
 		if isSelected {
-			timeAgoStyle = timeAgoStyle.Background(lipgloss.Color(ui.ColorSelectionBg))
+			timeAgoRendered = " " + timeAgoSelectedStyle.Render(timeAgo)
+		} else {
+			timeAgoRendered = " " + timeAgoNormalStyle.Render(timeAgo)
 		}
-		timeAgoRendered = " " + timeAgoStyle.Render(timeAgo)
 	}
 
 	_, _ = fmt.Fprint(w, renderedCursor+rendered+timeAgoRendered)

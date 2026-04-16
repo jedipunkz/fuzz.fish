@@ -2,6 +2,7 @@ package history
 
 import (
 	"bufio"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -36,9 +37,15 @@ func (p *Parser) Parse() []Entry {
 	}
 	defer file.Close() //nolint:errcheck
 
+	return parseReader(file)
+}
+
+// parseReader parses Fish shell history entries from an io.Reader.
+// This is exported for testing purposes.
+func parseReader(r io.Reader) []Entry {
 	var entries []Entry
 	var current *Entry
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(r)
 	lineNum := 0
 
 	for scanner.Scan() {

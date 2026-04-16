@@ -35,6 +35,36 @@ var _ = styles.Register(chroma.MustNewStyle("tokyonight", chroma.StyleEntries{
 	chroma.Background:        " bg:#1a1b26",
 }))
 
+// supportedLanguages is a package-level set to avoid per-call allocation
+var supportedLanguages = map[string]bool{
+	"Go":         true,
+	"Python":     true,
+	"JavaScript": true,
+	"TypeScript": true,
+	"JSON":       true,
+	"Rust":       true,
+	"YAML":       true,
+}
+
+// chromaFormatter and chromaStyle are cached to avoid per-call lookup
+var (
+	chromaFormatter = func() chroma.Formatter {
+		f := formatters.Get("terminal256")
+		if f == nil {
+			return formatters.Fallback
+		}
+		return f
+	}()
+
+	chromaStyle = func() *chroma.Style {
+		s := styles.Get("tokyonight")
+		if s == nil {
+			return styles.Fallback
+		}
+		return s
+	}()
+)
+
 // HighlightCode performs syntax highlighting on code
 func HighlightCode(code string, filename string) (string, error) {
 	// Determine lexer from filename
@@ -49,35 +79,12 @@ func HighlightCode(code string, filename string) (string, error) {
 	}
 
 	// Only support specific languages
-	lexerName := lexer.Config().Name
-	supportedLanguages := map[string]bool{
-		"Go":         true,
-		"Python":     true,
-		"JavaScript": true,
-		"TypeScript": true,
-		"JSON":       true,
-		"Rust":       true,
-		"YAML":       true,
-	}
-
-	if !supportedLanguages[lexerName] {
+	if !supportedLanguages[lexer.Config().Name] {
 		// Not in supported list, return plain text
 		return code, nil
 	}
 
 	lexer = chroma.Coalesce(lexer)
-
-	// Use Tokyo Night style
-	style := styles.Get("tokyonight")
-	if style == nil {
-		style = styles.Fallback
-	}
-
-	// Create terminal formatter with 256 colors
-	formatter := formatters.Get("terminal256")
-	if formatter == nil {
-		formatter = formatters.Fallback
-	}
 
 	// Tokenize
 	iterator, err := lexer.Tokenise(nil, code)
@@ -85,9 +92,9 @@ func HighlightCode(code string, filename string) (string, error) {
 		return code, err
 	}
 
-	// Format output
+	// Format output using cached formatter and style
 	var buf bytes.Buffer
-	err = formatter.Format(&buf, style, iterator)
+	err = chromaFormatter.Format(&buf, chromaStyle, iterator)
 	if err != nil {
 		return code, err
 	}
