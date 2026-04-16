@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/jedipunkz/fuzz.fish/internal/files"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
@@ -81,8 +81,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			previewWidth = 0
 		}
 
-		m.viewport.Width = previewWidth
-		m.viewport.Height = m.mainHeight
+		m.viewport.SetWidth(previewWidth)
+		m.viewport.SetHeight(m.mainHeight)
 
 		// Recalculate offset to keep cursor at the bottom of the view
 		if len(m.filtered) > 0 {
@@ -95,7 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.validateCursor()
 		m.updatePreview()
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Clear status message on any key press
 		m.statusMsg = ""
 
@@ -339,14 +339,14 @@ func (m *model) updatePreview() {
 	switch m.mode {
 	case ModeHistory:
 		entry := item.Original.(history.Entry)
-		content = entry.GeneratePreview(m.historyEntries, item.Index, m.viewport.Width, m.viewport.Height)
+		content = entry.GeneratePreview(m.historyEntries, item.Index, m.viewport.Width(), m.viewport.Height())
 	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
 		cacheKey = branch.Name
 		if cached, ok := m.previewCache[cacheKey]; ok {
 			content = cached
 		} else {
-			content = branch.GeneratePreview(m.viewport.Width, m.viewport.Height)
+			content = branch.GeneratePreview(m.viewport.Width(), m.viewport.Height())
 			m.previewCache[cacheKey] = content
 		}
 	case ModeFiles:
@@ -355,7 +355,7 @@ func (m *model) updatePreview() {
 		if cached, ok := m.previewCache[cacheKey]; ok {
 			content = cached
 		} else {
-			content = entry.GeneratePreview(m.viewport.Width, m.viewport.Height)
+			content = entry.GeneratePreview(m.viewport.Width(), m.viewport.Height())
 			m.previewCache[cacheKey] = content
 		}
 	}

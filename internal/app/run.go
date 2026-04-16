@@ -5,12 +5,11 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
-	"github.com/muesli/termenv"
 )
 
 // Run starts the application
@@ -19,14 +18,16 @@ func Run() {
 	ti.Placeholder = "Search history... (Ctrl+G: git, Ctrl+S: files)"
 	ti.Focus()
 	ti.CharLimit = 156
-	ti.Width = 20
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorCyan))
-	ti.TextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorForeground))
+	ti.SetWidth(20)
+	s := textinput.DefaultDarkStyles()
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorCyan))
+	s.Focused.Text = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorForeground))
+	ti.SetStyles(s)
 
 	m := model{
 		mode:             ModeHistory,
 		input:            ti,
-		viewport:         viewport.New(0, 0),
+		viewport:         viewport.New(),
 		previewCache:     make(map[string]string),
 		lastPreviewIndex: -1,
 		loading:          true,
@@ -39,9 +40,7 @@ func Run() {
 	}
 	defer func() { _ = tty.Close() }()
 
-	lipgloss.SetColorProfile(termenv.NewOutput(tty).Profile)
-
-	prog := tea.NewProgram(m, tea.WithInput(tty), tea.WithOutput(tty), tea.WithAltScreen())
+	prog := tea.NewProgram(m, tea.WithInput(tty), tea.WithOutput(tty))
 	finalModel, err := prog.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)

@@ -6,7 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
+	tea "charm.land/bubbletea/v2"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
@@ -58,9 +59,11 @@ var (
 )
 
 // View renders the application view
-func (m model) View() string {
+func (m model) View() tea.View {
 	if !m.ready {
-		return "Initializing..."
+		v := tea.NewView("Initializing...")
+		v.AltScreen = true
+		return v
 	}
 
 	inputView := m.input.View()
@@ -78,12 +81,15 @@ func (m model) View() string {
 		listView := listBuilder.String()
 		previewView := m.viewport.View()
 
-		listBox := boxStyle.Width(m.listWidth).Height(m.mainHeight).Render(listView)
-		previewBox := boxStyle.Width(m.viewport.Width).Height(m.mainHeight).Render(previewView)
-		inputBox := boxStyle.Width(m.width - 2).Padding(0, 1).Render(inputView)
+		// In lipgloss v2, Width/Height include borders, so add 2 for left+right / top+bottom borders
+		listBox := boxStyle.Width(m.listWidth + 2).Height(m.mainHeight + 2).Render(listView)
+		previewBox := boxStyle.Width(m.viewport.Width() + 2).Height(m.mainHeight + 2).Render(previewView)
+		inputBox := boxStyle.Width(m.width).Padding(0, 1).Render(inputView)
 
 		mainView := lipgloss.JoinHorizontal(lipgloss.Top, listBox, previewBox)
-		return lipgloss.JoinVertical(lipgloss.Left, mainView, inputBox)
+		v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, mainView, inputBox))
+		v.AltScreen = true
+		return v
 	}
 
 	// Determine visible range
@@ -112,15 +118,16 @@ func (m model) View() string {
 	previewView := m.viewport.View()
 
 	// List pane with border
+	// In lipgloss v2, Width/Height include borders, so add 2 for left+right / top+bottom borders
 	listBox := boxStyle.
-		Width(m.listWidth).
-		Height(m.mainHeight).
+		Width(m.listWidth + 2).
+		Height(m.mainHeight + 2).
 		Render(listView)
 
 	// Preview pane with border
 	previewBox := boxStyle.
-		Width(m.viewport.Width).
-		Height(m.mainHeight).
+		Width(m.viewport.Width() + 2).
+		Height(m.mainHeight + 2).
 		Render(previewView)
 
 	// Build input line with optional status message
@@ -131,7 +138,7 @@ func (m model) View() string {
 
 	// Input box with border
 	inputBox := boxStyle.
-		Width(m.width-2).
+		Width(m.width).
 		Padding(0, 1).
 		Render(inputContent)
 
@@ -140,10 +147,12 @@ func (m model) View() string {
 		previewBox,
 	)
 
-	return lipgloss.JoinVertical(lipgloss.Left,
+	v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left,
 		mainView,
 		inputBox,
-	)
+	))
+	v.AltScreen = true
+	return v
 }
 
 // renderItem renders a single item in the list
