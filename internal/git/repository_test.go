@@ -30,7 +30,7 @@ func TestIsRepo_NotGitDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	r := NewRepository(tmpDir)
 	if r.IsRepo() {
@@ -60,7 +60,7 @@ func TestBranches_NotGitDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	r := NewRepository(tmpDir)
 	branches, err := r.Branches()
@@ -100,14 +100,15 @@ func TestBranches_InGitRepo(t *testing.T) {
 		}
 	}
 
-	// Exactly one branch should be marked as current
+	// At most one branch should be marked as current
+	// (0 in detached HEAD / CI environments, 1 in normal branch checkout)
 	currentCount := 0
 	for _, b := range branches {
 		if b.IsCurrent {
 			currentCount++
 		}
 	}
-	if currentCount != 1 {
-		t.Errorf("expected exactly 1 current branch, got %d", currentCount)
+	if currentCount > 1 {
+		t.Errorf("expected at most 1 current branch, got %d", currentCount)
 	}
 }
