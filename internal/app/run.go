@@ -16,13 +16,14 @@ import (
 func Run() {
 	ti := textinput.New()
 	ti.Placeholder = "Search history... (Ctrl+G: git, Ctrl+S: files)"
-	ti.Focus()
 	ti.CharLimit = 156
-	ti.SetWidth(20)
 	s := textinput.DefaultDarkStyles()
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorCyan))
 	s.Focused.Text = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorForeground))
+	s.Cursor.Blink = false
 	ti.SetStyles(s)
+	ti.SetVirtualCursor(false)
+	ti.Focus()
 
 	m := model{
 		mode:             ModeHistory,

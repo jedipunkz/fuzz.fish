@@ -89,6 +89,7 @@ func (m model) View() tea.View {
 		mainView := lipgloss.JoinHorizontal(lipgloss.Top, listBox, previewBox)
 		v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, mainView, inputBox))
 		v.AltScreen = true
+		v.Cursor = m.inputCursor()
 		return v
 	}
 
@@ -152,7 +153,21 @@ func (m model) View() tea.View {
 		inputBox,
 	))
 	v.AltScreen = true
+	v.Cursor = m.inputCursor()
 	return v
+}
+
+// inputCursor returns the textinput cursor offset to absolute screen coordinates.
+func (m model) inputCursor() *tea.Cursor {
+	c := m.input.Cursor()
+	if c == nil {
+		return nil
+	}
+	// X: left border (1) + left padding (1)
+	c.X += 2
+	// Y: main panes height (mainHeight + 2 borders) + input box top border (1)
+	c.Y += m.mainHeight + 2 + 1
+	return c
 }
 
 // renderItem renders a single item in the list
