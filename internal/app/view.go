@@ -6,8 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"charm.land/lipgloss/v2"
-	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
@@ -59,11 +58,9 @@ var (
 )
 
 // View renders the application view
-func (m model) View() tea.View {
+func (m model) View() string {
 	if !m.ready {
-		v := tea.NewView("Initializing...")
-		v.AltScreen = true
-		return v
+		return "Initializing..."
 	}
 
 	inputView := m.input.View()
@@ -82,13 +79,11 @@ func (m model) View() tea.View {
 		previewView := m.viewport.View()
 
 		listBox := boxStyle.Width(m.listWidth).Height(m.mainHeight).Render(listView)
-		previewBox := boxStyle.Width(m.viewport.Width()).Height(m.mainHeight).Render(previewView)
+		previewBox := boxStyle.Width(m.viewport.Width).Height(m.mainHeight).Render(previewView)
 		inputBox := boxStyle.Width(m.width - 2).Padding(0, 1).Render(inputView)
 
 		mainView := lipgloss.JoinHorizontal(lipgloss.Top, listBox, previewBox)
-		v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, mainView, inputBox))
-		v.AltScreen = true
-		return v
+		return lipgloss.JoinVertical(lipgloss.Left, mainView, inputBox)
 	}
 
 	// Determine visible range
@@ -124,7 +119,7 @@ func (m model) View() tea.View {
 
 	// Preview pane with border
 	previewBox := boxStyle.
-		Width(m.viewport.Width()).
+		Width(m.viewport.Width).
 		Height(m.mainHeight).
 		Render(previewView)
 
@@ -145,12 +140,10 @@ func (m model) View() tea.View {
 		previewBox,
 	)
 
-	v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left,
+	return lipgloss.JoinVertical(lipgloss.Left,
 		mainView,
 		inputBox,
-	))
-	v.AltScreen = true
-	return v
+	)
 }
 
 // renderItem renders a single item in the list
