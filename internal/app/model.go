@@ -3,9 +3,9 @@ package app
 import (
 	"os"
 
-	"charm.land/bubbles/v2/textinput"
-	"charm.land/bubbles/v2/viewport"
-	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jedipunkz/fuzz.fish/internal/files"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"

@@ -1,6 +1,6 @@
 package ui
 
-import "charm.land/lipgloss/v2"
+import "github.com/charmbracelet/lipgloss"
 
 // Tokyo Night color palette
 const (

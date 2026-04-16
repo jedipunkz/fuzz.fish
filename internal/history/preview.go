@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
