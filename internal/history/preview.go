@@ -48,7 +48,7 @@ func (e Entry) GeneratePreview(all []Entry, idx, width, height int) string {
 		end = len(all)
 	}
 
-	for i := start; i < end; i++ {
+	for i := end - 1; i >= start; i-- {
 		cmd := all[i].Cmd
 
 		if i == idx {
