@@ -106,6 +106,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.quitting = true
 				return m, tea.Quit
 			}
+		case "tab":
+			if len(m.filtered) > 0 {
+				m.completeSelectedItem()
+			}
+			return m, nil
 		case "ctrl+c", "esc":
 			m.quitting = true
 			return m, tea.Quit
@@ -273,6 +278,14 @@ func (m *model) updatePlaceholder() {
 	case ModeFiles:
 		m.input.Placeholder = ""
 	}
+}
+
+// completeSelectedItem fills the input field with the currently selected item's text
+func (m *model) completeSelectedItem() {
+	text := m.filtered[m.cursor].Text
+	m.input.SetValue(text)
+	m.input.CursorEnd()
+	m.updateFilter(text)
 }
 
 // resetCursorToBottom resets the cursor to the bottom of the list
