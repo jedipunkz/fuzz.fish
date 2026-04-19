@@ -15,7 +15,7 @@ import (
 // Run starts the application
 func Run() {
 	ti := textinput.New()
-	ti.Placeholder = "Search history... (Ctrl+G: git, Ctrl+S: files)"
+	ti.Placeholder = ""
 	ti.CharLimit = 156
 	s := textinput.DefaultDarkStyles()
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(lipgloss.Color(ui.ColorCyan))
