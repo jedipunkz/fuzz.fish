@@ -267,11 +267,11 @@ func (m *model) switchToFilesMode() tea.Cmd {
 func (m *model) updatePlaceholder() {
 	switch m.mode {
 	case ModeHistory:
-		m.input.Placeholder = "Search history... (Ctrl+G: git, Ctrl+S: files)"
+		m.input.Placeholder = ""
 	case ModeGitBranch:
-		m.input.Placeholder = "Search branches... (Ctrl+R: history, Ctrl+S: files)"
+		m.input.Placeholder = ""
 	case ModeFiles:
-		m.input.Placeholder = "Search files... (Ctrl+R: history, Ctrl+G: git)"
+		m.input.Placeholder = ""
 	}
 }
 
