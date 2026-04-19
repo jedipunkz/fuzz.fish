@@ -1,6 +1,7 @@
 package scoring
 
 import (
+	"math"
 	"time"
 	"unicode"
 )
@@ -15,22 +16,32 @@ type Config struct {
 	PrefixBonus float64
 	// CamelCase bonus (match at uppercase letter)
 	CamelCaseBonus float64
-	// Recency bonus settings
+	// MatchWeight is the multiplier applied to match quality score.
+	// Higher values make match quality the dominant ranking factor.
+	MatchWeight float64
+	// FrecencyWeight is the multiplier for frecency bonus (frequency × time decay).
+	// Used in history mode. Frecency score = log1p(frequency) × timeMultiplier × FrecencyWeight.
+	FrecencyWeight float64
+	// MaxRecencyBonus is the max recency bonus for non-history modes (e.g. git branches).
+	// Uses hyperbolic decay: bonus = MaxRecencyBonus / (1 + ageInHours).
 	MaxRecencyBonus float64
 	// Current branch bonus (git mode only)
 	CurrentBranchBonus float64
 }
 
-// DefaultConfig returns the default scoring configuration
-// inspired by fzy and fzf algorithms
+// DefaultConfig returns the default scoring configuration.
+// Match quality is weighted 10× to be the primary ranking factor.
+// Frecency provides a secondary boost based on frequency × recency.
 func DefaultConfig() Config {
 	return Config{
-		WordBoundaryBonus:  50.0,  // Bonus for matching after word boundaries
-		ConsecutiveBonus:   30.0,  // Bonus for each consecutive match
-		PrefixBonus:        100.0, // Bonus for matching at the start
-		CamelCaseBonus:     40.0,  // Bonus for matching uppercase in CamelCase
-		MaxRecencyBonus:    3000.0,
-		CurrentBranchBonus: 500.0, // Bonus for current git branch
+		WordBoundaryBonus:  50.0,
+		ConsecutiveBonus:   30.0,
+		PrefixBonus:        100.0,
+		CamelCaseBonus:     40.0,
+		MatchWeight:        10.0,  // Match quality is primary
+		FrecencyWeight:     50.0,  // log1p(freq) × multiplier × 50
+		MaxRecencyBonus:    200.0, // For git branches (was 3000, reduced to same scale)
+		CurrentBranchBonus: 500.0,
 	}
 }
 
@@ -94,11 +105,9 @@ func (c Config) MatchBonus(text string, matchedIndexes []int) float64 {
 	return bonus
 }
 
-// RecencyBonus calculates recency bonus using hyperbolic decay
-// Formula: bonus = maxBonus / (1 + ageInHours)
-// This strongly prioritizes recent items:
-//
-//	0h ago -> maxBonus, 1h -> maxBonus/2, 2h -> maxBonus/3, 24h -> maxBonus/25
+// RecencyBonus calculates recency bonus using hyperbolic decay.
+// Used for non-history modes (e.g. git branch commit timestamps).
+// Formula: bonus = MaxRecencyBonus / (1 + ageInHours)
 func (c Config) RecencyBonus(timestamp, now int64) float64 {
 	if timestamp <= 0 {
 		return 0
@@ -112,20 +121,66 @@ func (c Config) RecencyBonus(timestamp, now int64) float64 {
 	return c.MaxRecencyBonus / (1.0 + ageHours)
 }
 
-// ItemScore calculates the total score for an item
-// combining fuzzy match score, position bonuses, and recency
-func (c Config) ItemScore(text string, fuzzyScore int, matchedIndexes []int, timestamp int64, isCurrent bool, now int64) float64 {
-	score := float64(fuzzyScore)
-
-	// Add match position bonuses (fzy/fzf-inspired)
-	score += c.MatchBonus(text, matchedIndexes)
-
-	// Recency bonus
-	if timestamp > 0 {
-		score += c.RecencyBonus(timestamp, now)
+// FrecencyBonus calculates a frecency score combining frequency and recency.
+// Used in history mode. Based on zoxide's step-wise time multiplier approach:
+//
+//	< 1 hour:  ×4  (very recent)
+//	< 1 day:   ×2
+//	< 1 week:  ×1
+//	older:     ×0.5
+//
+// Score = log1p(frequency) × timeMultiplier × FrecencyWeight
+// log1p smooths the frequency so that e.g. 100 uses ≠ 100× bonus over 1 use.
+func (c Config) FrecencyBonus(timestamp int64, frequency int, now int64) float64 {
+	if timestamp <= 0 || frequency <= 0 {
+		return 0
 	}
 
-	// Current branch bonus
+	ageHours := float64(now-timestamp) / 3600.0
+	if ageHours < 0 {
+		ageHours = 0
+	}
+
+	var multiplier float64
+	switch {
+	case ageHours < 1:
+		multiplier = 4.0
+	case ageHours < 24:
+		multiplier = 2.0
+	case ageHours < 168: // 1 week
+		multiplier = 1.0
+	default:
+		multiplier = 0.5
+	}
+
+	return math.Log1p(float64(frequency)) * multiplier * c.FrecencyWeight
+}
+
+// ItemScore calculates the total score for an item.
+//
+// For history mode (frequency > 0):
+//
+//	score = (fuzzyScore + matchBonus) × MatchWeight + FrecencyBonus
+//
+// For other modes (frequency == 0, e.g. git branches, files):
+//
+//	score = (fuzzyScore + matchBonus) × MatchWeight + RecencyBonus
+//
+// This ensures match quality is the primary ranking factor (~10×),
+// with frecency/recency as a secondary signal.
+func (c Config) ItemScore(text string, fuzzyScore int, matchedIndexes []int, timestamp int64, frequency int, isCurrent bool, now int64) float64 {
+	// Match quality is the primary signal, amplified by MatchWeight
+	matchScore := (float64(fuzzyScore) + c.MatchBonus(text, matchedIndexes)) * c.MatchWeight
+
+	var score float64
+	if frequency > 0 {
+		// History mode: frecency (frequency × time decay) as secondary signal
+		score = matchScore + c.FrecencyBonus(timestamp, frequency, now)
+	} else {
+		// Non-history mode: simple recency as secondary signal
+		score = matchScore + c.RecencyBonus(timestamp, now)
+	}
+
 	if isCurrent {
 		score += c.CurrentBranchBonus
 	}
