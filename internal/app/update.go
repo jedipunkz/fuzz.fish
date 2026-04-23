@@ -106,6 +106,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.quitting = true
 				return m, tea.Quit
 			}
+		case "tab":
+			if len(m.filtered) > 0 {
+				m.completeSelectedItem()
+			}
+			return m, nil
 		case "ctrl+c", "esc":
 			m.quitting = true
 			return m, tea.Quit
@@ -267,12 +272,20 @@ func (m *model) switchToFilesMode() tea.Cmd {
 func (m *model) updatePlaceholder() {
 	switch m.mode {
 	case ModeHistory:
-		m.input.Placeholder = "Search history... (Ctrl+G: git, Ctrl+S: files)"
+		m.input.Placeholder = ""
 	case ModeGitBranch:
-		m.input.Placeholder = "Search branches... (Ctrl+R: history, Ctrl+S: files)"
+		m.input.Placeholder = ""
 	case ModeFiles:
-		m.input.Placeholder = "Search files... (Ctrl+R: history, Ctrl+G: git)"
+		m.input.Placeholder = ""
 	}
+}
+
+// completeSelectedItem fills the input field with the currently selected item's text
+func (m *model) completeSelectedItem() {
+	text := m.filtered[m.cursor].Text
+	m.input.SetValue(text)
+	m.input.CursorEnd()
+	m.updateFilter(text)
 }
 
 // resetCursorToBottom resets the cursor to the bottom of the list

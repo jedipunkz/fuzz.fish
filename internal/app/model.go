@@ -51,9 +51,10 @@ type model struct {
 	fileEntries    []files.Entry
 
 	// Items state
-	allItems    []Item    // All items for current mode (sorted newest/priority first)
-	allItemsStr []string  // Pre-built search strings for fuzzy matching (avoids per-keystroke allocation)
-	filtered    []Item    // Filtered items
+	allItems       []Item           // All items for current mode (sorted newest/priority first)
+	allItemsStr    []string         // Pre-built search strings for fuzzy matching (avoids per-keystroke allocation)
+	filtered       []Item           // Filtered items
+	historyFreqMap map[string]int   // Command frequency map for frecency scoring (history mode only)
 
 	cursor      int
 	offset      int
