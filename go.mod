@@ -9,7 +9,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.24.1
 	github.com/atotto/clipboard v0.1.4
 	github.com/go-git/go-git/v5 v5.18.0
-	github.com/sahilm/fuzzy v0.1.1
+	github.com/sahilm/fuzzy v0.1.2
 )
 
 require (
