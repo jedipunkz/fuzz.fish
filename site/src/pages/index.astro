@@ -1,0 +1,156 @@
+---
+import '../styles/global.css';
+
+const base = import.meta.env.BASE_URL;
+const siteUrl = 'https://jedipunkz.github.io';
+const pageUrl = `${siteUrl}${base}`;
+const title = 'fuzz.fish - Fuzzy finder plugin for Fish Shell';
+const description =
+  'fuzz.fish is a Fish Shell plugin for fuzzy finding command history, project files, and Git branches from a unified terminal interface.';
+const imageUrl = `${siteUrl}${base}assets/fuzz.png`;
+const repoUrl = 'https://github.com/jedipunkz/fuzz.fish';
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareSourceCode',
+  name: 'fuzz.fish',
+  description,
+  url: pageUrl,
+  codeRepository: repoUrl,
+  license: `${repoUrl}/blob/main/LICENSE`,
+  programmingLanguage: 'Go',
+  runtimePlatform: 'Fish Shell',
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Linux, macOS',
+};
+
+const shortcuts = [
+  ['Ctrl+R', 'Open the unified fuzzy finder'],
+  ['Ctrl+G', 'Switch to Git branch search mode'],
+  ['Ctrl+S', 'Switch to file search mode'],
+  ['Ctrl+P/N or Up/Down', 'Move through results'],
+  ['Enter', 'Select the current item'],
+  ['Ctrl+Y', 'Copy the selected item to the clipboard'],
+  ['Esc or Ctrl+C', 'Cancel and return to the shell'],
+];
+
+const modes = [
+  {
+    name: 'History',
+    title: 'Command history with context',
+    text: 'Search Fish history with fuzzy matching, then insert the selected command back into the prompt.',
+  },
+  {
+    name: 'Git',
+    title: 'Branch switching from the prompt',
+    text: 'Browse local branches inside a Git repository, switch with Enter, and pull the current branch from origin from the same interface.',
+  },
+  {
+    name: 'Files',
+    title: 'Project file navigation',
+    text: 'Search files and directories from the current working directory, insert file paths, or cd into directories.',
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content={description}
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="jedipunkz" />
+    <meta name="theme-color" content="#1a1b26" />
+    <link rel="canonical" href={pageUrl} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="fuzz.fish" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1080" />
+    <meta property="og:image:height" content="1080" />
+    <meta property="og:image:alt" content="fuzz.fish logo" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content="fuzz.fish logo" />
+
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__copy">
+          <p class="eyebrow">Fish Shell plugin</p>
+          <h1 id="hero-title">fuzz.fish</h1>
+          <p class="lead">
+            Fuzzy finding for command history, project files, and Git branches without leaving your Fish prompt.
+          </p>
+          <div class="actions" aria-label="Project links">
+            <a class="button button--primary" href="https://github.com/jedipunkz/fuzz.fish">GitHub</a>
+            <a class="button button--secondary" href="https://github.com/jedipunkz/fuzz.fish/releases">Releases</a>
+          </div>
+          <div class="install" aria-label="Fisher install command">
+            <span>Install with Fisher</span>
+            <code>fisher install jedipunkz/fuzz.fish</code>
+          </div>
+        </div>
+        <div class="hero__media">
+          <img class="logo" src={`${base}assets/fuzz.png`} alt="fuzz.fish logo" width="300" height="300" />
+          <img class="demo" src={`${base}assets/fuzz.gif`} alt="fuzz.fish terminal demo" width="800" />
+        </div>
+      </section>
+
+      <section class="overview" aria-label="Feature overview">
+        {modes.map((mode) => (
+          <article class="feature">
+            <p>{mode.name}</p>
+            <h2>{mode.title}</h2>
+            <p>{mode.text}</p>
+          </article>
+        ))}
+      </section>
+
+      <section class="details" aria-labelledby="details-title">
+        <div>
+          <p class="eyebrow">Unified interface</p>
+          <h2 id="details-title">One picker, three workflows</h2>
+          <p>
+            Press <kbd>Ctrl+R</kbd> to open fuzz.fish, then switch modes as the task changes. The default history
+            search is ready immediately, while Git branch and file search are a keypress away.
+          </p>
+        </div>
+        <div class="shortcut-list" aria-label="Keyboard shortcuts">
+          {shortcuts.map(([key, action]) => (
+            <div class="shortcut">
+              <kbd>{key}</kbd>
+              <span>{action}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section class="requirements" aria-labelledby="requirements-title">
+        <div>
+          <p class="eyebrow">Requirements</p>
+          <h2 id="requirements-title">Built for Fish users</h2>
+        </div>
+        <ul>
+          <li>Fish Shell 3.0+</li>
+          <li>Go 1.24+ for building from source</li>
+          <li>Fisher for the recommended install flow</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

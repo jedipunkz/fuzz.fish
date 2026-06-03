@@ -12,6 +12,11 @@ bin/
 *.test
 *.out
 
+# Astro
+site/.astro/
+site/dist/
+site/node_modules/
+
 # IDE
 .vscode/
 .idea/
