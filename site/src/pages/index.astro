@@ -1,14 +1,10 @@
 ---
 import '../styles/global.css';
+import { absoluteUrl, description, repoUrl, title } from '../lib/site';
 
 const base = import.meta.env.BASE_URL;
-const siteUrl = 'https://jedipunkz.github.io';
-const pageUrl = `${siteUrl}${base}`;
-const title = 'fuzz.fish - Fuzzy finder plugin for Fish Shell';
-const description =
-  'fuzz.fish is a Fish Shell plugin for fuzzy finding command history, project files, and Git branches from a unified terminal interface.';
-const imageUrl = `${siteUrl}${base}assets/fuzz.png`;
-const repoUrl = 'https://github.com/jedipunkz/fuzz.fish';
+const pageUrl = absoluteUrl();
+const imageUrl = absoluteUrl('assets/fuzz.png');
 
 const structuredData = {
   '@context': 'https://schema.org',

@@ -1,6 +1,6 @@
-const siteUrl = 'https://jedipunkz.github.io';
-const base = import.meta.env.BASE_URL;
-const pageUrl = `${siteUrl}${base}`;
+import { absoluteUrl } from '../lib/site';
+
+const pageUrl = absoluteUrl();
 
 export function GET() {
   return new Response(
