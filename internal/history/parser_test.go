@@ -1,8 +1,12 @@
 package history
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParse(t *testing.T) {
@@ -26,6 +30,113 @@ func TestParseEmptyPath(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Errorf("Parse() returned %d entries for empty path, want 0", len(entries))
+	}
+}
+
+func TestParse_UsesCacheWhenMetadataMatches(t *testing.T) {
+	dir := t.TempDir()
+	historyPath := dir + "/fish_history"
+	cacheDir := dir + "/cache"
+	input := "- cmd: original\n  when: 1000\n"
+	if err := os.WriteFile(historyPath, []byte(input), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	p := &Parser{Path: historyPath, CacheDir: cacheDir}
+	if entries := p.Parse(); len(entries) != 1 || entries[0].Cmd != "original" {
+		t.Fatalf("initial Parse() = %#v, want original entry", entries)
+	}
+
+	info, err := os.Stat(historyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fakeCache := cacheFile{
+		Version: cacheVersion,
+		Meta:    p.cacheMeta(info),
+		Entries: []Entry{{Cmd: "from cache", When: 2000}},
+	}
+	file, err := os.Create(p.cachePath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.NewEncoder(file).Encode(fakeCache); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	entries := p.Parse()
+	if len(entries) != 1 || entries[0].Cmd != "from cache" {
+		t.Fatalf("Parse() = %#v, want cached entry", entries)
+	}
+}
+
+func TestParse_InvalidatesCacheWhenHistoryChanges(t *testing.T) {
+	dir := t.TempDir()
+	historyPath := dir + "/fish_history"
+	cacheDir := dir + "/cache"
+	if err := os.WriteFile(historyPath, []byte("- cmd: first\n  when: 1000\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	p := &Parser{Path: historyPath, CacheDir: cacheDir}
+	if entries := p.Parse(); len(entries) != 1 || entries[0].Cmd != "first" {
+		t.Fatalf("initial Parse() = %#v, want first entry", entries)
+	}
+
+	if err := os.WriteFile(historyPath, []byte("- cmd: second command\n  when: 2000\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	newTime := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(historyPath, newTime, newTime); err != nil {
+		t.Fatal(err)
+	}
+
+	entries := p.Parse()
+	if len(entries) != 1 || entries[0].Cmd != "second command" {
+		t.Fatalf("Parse() = %#v, want reparsed second entry", entries)
+	}
+}
+
+func TestParse_WritesPrivateCacheFile(t *testing.T) {
+	dir := t.TempDir()
+	historyPath := dir + "/fish_history"
+	cacheDir := dir + "/cache"
+	if err := os.WriteFile(historyPath, []byte("- cmd: secret-ish command\n  when: 1000\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	p := &Parser{Path: historyPath, CacheDir: cacheDir}
+	p.Parse()
+
+	info, err := os.Stat(p.cachePath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("cache permissions = %o, want 600", got)
+	}
+
+	dirInfo, err := os.Stat(cacheDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := dirInfo.Mode().Perm(); got != 0o700 {
+		t.Fatalf("cache dir permissions = %o, want 700", got)
+	}
+}
+
+func TestCachePath_UsesXDGCacheHome(t *testing.T) {
+	cacheHome := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", cacheHome)
+
+	p := &Parser{Path: "/tmp/fish_history"}
+	want := filepath.Join(cacheHome, "fuzz.fish", "history-cache.json")
+	if got := p.cachePath(); got != want {
+		t.Fatalf("cachePath() = %q, want %q", got, want)
 	}
 }
 

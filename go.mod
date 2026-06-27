@@ -4,12 +4,12 @@ go 1.25.0
 
 require (
 	charm.land/bubbles/v2 v2.1.0
-	charm.land/bubbletea/v2 v2.0.6
+	charm.land/bubbletea/v2 v2.0.7
 	charm.land/lipgloss/v2 v2.0.3
-	github.com/alecthomas/chroma/v2 v2.24.1
+	github.com/alecthomas/chroma/v2 v2.26.1
 	github.com/atotto/clipboard v0.1.4
 	github.com/go-git/go-git/v5 v5.19.1
-	github.com/sahilm/fuzzy v0.1.1
+	github.com/sahilm/fuzzy v0.1.2
 )
 
 require (
@@ -17,7 +17,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
-	github.com/charmbracelet/ultraviolet v0.0.0-20260416155717-489999b90468 // indirect
+	github.com/charmbracelet/ultraviolet v0.0.0-20260525132238-948f4557a654 // indirect
 	github.com/charmbracelet/x/ansi v0.11.7 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
@@ -26,7 +26,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
-	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.1.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.9.0 // indirect
@@ -46,6 +46,6 @@ require (
 	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
