@@ -84,6 +84,23 @@ func (m *model) loadItemsForMode() {
 	}
 }
 
+// sortDedupe returns the indexes sorted ascending with duplicates removed.
+// Tokens may match overlapping or out-of-order positions, so the combined
+// match set is normalized before scoring and highlighting.
+func sortDedupe(ids []int) []int {
+	if len(ids) < 2 {
+		return ids
+	}
+	sort.Ints(ids)
+	out := ids[:1]
+	for _, id := range ids[1:] {
+		if id != out[len(out)-1] {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 // updateFilter updates the filtered items based on the query
 func (m *model) updateFilter(query string) {
 	if query == "" {
@@ -101,6 +118,20 @@ func (m *model) updateFilter(query string) {
 		if len(tokens) > 0 {
 			matches := fuzzy.Find(tokens[0], m.allItemsStr)
 
+			// Aggregate per-item match quality across every token. Multi-token
+			// queries ("git pull") AND each token, but the combined score must
+			// reflect all tokens: summed fuzzy score and the union of matched
+			// indexes. Keeping only the first token's data hides where later
+			// tokens matched, so a contiguous match ("git pull origin main")
+			// could not be distinguished from a scattered one
+			// ("git config pull.rebase true").
+			aggScore := make(map[int]int, len(matches))
+			aggIdx := make(map[int][]int, len(matches))
+			for _, mat := range matches {
+				aggScore[mat.Index] = mat.Score
+				aggIdx[mat.Index] = append([]int(nil), mat.MatchedIndexes...)
+			}
+
 			for _, token := range tokens[1:] {
 				if len(matches) == 0 {
 					break
@@ -112,9 +143,18 @@ func (m *model) updateFilter(query string) {
 				subMatches := fuzzy.Find(token, subset)
 				newMatches := make(fuzzy.Matches, len(subMatches))
 				for i, sm := range subMatches {
-					newMatches[i] = matches[sm.Index]
+					orig := matches[sm.Index]
+					aggScore[orig.Index] += sm.Score
+					aggIdx[orig.Index] = append(aggIdx[orig.Index], sm.MatchedIndexes...)
+					newMatches[i] = orig
 				}
 				matches = newMatches
+			}
+
+			// Sort and dedupe each item's matched indexes so gap/boundary
+			// bonuses and highlighting see the full, ordered match set.
+			for idx, ids := range aggIdx {
+				aggIdx[idx] = sortDedupe(ids)
 			}
 
 			// Pre-calculate scores for all matches (O(n) instead of O(n log n) in comparator)
@@ -138,7 +178,7 @@ func (m *model) updateFilter(query string) {
 						isCurrent = branch.IsCurrent
 					}
 				}
-				scores[i] = config.ItemScore(item.Text, mat.Score, mat.MatchedIndexes, timestamp, frequency, isCurrent, now)
+				scores[i] = config.ItemScore(item.Text, aggScore[mat.Index], aggIdx[mat.Index], timestamp, frequency, isCurrent, now)
 			}
 
 			// Create index array for sorting (scores array must stay aligned with original matches)
@@ -159,7 +199,7 @@ func (m *model) updateFilter(query string) {
 			for rank, idx := range indices {
 				mat := matches[idx]
 				item := m.allItems[mat.Index]
-				item.MatchedIndexes = mat.MatchedIndexes
+				item.MatchedIndexes = aggIdx[mat.Index]
 				m.filtered[rank] = item
 			}
 		} else {

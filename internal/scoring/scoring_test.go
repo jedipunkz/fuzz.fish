@@ -288,6 +288,29 @@ func TestMatchBonus_SingleMiddleMatch(t *testing.T) {
 	}
 }
 
+func TestMatchBonus_GapPenalty(t *testing.T) {
+	config := DefaultConfig()
+	// "git pull" matched contiguously in "git pull origin main".
+	tight := config.MatchBonus("git pull origin main", []int{0, 1, 2, 4, 5, 6, 7})
+	// Same characters scattered far apart in "git config pull.rebase true".
+	scattered := config.MatchBonus("git config pull.rebase true", []int{0, 1, 11, 12, 13, 14, 23})
+	if tight <= scattered {
+		t.Errorf("contiguous match bonus = %v, want > scattered match bonus %v", tight, scattered)
+	}
+}
+
+func TestItemScoreRecentTightMatchBeatsOldScattered(t *testing.T) {
+	config := DefaultConfig()
+	now := CurrentTimestamp()
+	// Recently run "git pull origin main" must outrank an older, scattered
+	// "git config pull.rebase true" for the query "git pull".
+	recent := config.ItemScore("git pull origin main", 67, []int{0, 1, 2, 4, 5, 6, 7}, now-60, 1, false, now)
+	old := config.ItemScore("git config pull.rebase true", 58, []int{0, 1, 11, 12, 13, 14, 23}, now-10*24*3600, 1, false, now)
+	if recent <= old {
+		t.Errorf("recent tight match score = %v, want > old scattered match score %v", recent, old)
+	}
+}
+
 func TestMatchBonus_WordBoundaryAfterSlash(t *testing.T) {
 	config := DefaultConfig()
 	bonus := config.MatchBonus("hello/world", []int{6})

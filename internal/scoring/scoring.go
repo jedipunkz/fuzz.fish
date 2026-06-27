@@ -16,6 +16,17 @@ type Config struct {
 	PrefixBonus float64
 	// CamelCase bonus (match at uppercase letter)
 	CamelCaseBonus float64
+	// GapStartPenalty is the penalty applied once for each gap (a run of
+	// unmatched characters) between two matched characters.
+	GapStartPenalty float64
+	// GapExtensionPenalty is the additional penalty for each unmatched
+	// character within a gap. Larger gaps are penalized more, so a query
+	// whose characters match contiguously ranks above one whose matches are
+	// scattered far apart (fzf/fzy-style gap penalty).
+	GapExtensionPenalty float64
+	// MaxGapChars caps the unmatched-character count used for gap extension,
+	// preventing pathologically long lines from dominating the score.
+	MaxGapChars int
 	// MatchWeight is the multiplier applied to match quality score.
 	// Higher values make match quality the dominant ranking factor.
 	MatchWeight float64
@@ -34,14 +45,17 @@ type Config struct {
 // Frecency provides a secondary boost based on frequency × recency.
 func DefaultConfig() Config {
 	return Config{
-		WordBoundaryBonus:  50.0,
-		ConsecutiveBonus:   30.0,
-		PrefixBonus:        100.0,
-		CamelCaseBonus:     40.0,
-		MatchWeight:        10.0,  // Match quality is primary
-		FrecencyWeight:     50.0,  // log1p(freq) × multiplier × 50
-		MaxRecencyBonus:    200.0, // For git branches (was 3000, reduced to same scale)
-		CurrentBranchBonus: 500.0,
+		WordBoundaryBonus:   50.0,
+		ConsecutiveBonus:    30.0,
+		PrefixBonus:         100.0,
+		CamelCaseBonus:      40.0,
+		GapStartPenalty:     10.0,
+		GapExtensionPenalty: 5.0,
+		MaxGapChars:         50,
+		MatchWeight:         10.0,  // Match quality is primary
+		FrecencyWeight:      50.0,  // log1p(freq) × multiplier × 50
+		MaxRecencyBonus:     200.0, // For git branches (was 3000, reduced to same scale)
+		CurrentBranchBonus:  500.0,
 	}
 }
 
@@ -94,9 +108,19 @@ func (c Config) MatchBonus(text string, matchedIndexes []int) float64 {
 			bonus += c.CamelCaseBonus
 		}
 
-		// Consecutive match bonus (affine gap penalty concept from fzy)
 		if idx == prevIdx+1 {
+			// Consecutive match bonus (affine gap concept from fzy)
 			bonus += c.ConsecutiveBonus
+		} else if prevIdx >= 0 {
+			// Gap penalty: matches separated by unmatched characters score
+			// lower, so a query matching contiguously (e.g. "pull" in
+			// "git pull ...") outranks one whose characters are scattered
+			// far apart (e.g. "git" + "pull" in "git config pull.rebase").
+			gap := idx - prevIdx - 1
+			if gap > c.MaxGapChars {
+				gap = c.MaxGapChars
+			}
+			bonus -= c.GapStartPenalty + c.GapExtensionPenalty*float64(gap)
 		}
 
 		prevIdx = idx
