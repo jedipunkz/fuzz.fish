@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
+	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
@@ -217,6 +218,16 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 			icon = "📄"
 		}
 		text = icon + " " + text
+	case ModeWorktree:
+		icon := " "
+		if i.IsCurrent {
+			icon = "*"
+		}
+		if wt, ok := i.Original.(git.Worktree); ok {
+			text = icon + " " + text + " [" + wt.Branch + "]"
+		} else {
+			text = icon + " " + text
+		}
 	}
 
 	cursorStr := cursor + " "
