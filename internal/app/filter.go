@@ -73,6 +73,27 @@ func (m *model) loadItemsForMode() {
 				IsDir:    f.IsDir,
 			}
 		}
+	case ModeWorktree:
+		// Worktrees: keep listing order, reverse so first item sits at bottom.
+		n := len(m.worktrees)
+		if cap(m.allItems) >= n {
+			m.allItems = m.allItems[:n]
+		} else {
+			m.allItems = make([]Item, n)
+		}
+		for i := range m.worktrees {
+			w := m.worktrees[n-1-i]
+			m.allItems[i] = Item{
+				Text: w.Path,
+				// Search path and branch together so both are fuzzy-matchable.
+				// Mirrors the display layout (path + " [branch]") minus the icon.
+				SearchText: w.Path + " [" + w.Branch + "]",
+				Index:      n - 1 - i,
+				Original:   w,
+				IsCurrent:  w.IsCurrent,
+				IsDir:      true,
+			}
+		}
 	default:
 		m.allItems = m.allItems[:0]
 	}
@@ -80,7 +101,11 @@ func (m *model) loadItemsForMode() {
 	// Pre-build search strings to avoid per-keystroke allocation
 	m.allItemsStr = make([]string, len(m.allItems))
 	for i, item := range m.allItems {
-		m.allItemsStr[i] = item.Text
+		if item.SearchText != "" {
+			m.allItemsStr[i] = item.SearchText
+		} else {
+			m.allItemsStr[i] = item.Text
+		}
 	}
 }
 

@@ -30,3 +30,25 @@ func (b Branch) GeneratePreview(width, height int) string {
 
 	return sb.String()
 }
+
+// GeneratePreview generates a lightweight preview of the worktree
+func (w Worktree) GeneratePreview(width, height int) string {
+	var sb strings.Builder
+
+	sb.WriteString(ui.LabelStyle.Render("Path") + "\n")
+	sb.WriteString(ui.ContentStyle.Render(w.Path) + "\n\n")
+
+	sb.WriteString(ui.LabelStyle.Render("Branch") + "\n")
+	sb.WriteString(ui.ContentStyle.Render(w.Branch) + "\n\n")
+
+	sb.WriteString(ui.LabelStyle.Render("Commit") + "\n")
+	sb.WriteString(ui.ContentStyle.Render(w.Head) + "\n")
+
+	if w.IsCurrent {
+		sb.WriteString("\n")
+		sb.WriteString(ui.LabelStyle.Render("Type") + "\n")
+		sb.WriteString(ui.ContentStyle.Render("Current worktree") + "\n")
+	}
+
+	return sb.String()
+}

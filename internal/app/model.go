@@ -15,6 +15,7 @@ import (
 type historyLoadedMsg struct{ entries []history.Entry }
 type branchesLoadedMsg struct{ branches []git.Branch }
 type filesLoadedMsg struct{ entries []files.Entry }
+type worktreesLoadedMsg struct{ worktrees []git.Worktree }
 
 // Filter debounce message
 type filterTickMsg struct{ query string }
@@ -26,11 +27,13 @@ const (
 	ModeHistory SearchMode = iota
 	ModeGitBranch
 	ModeFiles
+	ModeWorktree
 )
 
 // Item represents a search result item
 type Item struct {
 	Text           string
+	SearchText     string      // Fuzzy match target; falls back to Text when empty (e.g. worktree path + branch)
 	Index          int         // Index in the original source slice
 	Original       interface{} // The original object (history.Entry, git.Branch, or files.Entry)
 	IsCurrent      bool        // For git branch (icon logic)
@@ -49,6 +52,7 @@ type model struct {
 	historyEntries []history.Entry
 	gitBranches    []git.Branch
 	fileEntries    []files.Entry
+	worktrees      []git.Worktree
 
 	// Items state
 	allItems       []Item           // All items for current mode (sorted newest/priority first)
@@ -106,5 +110,13 @@ func loadFilesCmd() tea.Cmd {
 		}
 		c := files.NewCollector(cwd)
 		return filesLoadedMsg{entries: c.Collect()}
+	}
+}
+
+func loadWorktreesCmd() tea.Cmd {
+	return func() tea.Msg {
+		r := git.NewRepository(".")
+		worktrees, _ := r.Worktrees()
+		return worktreesLoadedMsg{worktrees: worktrees}
 	}
 }

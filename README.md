@@ -43,6 +43,7 @@ Press `Ctrl+R` to open the fuzzy finder. You can switch between different modes:
 |-----|--------|
 | `Ctrl+G` | Switch to Git Branch Search Mode |
 | `Ctrl+S` | Switch to File Search Mode |
+| `Ctrl+W` | Switch to Git Worktree Search Mode |
 | `↑/↓` or `Ctrl+P/N` | Navigate through results |
 | `Enter` | Select item |
 | `Ctrl+Y` | Copy selected item to clipboard |
@@ -73,6 +74,15 @@ Search files and directories in the current directory.
   - File: insert the file path into your prompt
   - Directory: cd into the selected directory
 - Hidden files and common build directories (node_modules, vendor, etc.) are automatically excluded
+
+#### Git Worktree Mode
+
+Search and switch between git worktrees (available in git repositories).
+
+- Press `Ctrl+W` to switch to Git Worktree mode
+- Type to fuzzy search worktrees by path
+- Each entry shows its checked-out branch; the current worktree is marked with `*`
+- Press `Enter` to `cd` into the selected worktree's directory
 
 
 ## License

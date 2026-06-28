@@ -71,6 +71,8 @@ func Run() {
 				} else {
 					fmt.Printf("FILE:%s", *m.choice)
 				}
+			case ModeWorktree:
+				fmt.Printf("DIR:%s", *m.choice)
 			}
 		}
 	}

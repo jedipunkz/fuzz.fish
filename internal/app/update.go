@@ -44,6 +44,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case worktreesLoadedMsg:
+		m.worktrees = msg.worktrees
+		m.loading = false
+		if m.mode == ModeWorktree {
+			m.loadItemsForMode()
+			m.updateFilter(m.input.Value())
+		}
+		return m, nil
+
 	case filterTickMsg:
 		if msg.query == m.pendingQuery {
 			m.updateFilter(msg.query)
@@ -139,6 +148,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+s":
 			// Switch to Files mode
 			cmd = m.switchToFilesMode()
+			return m, cmd
+		case "ctrl+w":
+			// Switch to Worktree mode
+			cmd = m.switchToWorktreeMode()
 			return m, cmd
 		case "ctrl+r":
 			// Switch to History mode
@@ -268,6 +281,36 @@ func (m *model) switchToFilesMode() tea.Cmd {
 	return loadFilesCmd()
 }
 
+// switchToWorktreeMode switches to git worktree mode (Ctrl+W)
+func (m *model) switchToWorktreeMode() tea.Cmd {
+	if m.mode == ModeWorktree {
+		return nil
+	}
+
+	m.mode = ModeWorktree
+	m.input.SetValue("")
+	m.updatePlaceholder()
+	m.previewCache = make(map[string]string)
+	m.lastPreviewIndex = -1
+
+	if len(m.worktrees) > 0 {
+		m.loadItemsForMode()
+		m.updateFilter("")
+		m.resetCursorToBottom()
+		m.updatePreview()
+		return nil
+	}
+
+	// Async load worktrees
+	m.loading = true
+	m.filtered = nil
+	m.allItems = nil
+	m.allItemsStr = nil
+	m.cursor = 0
+	m.offset = 0
+	return loadWorktreesCmd()
+}
+
 // updatePlaceholder updates the input placeholder based on current mode
 func (m *model) updatePlaceholder() {
 	switch m.mode {
@@ -276,6 +319,8 @@ func (m *model) updatePlaceholder() {
 	case ModeGitBranch:
 		m.input.Placeholder = ""
 	case ModeFiles:
+		m.input.Placeholder = ""
+	case ModeWorktree:
 		m.input.Placeholder = ""
 	}
 }
@@ -371,6 +416,15 @@ func (m *model) updatePreview() {
 			content = entry.GeneratePreview(m.viewport.Width(), m.viewport.Height())
 			m.previewCache[cacheKey] = content
 		}
+	case ModeWorktree:
+		wt := item.Original.(git.Worktree)
+		cacheKey = wt.Path
+		if cached, ok := m.previewCache[cacheKey]; ok {
+			content = cached
+		} else {
+			content = wt.GeneratePreview(m.viewport.Width(), m.viewport.Height())
+			m.previewCache[cacheKey] = content
+		}
 	}
 	m.viewport.SetContent(content)
 }
@@ -398,6 +452,12 @@ func (m *model) selectItem() {
 			res := entry.Path
 			m.choice = &res
 			m.choiceIsDir = entry.IsDir
+		}
+	case ModeWorktree:
+		wt, ok := item.Original.(git.Worktree)
+		if ok {
+			res := wt.Path
+			m.choice = &res
 		}
 	}
 }
