@@ -53,10 +53,10 @@ a {
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
-  gap: 48px;
+  gap: 26px 48px;
   align-items: center;
   min-height: min(760px, 92vh);
-  padding: 64px 0 40px;
+  padding: 38px 0 40px;
 }
 
 .hero__copy {
@@ -128,19 +128,15 @@ h2 {
 
 .install {
   display: grid;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
   width: min(100%, 520px);
-  padding: 18px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   box-shadow: var(--shadow);
-}
-
-.install span {
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 700;
 }
 
 code,
@@ -150,9 +146,52 @@ kbd {
 
 code {
   overflow-wrap: anywhere;
+}
+
+.install__command {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5ch;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgb(192 202 245 / 12%);
+  border-radius: 6px;
+  background: #16161e;
   color: var(--green);
   font-size: 1.05rem;
   font-weight: 800;
+}
+
+.syntax--command {
+  color: var(--green);
+}
+
+.syntax--subcommand {
+  color: var(--cyan);
+}
+
+.syntax--target {
+  color: var(--orange);
+}
+
+.copy-button {
+  min-width: 84px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgb(122 162 247 / 42%);
+  border-radius: 6px;
+  background: rgb(122 162 247 / 16%);
+  color: #dce6ff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.copy-button:hover,
+.copy-button:focus-visible {
+  border-color: var(--blue);
+  background: rgb(122 162 247 / 24%);
 }
 
 .hero__media {
@@ -162,9 +201,14 @@ code {
 }
 
 .logo {
-  width: min(180px, 38vw);
+  width: min(160px, 34vw);
   height: auto;
   filter: drop-shadow(0 18px 30px rgb(122 162 247 / 22%));
+}
+
+.hero__logo {
+  grid-column: 1 / -1;
+  justify-self: center;
 }
 
 .demo {
@@ -179,7 +223,7 @@ code {
 
 .overview {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   padding: 32px 0 84px;
 }
@@ -310,6 +354,10 @@ kbd {
     padding-top: 38px;
   }
 
+  .hero__logo {
+    order: -2;
+  }
+
   h1 {
     font-size: 5.5rem;
   }
@@ -327,7 +375,7 @@ kbd {
   }
 
   .overview {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding-bottom: 52px;
   }
 
@@ -360,6 +408,18 @@ kbd {
 
   .button {
     padding: 0 12px;
+  }
+
+  .install {
+    grid-template-columns: 1fr;
+  }
+
+  .copy-button {
+    width: 100%;
+  }
+
+  .overview {
+    grid-template-columns: 1fr;
   }
 
   .shortcut {

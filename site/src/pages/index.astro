@@ -24,6 +24,7 @@ const shortcuts = [
   ['Ctrl+R', 'Open the unified fuzzy finder'],
   ['Ctrl+G', 'Switch to Git branch search mode'],
   ['Ctrl+S', 'Switch to file search mode'],
+  ['Ctrl+W', 'Switch to Git worktree search mode'],
   ['Ctrl+P/N or Up/Down', 'Move through results'],
   ['Enter', 'Select the current item'],
   ['Ctrl+Y', 'Copy the selected item to the clipboard'],
@@ -45,6 +46,11 @@ const modes = [
     name: 'Files',
     title: 'Project file navigation',
     text: 'Search files and directories from the current working directory, insert file paths, or cd into directories.',
+  },
+  {
+    name: 'Worktrees',
+    title: 'Git worktree switching',
+    text: 'Search Git worktrees by path, see the checked-out branch for each result, and cd into the selected worktree.',
   },
 ];
 ---
@@ -86,6 +92,7 @@ const modes = [
   <body>
     <main>
       <section class="hero" aria-labelledby="hero-title">
+        <img class="logo hero__logo" src={`${base}assets/fuzz.png`} alt="fuzz.fish logo" width="300" height="300" />
         <div class="hero__copy">
           <p class="eyebrow">Fish Shell plugin</p>
           <h1 id="hero-title">fuzz.fish</h1>
@@ -97,12 +104,15 @@ const modes = [
             <a class="button button--secondary" href="https://github.com/jedipunkz/fuzz.fish/releases">Releases</a>
           </div>
           <div class="install" aria-label="Fisher install command">
-            <span>Install with Fisher</span>
-            <code>fisher install jedipunkz/fuzz.fish</code>
+            <code class="install__command" data-install-command="fisher install jedipunkz/fuzz.fish">
+              <span class="syntax syntax--command">fisher</span>
+              <span class="syntax syntax--subcommand">install</span>
+              <span class="syntax syntax--target">jedipunkz/fuzz.fish</span>
+            </code>
+            <button class="copy-button" type="button" data-copy-install aria-label="Copy install command">Copy</button>
           </div>
         </div>
         <div class="hero__media">
-          <img class="logo" src={`${base}assets/fuzz.png`} alt="fuzz.fish logo" width="300" height="300" />
           <img class="demo" src={`${base}assets/fuzz.gif`} alt="fuzz.fish terminal demo" width="800" />
         </div>
       </section>
@@ -120,10 +130,10 @@ const modes = [
       <section class="details" aria-labelledby="details-title">
         <div>
           <p class="eyebrow">Unified interface</p>
-          <h2 id="details-title">One picker, three workflows</h2>
+          <h2 id="details-title">One picker, four workflows</h2>
           <p>
             Press <kbd>Ctrl+R</kbd> to open fuzz.fish, then switch modes as the task changes. The default history
-            search is ready immediately, while Git branch and file search are a keypress away.
+            search is ready immediately, while Git branch, Git worktree, and file search are a keypress away.
           </p>
         </div>
         <div class="shortcut-list" aria-label="Keyboard shortcuts">
@@ -148,5 +158,30 @@ const modes = [
         </ul>
       </section>
     </main>
+    <script>
+      const copyButton = document.querySelector('[data-copy-install]');
+      const installCommand = document.querySelector('[data-install-command]');
+
+      copyButton?.addEventListener('click', async () => {
+        const command = installCommand?.getAttribute('data-install-command');
+
+        if (!command) {
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(command);
+          copyButton.textContent = 'Copied';
+          window.setTimeout(() => {
+            copyButton.textContent = 'Copy';
+          }, 1600);
+        } catch {
+          copyButton.textContent = 'Failed';
+          window.setTimeout(() => {
+            copyButton.textContent = 'Copy';
+          }, 1600);
+        }
+      });
+    </script>
   </body>
 </html>
