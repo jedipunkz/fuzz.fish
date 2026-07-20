@@ -56,6 +56,12 @@ Search through your command history with context.
 - Type to fuzzy search
 - Press `Enter` to insert the selected command into your prompt
 
+#### Glob Search
+
+Include a `*` in your query to switch from fuzzy matching to glob matching. Each `*` matches any run of characters, while the literal parts must appear contiguously and in order. This works in every mode.
+
+For example, typing `nvim *.go` lists only the commands where you opened a `.go` file with `nvim` (e.g. `nvim internal/app/filter.go`), instead of scattering those characters fuzzily.
+
 #### Git Branch Mode
 
 Search and switch git branches (available in git repositories).
