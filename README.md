@@ -37,7 +37,9 @@ fuzz.fish provides three interactive fuzzy finders accessible through a unified 
 
 #### `Ctrl+R` - Unified Fuzzy Finder
 
-Press `Ctrl+R` to open the fuzzy finder. You can switch between different modes:
+Press `Ctrl+R` to open the fuzzy finder. If you have already typed something on the command line, the search box is pre-filled with it and results are filtered immediately (e.g. type `vim`, then `Ctrl+R` to search history already narrowed to `vim`).
+
+You can switch between different modes:
 
 | Key | Action |
 |-----|--------|

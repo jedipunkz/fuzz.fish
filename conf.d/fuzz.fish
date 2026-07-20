@@ -138,10 +138,14 @@ end
 function fh --description 'Fish History viewer with context (TUI)'
     set -l bin_path (_fuzz_ensure_binary_or_error); or return 1
 
+    # Pre-fill the search box with the current command line buffer so that,
+    # e.g. after typing "vim", Ctrl+R opens history already filtered by "vim".
+    set -l query (commandline)
+
     # Run the TUI binary
     # Redirect stdin/stderr to /dev/tty for TUI interaction,
     # while capturing stdout for the selected command/branch/file
-    set -l result ($bin_path </dev/tty 2>/dev/tty)
+    set -l result ($bin_path --query "$query" </dev/tty 2>/dev/tty)
 
     if test -n "$result"
         if string match -q "CMD:*" -- "$result"

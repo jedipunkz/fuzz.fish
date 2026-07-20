@@ -1,29 +1,15 @@
 package main
 
 import (
-	"fmt"
-	"os"
+	"flag"
 
 	"github.com/jedipunkz/fuzz.fish/internal/app"
 )
 
 func main() {
-	// Check for subcommand
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "history", "git":
-			// Both history and git modes use the unified app
-			// Use Ctrl+G to toggle between them
-			// Use Ctrl+F to switch to files mode
-			app.Run()
-			return
-		default:
-			fmt.Fprintf(os.Stderr, "Unknown subcommand: %s\n", os.Args[1])
-			fmt.Fprintf(os.Stderr, "Usage: fuzz [history|git]\n")
-			os.Exit(1)
-		}
-	}
+	// --query pre-fills the search box (e.g. with the current Fish command line).
+	query := flag.String("query", "", "initial search query")
+	flag.Parse()
 
-	// Default: unified app
-	app.Run()
+	app.Run(*query)
 }
