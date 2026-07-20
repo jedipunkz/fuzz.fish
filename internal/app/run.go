@@ -12,8 +12,9 @@ import (
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
-// Run starts the application
-func Run() {
+// Run starts the application. initialQuery pre-fills the search box (e.g. with
+// the current Fish command line) so results are already filtered on startup.
+func Run(initialQuery string) {
 	ti := textinput.New()
 	ti.Placeholder = ""
 	ti.CharLimit = 156
@@ -24,6 +25,10 @@ func Run() {
 	ti.SetStyles(s)
 	ti.SetVirtualCursor(false)
 	ti.Focus()
+	if initialQuery != "" {
+		ti.SetValue(initialQuery)
+		ti.CursorEnd()
+	}
 
 	m := model{
 		mode:             ModeHistory,
