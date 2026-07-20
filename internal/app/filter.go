@@ -140,7 +140,11 @@ func (m *model) updateFilter(query string) {
 	} else {
 		// Fuzzy search using pre-built search strings (avoids per-keystroke allocation)
 		tokens := strings.Fields(query)
-		if len(tokens) > 0 {
+		if len(tokens) > 0 && queryHasGlob(query) {
+			// Glob matching: a '*' in the query switches to literal, ordered
+			// substring matching (e.g. "nvim *.go") instead of fuzzy scatter.
+			m.globFilter(tokens)
+		} else if len(tokens) > 0 {
 			matches := fuzzy.Find(tokens[0], m.allItemsStr)
 
 			// Aggregate per-item match quality across every token. Multi-token
