@@ -35,8 +35,14 @@ The app follows the Bubble Tea model: `Init` → async `tea.Cmd` messages → `U
 
 ```sh
 make build       # build binary to ./fuzz
-make install     # build and install to ~/.config/fish/functions/fuzz
+make install     # install the same files fisher does: conf.d/fuzz.fish and the binary
+make reinstall   # uninstall, then install
+make uninstall   # remove both installed files
 ```
+
+`install` targets `$XDG_CONFIG_HOME/fish` (defaulting to `~/.config/fish`), matching how
+`conf.d/fuzz.fish` derives `FUZZ_FISH_BIN_PATH` from `$__fish_config_dir`. Override with
+`make install FISH_CONFIG_DIR=/path/to/fish`.
 
 ### Test
 
