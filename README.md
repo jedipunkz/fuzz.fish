@@ -49,25 +49,12 @@ Common keys:
 | `ctrl+y` | Copy the selected item to the clipboard |
 | `esc` or `ctrl+c` | Cancel |
 
-#### Command History Search Mode
+Notes:
 
-`ctrl+r` — searches your Fish command history, ranking frequently and recently used commands first. Anything already typed on the command line pre-fills the search box, so `vim` then `ctrl+r` starts with history narrowed to `vim`.
-
-#### File Search Mode
-
-`ctrl+s` — searches files and directories under the current directory. Hidden files and build directories such as `node_modules` and `vendor` are skipped.
-
-#### Git Worktree Search Mode
-
-`ctrl+w` — lists the worktrees of the current repository with their checked-out branch, marking the current one with `*`.
-
-#### Git Branch Search Mode
-
-`ctrl+g` — lists the branches of the current repository. Pressing `ctrl+g` again on the current branch runs `git pull origin <branch>`.
-
-#### Glob Search
-
-A `*` in the query switches from fuzzy to glob matching in every mode: `nvim *.go` matches `nvim internal/app/filter.go` but not commands that merely contain those letters.
+- Anything already typed on the command line pre-fills the search box, so `vim` then `ctrl+r` starts with history narrowed to `vim`.
+- A `*` in the query switches from fuzzy to glob matching in every mode: `nvim *.go` matches `nvim internal/app/filter.go` but not commands that merely contain those letters.
+- In Git Branch Search mode, pressing `ctrl+g` again on the current branch runs `git pull origin <branch>`.
+- File Search skips hidden files and build directories such as `node_modules` and `vendor`.
 
 
 ## License
