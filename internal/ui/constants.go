@@ -8,9 +8,6 @@ const (
 	// MaxPreviewLines is the maximum number of lines to show in file preview
 	MaxPreviewLines = 50
 
-	// MaxLineLength is the maximum character length for a single line
-	MaxLineLength = 120
-
 	// MaxDirectoryEntries is the maximum number of directory entries to show
 	MaxDirectoryEntries = 20
 
