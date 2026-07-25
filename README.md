@@ -31,73 +31,33 @@ fisher install jedipunkz/fuzz.fish
 
 ## Usage
 
-### Keyboard Shortcuts
+Press `ctrl+r` to open fuzz.fish, then type to search. Switch modes at any time with a single key:
 
-fuzz.fish provides three interactive fuzzy finders accessible through a unified interface:
+| Key | Mode | `enter` does |
+|-----|------|--------------|
+| `ctrl+r` | Command History Search (default) | Insert the command into your prompt |
+| `ctrl+s` | File Search | Insert the file path / `cd` into the directory |
+| `ctrl+w` | Git Worktree Search | `cd` into the worktree |
+| `ctrl+g` | Git Branch Search | Switch to the selected branch |
 
-#### `Ctrl+R` - Unified Fuzzy Finder
-
-Press `Ctrl+R` to open the fuzzy finder. If you have already typed something on the command line, the search box is pre-filled with it and results are filtered immediately (e.g. type `vim`, then `Ctrl+R` to search history already narrowed to `vim`).
-
-You can switch between different modes:
+Common keys:
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+G` | Switch to Git Branch Search Mode |
-| `Ctrl+S` | Switch to File Search Mode |
-| `Ctrl+W` | Switch to Git Worktree Search Mode |
-| `↑/↓` or `Ctrl+P/N` | Navigate through results |
-| `Enter` | Select item |
-| `Ctrl+Y` | Copy selected item to clipboard |
-| `ESC` or `Ctrl+C` | Cancel |
+| `↑`/`↓` or `ctrl+p`/`ctrl+n` | Move the selection |
+| `tab` | Complete the query with the selected item |
+| `ctrl+y` | Copy the selected item to the clipboard |
+| `esc` or `ctrl+c` | Cancel |
 
-#### History Search Mode (default)
+Notes:
 
-Search through your command history with context.
-
-- Type to fuzzy search
-- Press `Enter` to insert the selected command into your prompt
-
-#### Glob Search
-
-Include a `*` in your query to switch from fuzzy matching to glob matching. Each `*` matches any run of characters, while the literal parts must appear contiguously and in order. This works in every mode.
-
-For example, typing `nvim *.go` lists only the commands where you opened a `.go` file with `nvim` (e.g. `nvim internal/app/filter.go`), instead of scattering those characters fuzzily.
-
-#### Git Branch Mode
-
-Search and switch git branches (available in git repositories).
-
-- Press `Ctrl+G` to toggle from History mode
-- Press `Enter` to switch to the selected branch
-- Press `Ctrl+G` again (while in Git Branch mode) to `git pull origin <branch>` for the current branch
-
-#### File Search Mode
-
-Search files and directories in the current directory.
-
-- Press `Ctrl+S` to switch to File Search mode
-- Type to fuzzy search files and directories
-- Press `Enter`:
-  - File: insert the file path into your prompt
-  - Directory: cd into the selected directory
-- Hidden files and common build directories (node_modules, vendor, etc.) are automatically excluded
-
-#### Git Worktree Mode
-
-Search and switch between git worktrees (available in git repositories).
-
-- Press `Ctrl+W` to switch to Git Worktree mode
-- Type to fuzzy search worktrees by path
-- Each entry shows its checked-out branch; the current worktree is marked with `*`
-- Press `Enter` to `cd` into the selected worktree's directory
+- Anything already typed on the command line pre-fills the search box, so `vim` then `ctrl+r` starts with history narrowed to `vim`.
+- A `*` in the query switches from fuzzy to glob matching in every mode: `nvim *.go` matches `nvim internal/app/filter.go` but not commands that merely contain those letters.
+- In Git Branch Search mode, pressing `ctrl+g` again on the current branch runs `git pull origin <branch>`.
+- File Search skips hidden files and build directories such as `node_modules` and `vendor`.
 
 
 ## License
 
 MIT License - see LICENSE file for details
-
-## Issues
-
-Found a bug or have a feature request? Please open an issue on GitHub.
 
