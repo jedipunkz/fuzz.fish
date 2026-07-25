@@ -4,7 +4,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/charmbracelet/x/ansi"
 )
+
+// tabIndent is what a tab is replaced with in previews.
+const tabIndent = "    "
 
 // IsBinary checks if the given content appears to be binary
 func IsBinary(content []byte) bool {
@@ -21,12 +26,28 @@ func IsBinary(content []byte) bool {
 	return false
 }
 
-// GetFilePreview returns a preview of the file contents with syntax highlighting
-func GetFilePreview(path string, maxLines int) string {
+// previewLine expands tabs and cuts a line to width display cells, leaving ANSI
+// sequences intact. Tabs must be expanded first: the terminal renders them as
+// several cells, so measuring them as one would let the line wrap anyway.
+func previewLine(line string, width int) string {
+	line = strings.ReplaceAll(line, "\t", tabIndent)
+	if width <= 0 {
+		return line
+	}
+	return ansi.Truncate(line, width, "…")
+}
+
+// GetFilePreview returns a preview of the file contents with syntax highlighting.
+// maxWidth is the display width of the preview pane: lines wider than that are
+// truncated so they do not wrap and grow the pane beyond its height.
+func GetFilePreview(path string, maxLines, maxWidth int) string {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}
+
+	// Preview lines are rendered with a two-space indent.
+	contentWidth := maxWidth - 2
 
 	// Check if binary
 	if IsBinary(content) {
@@ -43,14 +64,10 @@ func GetFilePreview(path string, maxLines int) string {
 		}
 
 		var sb strings.Builder
-		sb.Grow(len(lines) * (MaxLineLength + 4))
+		sb.Grow(len(lines) * (maxWidth + 4))
 		for _, line := range lines {
-			// Truncate long lines
-			if len(line) > MaxLineLength {
-				line = line[:MaxLineLength] + "..."
-			}
 			sb.WriteString("  ")
-			sb.WriteString(line)
+			sb.WriteString(previewLine(line, contentWidth))
 			sb.WriteByte('\n')
 		}
 
@@ -64,12 +81,9 @@ func GetFilePreview(path string, maxLines int) string {
 	}
 
 	var sb strings.Builder
-	sb.Grow(len(lines) * (MaxLineLength + 4))
+	sb.Grow(len(lines) * (maxWidth + 4))
 	for _, line := range lines {
-		// Truncate long lines
-		if len(line) > MaxLineLength {
-			line = line[:MaxLineLength] + "..."
-		}
+		line = previewLine(line, contentWidth)
 		sb.WriteString(InactiveContextStyle.Render(fmt.Sprintf("  %s", line)))
 		sb.WriteByte('\n')
 	}

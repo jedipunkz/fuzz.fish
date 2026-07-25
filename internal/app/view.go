@@ -102,9 +102,11 @@ func (m model) View() tea.View {
 	}
 
 	// If items < height, offset is 0, we need to push items to bottom.
+	// With no items the padding newlines alone would render mainHeight+1 lines,
+	// so leave the pane empty and let the box height fill it.
 	visibleCount := end - start
 	padding := m.mainHeight - visibleCount
-	if padding > 0 {
+	if visibleCount > 0 && padding > 0 {
 		listBuilder.WriteString(strings.Repeat("\n", padding))
 	}
 

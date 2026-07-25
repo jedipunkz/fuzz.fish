@@ -62,7 +62,7 @@ func (e Entry) GeneratePreview(width, height int) string {
 	} else {
 		// File preview
 		sb.WriteString(ui.ContextHeaderStyle.Render("Preview") + "\n")
-		preview := ui.GetFilePreview(e.Path, height-5)
+		preview := ui.GetFilePreview(e.Path, height-5, width)
 		if preview != "" {
 			sb.WriteString(preview)
 		} else {
