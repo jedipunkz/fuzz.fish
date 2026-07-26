@@ -31,16 +31,23 @@ type cacheMeta struct {
 	Inode   uint64 `json:"inode"`
 }
 
-const cacheVersion = 1
+// cacheVersion is bumped whenever the parsed representation changes, so caches
+// written by an older binary are discarded instead of reused.
+const cacheVersion = 3
 
-// NewParser returns a Parser with the default Fish history file path
+// NewParser returns a Parser with the default Fish history file path.
+// Fish stores its history under XDG_DATA_HOME, falling back to ~/.local/share.
 func NewParser() *Parser {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return &Parser{}
+	dataHome := os.Getenv("XDG_DATA_HOME")
+	if dataHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return &Parser{}
+		}
+		dataHome = filepath.Join(home, ".local", "share")
 	}
 	return &Parser{
-		Path: filepath.Join(home, ".local", "share", "fish", "fish_history"),
+		Path: filepath.Join(dataHome, "fish", "fish_history"),
 	}
 }
 
@@ -188,6 +195,34 @@ func (p *Parser) cachePath() string {
 	return filepath.Join(cacheDir, "history-cache.json")
 }
 
+// unescape reverses the escaping Fish applies when writing the history file:
+// a backslash is stored as `\\` and a newline as `\n`, so a command like
+// `grep '\d' file` or a multi-line command round-trips through the file.
+func unescape(s string) string {
+	if !strings.Contains(s, `\`) {
+		return s
+	}
+
+	var sb strings.Builder
+	sb.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			switch s[i+1] {
+			case '\\':
+				sb.WriteByte('\\')
+				i++
+				continue
+			case 'n':
+				sb.WriteByte('\n')
+				i++
+				continue
+			}
+		}
+		sb.WriteByte(s[i])
+	}
+	return sb.String()
+}
+
 // parseReader parses Fish shell history entries from an io.Reader.
 // This is exported for testing purposes.
 func parseReader(r io.Reader) []Entry {
@@ -205,7 +240,7 @@ func parseReader(r io.Reader) []Entry {
 				entries = append(entries, *current)
 			}
 			current = &Entry{
-				Cmd:     strings.TrimPrefix(line, "- cmd: "),
+				Cmd:     unescape(strings.TrimPrefix(line, "- cmd: ")),
 				CmdLine: lineNum,
 			}
 		} else if current != nil {
@@ -216,7 +251,7 @@ func parseReader(r io.Reader) []Entry {
 					current.When = when
 				}
 			} else if strings.HasPrefix(line, "    - ") {
-				path := strings.TrimPrefix(line, "    - ")
+				path := unescape(strings.TrimPrefix(line, "    - "))
 				current.Paths = append(current.Paths, path)
 			}
 		}
@@ -231,14 +266,18 @@ func parseReader(r io.Reader) []Entry {
 		entries[i], entries[j] = entries[j], entries[i]
 	}
 
-	// Deduplicate commands - keep only the newest occurrence
-	seen := make(map[string]bool)
+	// Deduplicate commands - keep only the newest occurrence, recording how
+	// often each command was run so frecency scoring still sees the frequency.
+	at := make(map[string]int, len(entries))
 	deduplicated := make([]Entry, 0, len(entries))
 	for _, entry := range entries {
-		if !seen[entry.Cmd] {
-			seen[entry.Cmd] = true
-			deduplicated = append(deduplicated, entry)
+		if i, ok := at[entry.Cmd]; ok {
+			deduplicated[i].Count++
+			continue
 		}
+		entry.Count = 1
+		at[entry.Cmd] = len(deduplicated)
+		deduplicated = append(deduplicated, entry)
 	}
 
 	return deduplicated

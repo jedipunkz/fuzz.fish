@@ -71,11 +71,9 @@ func TestGlobFilterHistory(t *testing.T) {
 	m := &model{mode: ModeHistory}
 	m.allItems = make([]Item, len(cmds))
 	m.allItemsStr = make([]string, len(cmds))
-	m.historyFreqMap = make(map[string]int)
 	for i, c := range cmds {
-		m.allItems[i] = Item{Text: c, Index: i, Original: history.Entry{Cmd: c}}
+		m.allItems[i] = Item{Text: c, Index: i, Original: history.Entry{Cmd: c, Count: 1}}
 		m.allItemsStr[i] = c
-		m.historyFreqMap[c]++
 	}
 
 	m.updateFilter("nvim *.go")

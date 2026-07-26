@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,8 +20,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case historyLoadedMsg:
 		m.historyEntries = msg.entries
-		m.loading = false
 		if m.mode == ModeHistory {
+			m.loading = false
 			m.loadItemsForMode()
 			m.updateFilter(m.input.Value())
 		}
@@ -28,8 +29,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case branchesLoadedMsg:
 		m.gitBranches = msg.branches
-		m.loading = false
 		if m.mode == ModeGitBranch {
+			m.loading = false
 			m.loadItemsForMode()
 			m.updateFilter(m.input.Value())
 		}
@@ -37,8 +38,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case filesLoadedMsg:
 		m.fileEntries = msg.entries
-		m.loading = false
 		if m.mode == ModeFiles {
+			m.loading = false
 			m.loadItemsForMode()
 			m.updateFilter(m.input.Value())
 		}
@@ -46,8 +47,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case worktreesLoadedMsg:
 		m.worktrees = msg.worktrees
-		m.loading = false
 		if m.mode == ModeWorktree {
+			m.loading = false
 			m.loadItemsForMode()
 			m.updateFilter(m.input.Value())
 		}
@@ -155,8 +156,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case "ctrl+r":
 			// Switch to History mode
-			m.switchToHistoryMode()
-			return m, nil
+			cmd = m.switchToHistoryMode()
+			return m, cmd
 		case "down", "ctrl+n":
 			if len(m.filtered) > 0 {
 				m.cursor++
@@ -212,7 +213,7 @@ func (m *model) switchToGitBranchMode() tea.Cmd {
 	m.input.SetValue("")
 	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
-	m.lastPreviewIndex = -1
+	m.lastPreviewKey = ""
 
 	if len(m.gitBranches) > 0 {
 		m.loadItemsForMode()
@@ -233,22 +234,34 @@ func (m *model) switchToGitBranchMode() tea.Cmd {
 }
 
 // switchToHistoryMode switches directly to history mode (Ctrl+R)
-func (m *model) switchToHistoryMode() {
+func (m *model) switchToHistoryMode() tea.Cmd {
 	if m.mode == ModeHistory {
-		return
+		return nil
 	}
 
 	m.mode = ModeHistory
 	m.input.SetValue("")
 	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
-	m.lastPreviewIndex = -1
+	m.lastPreviewKey = ""
 
-	m.loadItemsForMode()
-	m.updateFilter("")
+	if len(m.historyEntries) > 0 {
+		m.loadItemsForMode()
+		m.updateFilter("")
+		m.resetCursorToBottom()
+		m.updatePreview()
+		return nil
+	}
 
-	m.resetCursorToBottom()
-	m.updatePreview()
+	// Async load history: the initial load may still be in flight, in which
+	// case its result no longer reaches this mode on its own.
+	m.loading = true
+	m.filtered = nil
+	m.allItems = nil
+	m.allItemsStr = nil
+	m.cursor = 0
+	m.offset = 0
+	return loadHistoryCmd()
 }
 
 // switchToFilesMode switches to files mode (Ctrl+S)
@@ -261,7 +274,7 @@ func (m *model) switchToFilesMode() tea.Cmd {
 	m.input.SetValue("")
 	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
-	m.lastPreviewIndex = -1
+	m.lastPreviewKey = ""
 
 	if len(m.fileEntries) > 0 {
 		m.loadItemsForMode()
@@ -291,7 +304,7 @@ func (m *model) switchToWorktreeMode() tea.Cmd {
 	m.input.SetValue("")
 	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
-	m.lastPreviewIndex = -1
+	m.lastPreviewKey = ""
 
 	if len(m.worktrees) > 0 {
 		m.loadItemsForMode()
@@ -375,21 +388,31 @@ func (m *model) validateCursor() {
 	}
 }
 
+// previewKey identifies the item a preview was rendered for. History previews
+// include surrounding commands, so they also depend on the item's position in
+// the source slice.
+func previewKey(mode SearchMode, item Item) string {
+	return strconv.Itoa(int(mode)) + "\x00" + strconv.Itoa(item.Index) + "\x00" + item.Text
+}
+
 // updatePreview updates the preview pane content
 func (m *model) updatePreview() {
 	if len(m.filtered) == 0 {
 		m.viewport.SetContent("")
-		m.lastPreviewIndex = -1
+		m.lastPreviewKey = ""
 		return
 	}
-
-	// Skip update if cursor hasn't moved
-	if m.cursor == m.lastPreviewIndex {
-		return
-	}
-	m.lastPreviewIndex = m.cursor
 
 	item := m.filtered[m.cursor]
+
+	// Skip update only when the same item is still selected. Keying this on the
+	// cursor position alone kept a stale preview whenever filtering changed the
+	// item sitting at that position.
+	key := previewKey(m.mode, item)
+	if key == m.lastPreviewKey {
+		return
+	}
+	m.lastPreviewKey = key
 
 	var content string
 	var cacheKey string

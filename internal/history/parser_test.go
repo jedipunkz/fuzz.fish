@@ -282,3 +282,79 @@ func TestParseReader_CmdLineTracking(t *testing.T) {
 		t.Errorf("entries[1].CmdLine = %d, want 1", entries[1].CmdLine)
 	}
 }
+
+func TestParseReader_UnescapesFishEscapes(t *testing.T) {
+	// Fish stores a backslash as `\\` and a newline as `\n`; these two lines
+	// are what fish writes for `grep '\d' file` and for a two-line command.
+	input := "- cmd: grep '\\\\d' file\n  when: 1000\n" +
+		"- cmd: echo a\\necho b\n  when: 2000\n"
+
+	entries := parseReader(strings.NewReader(input))
+	if len(entries) != 2 {
+		t.Fatalf("parseReader() returned %d entries, want 2", len(entries))
+	}
+
+	// Newest first.
+	if got, want := entries[0].Cmd, "echo a\necho b"; got != want {
+		t.Errorf("multi-line command = %q, want %q", got, want)
+	}
+	if got, want := entries[1].Cmd, `grep '\d' file`; got != want {
+		t.Errorf("backslash command = %q, want %q", got, want)
+	}
+}
+
+func TestParseReader_UnescapesPaths(t *testing.T) {
+	input := "- cmd: ls\n  when: 1000\n  paths:\n    - /tmp/back\\\\slash\n"
+
+	entries := parseReader(strings.NewReader(input))
+	if len(entries) != 1 {
+		t.Fatalf("parseReader() returned %d entries, want 1", len(entries))
+	}
+	if got, want := entries[0].Paths[0], `/tmp/back\slash`; got != want {
+		t.Errorf("path = %q, want %q", got, want)
+	}
+}
+
+func TestParseReader_CountsRepeatedCommands(t *testing.T) {
+	input := strings.Repeat("- cmd: ls\n  when: 1000\n", 5) +
+		"- cmd: pwd\n  when: 2000\n"
+
+	entries := parseReader(strings.NewReader(input))
+	if len(entries) != 2 {
+		t.Fatalf("parseReader() returned %d entries, want 2", len(entries))
+	}
+
+	counts := map[string]int{}
+	for _, e := range entries {
+		counts[e.Cmd] = e.Count
+	}
+	if got, want := counts["ls"], 5; got != want {
+		t.Errorf("Count for %q = %d, want %d", "ls", got, want)
+	}
+	if got, want := counts["pwd"], 1; got != want {
+		t.Errorf("Count for %q = %d, want %d", "pwd", got, want)
+	}
+}
+
+func TestNewParser_HonoursXDGDataHome(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dir)
+
+	want := filepath.Join(dir, "fish", "fish_history")
+	if got := NewParser().Path; got != want {
+		t.Errorf("NewParser().Path = %q, want %q", got, want)
+	}
+}
+
+func TestNewParser_FallsBackToHome(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", "")
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no home directory")
+	}
+	want := filepath.Join(home, ".local", "share", "fish", "fish_history")
+	if got := NewParser().Path; got != want {
+		t.Errorf("NewParser().Path = %q, want %q", got, want)
+	}
+}

@@ -31,11 +31,6 @@ func (m *model) loadItemsForMode() {
 				Original: e,
 			}
 		}
-		// Build frequency map for frecency scoring
-		m.historyFreqMap = make(map[string]int, n)
-		for _, e := range m.historyEntries {
-			m.historyFreqMap[e.Cmd]++
-		}
 	case ModeGitBranch:
 		// Git: branches are collected.
 		// We reverse them to put first item at bottom.
@@ -199,15 +194,18 @@ func (m *model) updateFilter(query string) {
 				case ModeHistory:
 					if entry, ok := item.Original.(history.Entry); ok {
 						timestamp = entry.When
+						frequency = entry.Count
 					}
-					frequency = m.historyFreqMap[item.Text]
 				case ModeGitBranch:
 					if branch, ok := item.Original.(git.Branch); ok {
 						timestamp = branch.CommitTimestamp
 						isCurrent = branch.IsCurrent
 					}
 				}
-				scores[i] = config.ItemScore(item.Text, aggScore[mat.Index], aggIdx[mat.Index], timestamp, frequency, isCurrent, now)
+				// Score against the string the indexes were matched in, not the
+				// display text: they differ in worktree mode, where the branch
+				// suffix is part of the search string.
+				scores[i] = config.ItemScore(m.allItemsStr[mat.Index], aggScore[mat.Index], aggIdx[mat.Index], timestamp, frequency, isCurrent, now)
 			}
 
 			// Create index array for sorting (scores array must stay aligned with original matches)

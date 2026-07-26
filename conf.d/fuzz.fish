@@ -119,7 +119,9 @@ function _fuzz_ensure_binary_or_error --description 'Internal: Ensure binary exi
 
     if test -z "$bin_path"; or not test -f "$bin_path"
         if functions -q _fuzz_fish_ensure_binary
-            _fuzz_fish_ensure_binary
+            # Build progress goes to stderr: this function's stdout is captured
+            # by the caller as the binary path.
+            _fuzz_fish_ensure_binary >&2
         else
             echo "❌ fuzz.fish: Binary not found. Please restart your shell." >&2
             return 1
@@ -145,29 +147,37 @@ function fh --description 'Fish History viewer with context (TUI)'
     # Run the TUI binary
     # Redirect stdin/stderr to /dev/tty for TUI interaction,
     # while capturing stdout for the selected command/branch/file
-    set -l result ($bin_path --query "$query" </dev/tty 2>/dev/tty)
+    # `string collect` keeps the output as one value: a selected history command
+    # may contain newlines, which command substitution would otherwise split.
+    set -l result ($bin_path --query "$query" </dev/tty 2>/dev/tty | string collect)
 
     if test -n "$result"
         if string match -q "CMD:*" -- "$result"
             # It's a history command, replace command line
-            set -l cmd (string replace "CMD:" "" -- "$result")
+            set -l cmd (string replace "CMD:" "" -- "$result" | string collect)
             commandline -r -- "$cmd"
             commandline -f repaint
         else if string match -q "BRANCH:*" -- "$result"
             # It's a git branch, switch to it
             set -l branch (string replace "BRANCH:" "" -- "$result")
-            # Execute git switch quietly in a subshell
-            fish -c "git switch --quiet '$branch'" >/dev/null 2>&1
+            # Pass the branch as an argument instead of building a shell string:
+            # branch names may contain quotes and semicolons, which a quoted
+            # `fish -c` string would execute.
+            # Let git report why a switch failed (dirty tree, ambiguous remote
+            # branch) instead of silently leaving the shell where it was.
+            if not git switch --quiet -- "$branch" >/dev/null
+                echo "fuzz.fish: could not switch to '$branch'" >&2
+            end
             # Force repaint to update prompt
             commandline -f repaint
         else if string match -q "DIR:*" -- "$result"
             # It's a directory, cd into it
-            set -l dir_path (string replace "DIR:" "" -- "$result")
+            set -l dir_path (string replace "DIR:" "" -- "$result" | string collect)
             cd "$dir_path"
             commandline -f repaint
         else if string match -q "FILE:*" -- "$result"
             # It's a file, insert into command line
-            set -l file_path (string replace "FILE:" "" -- "$result")
+            set -l file_path (string replace "FILE:" "" -- "$result" | string collect)
             commandline -i -- "$file_path"
             commandline -f repaint
         end

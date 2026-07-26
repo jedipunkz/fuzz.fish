@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
@@ -194,6 +195,11 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 
 	text := i.Text
 
+	// The mode icon is not part of the fuzzy match target, so it is kept out of
+	// text and prepended after highlighting; otherwise every match index would
+	// be shifted by the width of the icon.
+	var prefix string
+
 	// Calculate time ago string for history mode
 	var timeAgo string
 	switch m.mode {
@@ -211,7 +217,7 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		} else {
 			icon = " "
 		}
-		text = icon + " " + text
+		prefix = icon + " "
 	case ModeFiles:
 		var icon string
 		if i.IsDir {
@@ -219,16 +225,17 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		} else {
 			icon = "📄"
 		}
-		text = icon + " " + text
+		prefix = icon + " "
 	case ModeWorktree:
 		icon := " "
 		if i.IsCurrent {
 			icon = "*"
 		}
+		prefix = icon + " "
+		// Matches the SearchText built in loadItemsForMode, so match indexes
+		// cover the branch suffix too.
 		if wt, ok := i.Original.(git.Worktree); ok {
-			text = icon + " " + text + " [" + wt.Branch + "]"
-		} else {
-			text = icon + " " + text
+			text = text + " [" + wt.Branch + "]"
 		}
 	}
 
@@ -246,9 +253,9 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		contentWidth = 10
 	}
 
-	if len(text) > contentWidth {
-		text = text[:contentWidth-1] + "…"
-	}
+	// Truncate on display width and rune boundaries: byte slicing would split
+	// multibyte characters and misjudge the width of CJK text and icons.
+	text = ansi.Truncate(text, contentWidth-lipgloss.Width(prefix), "…")
 
 	var renderedCursor string
 	if isSelected {
@@ -257,23 +264,15 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		renderedCursor = cursorStr
 	}
 
-	// Build match set as bool slice for O(1) lookup without map overhead
-	runes := []rune(text)
+	// Build match set as bool slice for O(1) lookup without map overhead.
+	// The matchers report byte offsets into the search string, which is text
+	// without the icon, so the offsets index text directly.
 	var matchBits []bool
 	if len(i.MatchedIndexes) > 0 {
-		// Find max index to size the bool slice
-		maxIdx := 0
+		matchBits = make([]bool, len(text))
 		for _, idx := range i.MatchedIndexes {
-			if idx > maxIdx {
-				maxIdx = idx
-			}
-		}
-		if maxIdx < len(runes) {
-			matchBits = make([]bool, maxIdx+1)
-			for _, idx := range i.MatchedIndexes {
-				if idx < len(matchBits) {
-					matchBits[idx] = true
-				}
+			if idx >= 0 && idx < len(matchBits) {
+				matchBits[idx] = true
 			}
 		}
 	}
@@ -281,9 +280,12 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 	// Render text with match highlighting
 	var textBuilder strings.Builder
 	textBuilder.Grow(len(text) * 20) // estimate: each char may get ANSI escape codes
-	for runeIdx, r := range runes {
+	if prefix != "" {
+		textBuilder.WriteString(cmdStyle.Render(prefix))
+	}
+	for byteIdx, r := range text {
 		var charStyle lipgloss.Style
-		isMatch := runeIdx < len(matchBits) && matchBits[runeIdx]
+		isMatch := byteIdx < len(matchBits) && matchBits[byteIdx]
 		if isMatch {
 			if isSelected {
 				charStyle = matchSelectedStyle

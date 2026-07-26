@@ -58,7 +58,6 @@ type model struct {
 	allItems       []Item           // All items for current mode (sorted newest/priority first)
 	allItemsStr    []string         // Pre-built search strings for fuzzy matching (avoids per-keystroke allocation)
 	filtered       []Item           // Filtered items
-	historyFreqMap map[string]int   // Command frequency map for frecency scoring (history mode only)
 
 	cursor      int
 	offset      int
@@ -79,7 +78,7 @@ type model struct {
 
 	// Preview cache
 	previewCache     map[string]string // Cache for file previews
-	lastPreviewIndex int               // Last previewed item index to avoid re-rendering
+	lastPreviewKey   string            // Identifies the item the preview was rendered for
 }
 
 // Init initializes the model
