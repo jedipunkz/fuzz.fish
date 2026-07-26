@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
@@ -246,9 +247,9 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		contentWidth = 10
 	}
 
-	if len(text) > contentWidth {
-		text = text[:contentWidth-1] + "…"
-	}
+	// Truncate on display width and rune boundaries: byte slicing would split
+	// multibyte characters and misjudge the width of CJK text and icons.
+	text = ansi.Truncate(text, contentWidth, "…")
 
 	var renderedCursor string
 	if isSelected {
