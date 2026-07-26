@@ -163,7 +163,11 @@ function fh --description 'Fish History viewer with context (TUI)'
             # Pass the branch as an argument instead of building a shell string:
             # branch names may contain quotes and semicolons, which a quoted
             # `fish -c` string would execute.
-            git switch --quiet -- "$branch" >/dev/null 2>&1
+            # Let git report why a switch failed (dirty tree, ambiguous remote
+            # branch) instead of silently leaving the shell where it was.
+            if not git switch --quiet -- "$branch" >/dev/null
+                echo "fuzz.fish: could not switch to '$branch'" >&2
+            end
             # Force repaint to update prompt
             commandline -f repaint
         else if string match -q "DIR:*" -- "$result"
