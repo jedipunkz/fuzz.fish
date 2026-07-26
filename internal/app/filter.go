@@ -31,11 +31,6 @@ func (m *model) loadItemsForMode() {
 				Original: e,
 			}
 		}
-		// Build frequency map for frecency scoring
-		m.historyFreqMap = make(map[string]int, n)
-		for _, e := range m.historyEntries {
-			m.historyFreqMap[e.Cmd]++
-		}
 	case ModeGitBranch:
 		// Git: branches are collected.
 		// We reverse them to put first item at bottom.
@@ -199,8 +194,8 @@ func (m *model) updateFilter(query string) {
 				case ModeHistory:
 					if entry, ok := item.Original.(history.Entry); ok {
 						timestamp = entry.When
+						frequency = entry.Count
 					}
-					frequency = m.historyFreqMap[item.Text]
 				case ModeGitBranch:
 					if branch, ok := item.Original.(git.Branch); ok {
 						timestamp = branch.CommitTimestamp

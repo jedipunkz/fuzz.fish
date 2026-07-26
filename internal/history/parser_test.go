@@ -314,3 +314,24 @@ func TestParseReader_UnescapesPaths(t *testing.T) {
 		t.Errorf("path = %q, want %q", got, want)
 	}
 }
+
+func TestParseReader_CountsRepeatedCommands(t *testing.T) {
+	input := strings.Repeat("- cmd: ls\n  when: 1000\n", 5) +
+		"- cmd: pwd\n  when: 2000\n"
+
+	entries := parseReader(strings.NewReader(input))
+	if len(entries) != 2 {
+		t.Fatalf("parseReader() returned %d entries, want 2", len(entries))
+	}
+
+	counts := map[string]int{}
+	for _, e := range entries {
+		counts[e.Cmd] = e.Count
+	}
+	if got, want := counts["ls"], 5; got != want {
+		t.Errorf("Count for %q = %d, want %d", "ls", got, want)
+	}
+	if got, want := counts["pwd"], 1; got != want {
+		t.Errorf("Count for %q = %d, want %d", "pwd", got, want)
+	}
+}

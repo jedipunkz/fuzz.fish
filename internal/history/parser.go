@@ -33,7 +33,7 @@ type cacheMeta struct {
 
 // cacheVersion is bumped whenever the parsed representation changes, so caches
 // written by an older binary are discarded instead of reused.
-const cacheVersion = 2
+const cacheVersion = 3
 
 // NewParser returns a Parser with the default Fish history file path
 func NewParser() *Parser {
@@ -261,14 +261,18 @@ func parseReader(r io.Reader) []Entry {
 		entries[i], entries[j] = entries[j], entries[i]
 	}
 
-	// Deduplicate commands - keep only the newest occurrence
-	seen := make(map[string]bool)
+	// Deduplicate commands - keep only the newest occurrence, recording how
+	// often each command was run so frecency scoring still sees the frequency.
+	at := make(map[string]int, len(entries))
 	deduplicated := make([]Entry, 0, len(entries))
 	for _, entry := range entries {
-		if !seen[entry.Cmd] {
-			seen[entry.Cmd] = true
-			deduplicated = append(deduplicated, entry)
+		if i, ok := at[entry.Cmd]; ok {
+			deduplicated[i].Count++
+			continue
 		}
+		entry.Count = 1
+		at[entry.Cmd] = len(deduplicated)
+		deduplicated = append(deduplicated, entry)
 	}
 
 	return deduplicated

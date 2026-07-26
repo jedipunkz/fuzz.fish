@@ -93,8 +93,8 @@ func (m *model) globFilter(tokens []string) {
 		case ModeHistory:
 			if entry, ok := item.Original.(history.Entry); ok {
 				timestamp = entry.When
+				frequency = entry.Count
 			}
-			frequency = m.historyFreqMap[item.Text]
 		case ModeGitBranch:
 			if branch, ok := item.Original.(git.Branch); ok {
 				timestamp = branch.CommitTimestamp
