@@ -156,8 +156,10 @@ function fh --description 'Fish History viewer with context (TUI)'
         else if string match -q "BRANCH:*" -- "$result"
             # It's a git branch, switch to it
             set -l branch (string replace "BRANCH:" "" -- "$result")
-            # Execute git switch quietly in a subshell
-            fish -c "git switch --quiet '$branch'" >/dev/null 2>&1
+            # Pass the branch as an argument instead of building a shell string:
+            # branch names may contain quotes and semicolons, which a quoted
+            # `fish -c` string would execute.
+            git switch --quiet -- "$branch" >/dev/null 2>&1
             # Force repaint to update prompt
             commandline -f repaint
         else if string match -q "DIR:*" -- "$result"
