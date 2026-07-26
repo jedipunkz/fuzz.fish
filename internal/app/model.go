@@ -79,7 +79,7 @@ type model struct {
 
 	// Preview cache
 	previewCache     map[string]string // Cache for file previews
-	lastPreviewIndex int               // Last previewed item index to avoid re-rendering
+	lastPreviewKey   string            // Identifies the item the preview was rendered for
 }
 
 // Init initializes the model

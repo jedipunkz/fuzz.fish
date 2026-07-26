@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -212,7 +213,7 @@ func (m *model) switchToGitBranchMode() tea.Cmd {
 	m.input.SetValue("")
 	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
-	m.lastPreviewIndex = -1
+	m.lastPreviewKey = ""
 
 	if len(m.gitBranches) > 0 {
 		m.loadItemsForMode()
@@ -242,7 +243,7 @@ func (m *model) switchToHistoryMode() {
 	m.input.SetValue("")
 	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
-	m.lastPreviewIndex = -1
+	m.lastPreviewKey = ""
 
 	m.loadItemsForMode()
 	m.updateFilter("")
@@ -261,7 +262,7 @@ func (m *model) switchToFilesMode() tea.Cmd {
 	m.input.SetValue("")
 	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
-	m.lastPreviewIndex = -1
+	m.lastPreviewKey = ""
 
 	if len(m.fileEntries) > 0 {
 		m.loadItemsForMode()
@@ -291,7 +292,7 @@ func (m *model) switchToWorktreeMode() tea.Cmd {
 	m.input.SetValue("")
 	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
-	m.lastPreviewIndex = -1
+	m.lastPreviewKey = ""
 
 	if len(m.worktrees) > 0 {
 		m.loadItemsForMode()
@@ -375,21 +376,31 @@ func (m *model) validateCursor() {
 	}
 }
 
+// previewKey identifies the item a preview was rendered for. History previews
+// include surrounding commands, so they also depend on the item's position in
+// the source slice.
+func previewKey(mode SearchMode, item Item) string {
+	return strconv.Itoa(int(mode)) + "\x00" + strconv.Itoa(item.Index) + "\x00" + item.Text
+}
+
 // updatePreview updates the preview pane content
 func (m *model) updatePreview() {
 	if len(m.filtered) == 0 {
 		m.viewport.SetContent("")
-		m.lastPreviewIndex = -1
+		m.lastPreviewKey = ""
 		return
 	}
-
-	// Skip update if cursor hasn't moved
-	if m.cursor == m.lastPreviewIndex {
-		return
-	}
-	m.lastPreviewIndex = m.cursor
 
 	item := m.filtered[m.cursor]
+
+	// Skip update only when the same item is still selected. Keying this on the
+	// cursor position alone kept a stale preview whenever filtering changed the
+	// item sitting at that position.
+	key := previewKey(m.mode, item)
+	if key == m.lastPreviewKey {
+		return
+	}
+	m.lastPreviewKey = key
 
 	var content string
 	var cacheKey string

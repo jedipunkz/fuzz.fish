@@ -31,12 +31,11 @@ func Run(initialQuery string) {
 	}
 
 	m := model{
-		mode:             ModeHistory,
-		input:            ti,
-		viewport:         viewport.New(),
-		previewCache:     make(map[string]string),
-		lastPreviewIndex: -1,
-		loading:          true,
+		mode:         ModeHistory,
+		input:        ti,
+		viewport:     viewport.New(),
+		previewCache: make(map[string]string),
+		loading:      true,
 	}
 
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
 	"github.com/jedipunkz/fuzz.fish/internal/files"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
@@ -108,4 +109,44 @@ func TestRenderItem_HighlightsMatchedText(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUpdatePreview_FollowsSelectedItem(t *testing.T) {
+	m := model{
+		mode:         ModeHistory,
+		viewport:     viewport.New(),
+		previewCache: map[string]string{},
+		mainHeight:   10,
+		historyEntries: []history.Entry{
+			{Cmd: "alpha unique", When: 1000},
+			{Cmd: "beta unique", When: 900},
+		},
+	}
+	m.viewport.SetWidth(40)
+	m.viewport.SetHeight(10)
+	m.loadItemsForMode()
+
+	// Both queries leave a single result, so the cursor sits at index 0 twice;
+	// the preview must still follow the item, not the cursor position.
+	m.updateFilter("alpha")
+	first := m.viewport.View()
+	m.updateFilter("beta")
+	second := m.viewport.View()
+
+	if first == second {
+		t.Fatalf("preview did not change when the selected item changed:\n%s", first)
+	}
+	if selected := m.filtered[m.cursor].Text; !strings.Contains(markerLine(second), selected) {
+		t.Errorf("preview marks %q, want the selected item %q", markerLine(second), selected)
+	}
+}
+
+// markerLine returns the context line the preview marks as selected.
+func markerLine(view string) string {
+	for _, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "→") {
+			return line
+		}
+	}
+	return ""
 }
