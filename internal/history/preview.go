@@ -50,7 +50,9 @@ func (e Entry) GeneratePreview(all []Entry, idx, width, height int) string {
 	}
 
 	for i := end - 1; i >= start; i-- {
-		cmd := all[i].Cmd
+		// Commands may now contain real newlines; show them on one line so a
+		// single entry cannot push the rest of the context out of the pane.
+		cmd := strings.ReplaceAll(all[i].Cmd, "\n", " ")
 
 		if i == idx {
 			cursor := "→ "

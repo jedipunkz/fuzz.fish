@@ -145,12 +145,14 @@ function fh --description 'Fish History viewer with context (TUI)'
     # Run the TUI binary
     # Redirect stdin/stderr to /dev/tty for TUI interaction,
     # while capturing stdout for the selected command/branch/file
-    set -l result ($bin_path --query "$query" </dev/tty 2>/dev/tty)
+    # `string collect` keeps the output as one value: a selected history command
+    # may contain newlines, which command substitution would otherwise split.
+    set -l result ($bin_path --query "$query" </dev/tty 2>/dev/tty | string collect)
 
     if test -n "$result"
         if string match -q "CMD:*" -- "$result"
             # It's a history command, replace command line
-            set -l cmd (string replace "CMD:" "" -- "$result")
+            set -l cmd (string replace "CMD:" "" -- "$result" | string collect)
             commandline -r -- "$cmd"
             commandline -f repaint
         else if string match -q "BRANCH:*" -- "$result"
@@ -164,12 +166,12 @@ function fh --description 'Fish History viewer with context (TUI)'
             commandline -f repaint
         else if string match -q "DIR:*" -- "$result"
             # It's a directory, cd into it
-            set -l dir_path (string replace "DIR:" "" -- "$result")
+            set -l dir_path (string replace "DIR:" "" -- "$result" | string collect)
             cd "$dir_path"
             commandline -f repaint
         else if string match -q "FILE:*" -- "$result"
             # It's a file, insert into command line
-            set -l file_path (string replace "FILE:" "" -- "$result")
+            set -l file_path (string replace "FILE:" "" -- "$result" | string collect)
             commandline -i -- "$file_path"
             commandline -f repaint
         end

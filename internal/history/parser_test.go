@@ -282,3 +282,35 @@ func TestParseReader_CmdLineTracking(t *testing.T) {
 		t.Errorf("entries[1].CmdLine = %d, want 1", entries[1].CmdLine)
 	}
 }
+
+func TestParseReader_UnescapesFishEscapes(t *testing.T) {
+	// Fish stores a backslash as `\\` and a newline as `\n`; these two lines
+	// are what fish writes for `grep '\d' file` and for a two-line command.
+	input := "- cmd: grep '\\\\d' file\n  when: 1000\n" +
+		"- cmd: echo a\\necho b\n  when: 2000\n"
+
+	entries := parseReader(strings.NewReader(input))
+	if len(entries) != 2 {
+		t.Fatalf("parseReader() returned %d entries, want 2", len(entries))
+	}
+
+	// Newest first.
+	if got, want := entries[0].Cmd, "echo a\necho b"; got != want {
+		t.Errorf("multi-line command = %q, want %q", got, want)
+	}
+	if got, want := entries[1].Cmd, `grep '\d' file`; got != want {
+		t.Errorf("backslash command = %q, want %q", got, want)
+	}
+}
+
+func TestParseReader_UnescapesPaths(t *testing.T) {
+	input := "- cmd: ls\n  when: 1000\n  paths:\n    - /tmp/back\\\\slash\n"
+
+	entries := parseReader(strings.NewReader(input))
+	if len(entries) != 1 {
+		t.Fatalf("parseReader() returned %d entries, want 1", len(entries))
+	}
+	if got, want := entries[0].Paths[0], `/tmp/back\slash`; got != want {
+		t.Errorf("path = %q, want %q", got, want)
+	}
+}
