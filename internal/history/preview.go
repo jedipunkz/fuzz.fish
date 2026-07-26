@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
@@ -58,10 +59,12 @@ func (e Entry) GeneratePreview(all []Entry, idx, width, height int) string {
 			sb.WriteString(line + "\n")
 		} else {
 			cursor := "  "
-			// Truncate inactive lines to keep context compact
+			// Truncate inactive lines to keep context compact. ansi.Truncate
+			// measures display cells and cuts on rune boundaries, so narrow
+			// panes and multibyte commands stay intact.
 			maxWidth := width - lipgloss.Width(cursor)
-			if maxWidth > 0 && len(cmd) > maxWidth {
-				cmd = cmd[:maxWidth-3] + "..."
+			if maxWidth > 0 {
+				cmd = ansi.Truncate(cmd, maxWidth, "…")
 			}
 			line := ui.InactiveContextStyle.Render(cursor + cmd)
 			sb.WriteString(line + "\n")
