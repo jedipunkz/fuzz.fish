@@ -202,7 +202,10 @@ func (m *model) updateFilter(query string) {
 						isCurrent = branch.IsCurrent
 					}
 				}
-				scores[i] = config.ItemScore(item.Text, aggScore[mat.Index], aggIdx[mat.Index], timestamp, frequency, isCurrent, now)
+				// Score against the string the indexes were matched in, not the
+				// display text: they differ in worktree mode, where the branch
+				// suffix is part of the search string.
+				scores[i] = config.ItemScore(m.allItemsStr[mat.Index], aggScore[mat.Index], aggIdx[mat.Index], timestamp, frequency, isCurrent, now)
 			}
 
 			// Create index array for sorting (scores array must stay aligned with original matches)

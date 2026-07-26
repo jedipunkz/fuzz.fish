@@ -69,7 +69,6 @@ func (m *model) globFilter(tokens []string) {
 	for i := range m.allItems {
 		text := strings.ToLower(m.allItemsStr[i])
 		var idx []int
-		matchedLen := 0
 		ok := true
 		for _, token := range lowerTokens {
 			mIdx, matched := globMatch(token, text)
@@ -78,7 +77,6 @@ func (m *model) globFilter(tokens []string) {
 				break
 			}
 			idx = append(idx, mIdx...)
-			matchedLen += len(mIdx)
 		}
 		if !ok {
 			continue
@@ -101,7 +99,12 @@ func (m *model) globFilter(tokens []string) {
 				isCurrent = branch.IsCurrent
 			}
 		}
-		score := config.ItemScore(item.Text, matchedLen, idx, timestamp, frequency, isCurrent, now)
+		// Glob matches have no fuzzy score to pass through: matchedLen is not on
+		// the same scale as one, and using it would shift the balance between
+		// match quality and frecency compared with the fuzzy path. MatchBonus
+		// already rewards contiguous, boundary-aligned matches, so it carries
+		// the match quality alone here.
+		score := config.ItemScore(m.allItemsStr[i], 0, idx, timestamp, frequency, isCurrent, now)
 		hits = append(hits, hit{itemIdx: i, idx: idx, score: score})
 	}
 
