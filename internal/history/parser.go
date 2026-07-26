@@ -35,14 +35,19 @@ type cacheMeta struct {
 // written by an older binary are discarded instead of reused.
 const cacheVersion = 3
 
-// NewParser returns a Parser with the default Fish history file path
+// NewParser returns a Parser with the default Fish history file path.
+// Fish stores its history under XDG_DATA_HOME, falling back to ~/.local/share.
 func NewParser() *Parser {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return &Parser{}
+	dataHome := os.Getenv("XDG_DATA_HOME")
+	if dataHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return &Parser{}
+		}
+		dataHome = filepath.Join(home, ".local", "share")
 	}
 	return &Parser{
-		Path: filepath.Join(home, ".local", "share", "fish", "fish_history"),
+		Path: filepath.Join(dataHome, "fish", "fish_history"),
 	}
 }
 

@@ -335,3 +335,26 @@ func TestParseReader_CountsRepeatedCommands(t *testing.T) {
 		t.Errorf("Count for %q = %d, want %d", "pwd", got, want)
 	}
 }
+
+func TestNewParser_HonoursXDGDataHome(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dir)
+
+	want := filepath.Join(dir, "fish", "fish_history")
+	if got := NewParser().Path; got != want {
+		t.Errorf("NewParser().Path = %q, want %q", got, want)
+	}
+}
+
+func TestNewParser_FallsBackToHome(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", "")
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no home directory")
+	}
+	want := filepath.Join(home, ".local", "share", "fish", "fish_history")
+	if got := NewParser().Path; got != want {
+		t.Errorf("NewParser().Path = %q, want %q", got, want)
+	}
+}
