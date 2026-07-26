@@ -119,7 +119,9 @@ function _fuzz_ensure_binary_or_error --description 'Internal: Ensure binary exi
 
     if test -z "$bin_path"; or not test -f "$bin_path"
         if functions -q _fuzz_fish_ensure_binary
-            _fuzz_fish_ensure_binary
+            # Build progress goes to stderr: this function's stdout is captured
+            # by the caller as the binary path.
+            _fuzz_fish_ensure_binary >&2
         else
             echo "❌ fuzz.fish: Binary not found. Please restart your shell." >&2
             return 1
