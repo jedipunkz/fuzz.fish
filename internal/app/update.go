@@ -20,8 +20,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case historyLoadedMsg:
 		m.historyEntries = msg.entries
-		m.loading = false
 		if m.mode == ModeHistory {
+			m.loading = false
 			m.loadItemsForMode()
 			m.updateFilter(m.input.Value())
 		}
@@ -29,8 +29,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case branchesLoadedMsg:
 		m.gitBranches = msg.branches
-		m.loading = false
 		if m.mode == ModeGitBranch {
+			m.loading = false
 			m.loadItemsForMode()
 			m.updateFilter(m.input.Value())
 		}
@@ -38,8 +38,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case filesLoadedMsg:
 		m.fileEntries = msg.entries
-		m.loading = false
 		if m.mode == ModeFiles {
+			m.loading = false
 			m.loadItemsForMode()
 			m.updateFilter(m.input.Value())
 		}
@@ -47,8 +47,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case worktreesLoadedMsg:
 		m.worktrees = msg.worktrees
-		m.loading = false
 		if m.mode == ModeWorktree {
+			m.loading = false
 			m.loadItemsForMode()
 			m.updateFilter(m.input.Value())
 		}
@@ -156,8 +156,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case "ctrl+r":
 			// Switch to History mode
-			m.switchToHistoryMode()
-			return m, nil
+			cmd = m.switchToHistoryMode()
+			return m, cmd
 		case "down", "ctrl+n":
 			if len(m.filtered) > 0 {
 				m.cursor++
@@ -234,9 +234,9 @@ func (m *model) switchToGitBranchMode() tea.Cmd {
 }
 
 // switchToHistoryMode switches directly to history mode (Ctrl+R)
-func (m *model) switchToHistoryMode() {
+func (m *model) switchToHistoryMode() tea.Cmd {
 	if m.mode == ModeHistory {
-		return
+		return nil
 	}
 
 	m.mode = ModeHistory
@@ -245,11 +245,23 @@ func (m *model) switchToHistoryMode() {
 	m.previewCache = make(map[string]string)
 	m.lastPreviewKey = ""
 
-	m.loadItemsForMode()
-	m.updateFilter("")
+	if len(m.historyEntries) > 0 {
+		m.loadItemsForMode()
+		m.updateFilter("")
+		m.resetCursorToBottom()
+		m.updatePreview()
+		return nil
+	}
 
-	m.resetCursorToBottom()
-	m.updatePreview()
+	// Async load history: the initial load may still be in flight, in which
+	// case its result no longer reaches this mode on its own.
+	m.loading = true
+	m.filtered = nil
+	m.allItems = nil
+	m.allItemsStr = nil
+	m.cursor = 0
+	m.offset = 0
+	return loadHistoryCmd()
 }
 
 // switchToFilesMode switches to files mode (Ctrl+S)

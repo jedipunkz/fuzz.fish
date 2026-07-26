@@ -150,3 +150,21 @@ func markerLine(view string) string {
 	}
 	return ""
 }
+
+func TestUpdate_LoadingStaysWithTheActiveMode(t *testing.T) {
+	m := model{mode: ModeFiles, viewport: viewport.New(), loading: true}
+
+	// History finishes loading while the user is already waiting on files mode.
+	updated, _ := m.Update(historyLoadedMsg{entries: []history.Entry{{Cmd: "ls", When: 1, Count: 1}}})
+	got, ok := updated.(model)
+	if !ok {
+		t.Fatalf("Update() returned %T, want model", updated)
+	}
+
+	if !got.loading {
+		t.Error("loading cleared by another mode's result while files mode is still loading")
+	}
+	if len(got.historyEntries) != 1 {
+		t.Errorf("historyEntries = %d, want the loaded entry to be kept", len(got.historyEntries))
+	}
+}
