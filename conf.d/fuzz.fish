@@ -175,6 +175,11 @@ function fh --description 'Fish History viewer with context (TUI)'
             set -l dir_path (string replace "DIR:" "" -- "$result" | string collect)
             cd "$dir_path"
             commandline -f repaint
+        else if string match -q "HASH:*" -- "$result"
+            # It's a commit hash, insert into command line
+            set -l hash (string replace "HASH:" "" -- "$result" | string collect)
+            commandline -i -- "$hash"
+            commandline -f repaint
         else if string match -q "FILE:*" -- "$result"
             # It's a file, insert into command line
             set -l file_path (string replace "FILE:" "" -- "$result" | string collect)

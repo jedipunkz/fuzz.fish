@@ -39,6 +39,7 @@ Press `ctrl+r` to open fuzz.fish, then type to search. Switch modes at any time 
 | `ctrl+s` | File Search | Insert the file path / `cd` into the directory |
 | `ctrl+w` | Git Worktree Search | `cd` into the worktree |
 | `ctrl+g` | Git Branch Search | Switch to the selected branch |
+| `ctrl+x` | Git Commit Search | Pick a command to run against the commit |
 
 Common keys:
 
@@ -54,6 +55,7 @@ Notes:
 - Anything already typed on the command line pre-fills the search box, so `vim` then `ctrl+r` starts with history narrowed to `vim`.
 - A `*` in the query switches from fuzzy to glob matching in every mode: `nvim *.go` matches `nvim internal/app/filter.go` but not commands that merely contain those letters.
 - In Git Branch Search mode, pressing `ctrl+g` again on the current branch runs `git pull origin <branch>`.
+- Git Commit Search matches both the short hash and the commit subject. `enter` opens a small action list (`git show`, `git diff`, `git revert`, `git cherry-pick`, `git rebase --onto`, or the bare hash); the chosen command is placed on the prompt without running it. `ctrl+x` outside a git repository shows a warning instead of switching modes.
 - File Search skips hidden files and build directories such as `node_modules` and `vendor`.
 
 

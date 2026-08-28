@@ -16,6 +16,7 @@ type historyLoadedMsg struct{ entries []history.Entry }
 type branchesLoadedMsg struct{ branches []git.Branch }
 type filesLoadedMsg struct{ entries []files.Entry }
 type worktreesLoadedMsg struct{ worktrees []git.Worktree }
+type commitsLoadedMsg struct{ commits []git.Commit }
 
 // Filter debounce message
 type filterTickMsg struct{ query string }
@@ -28,7 +29,23 @@ const (
 	ModeGitBranch
 	ModeFiles
 	ModeWorktree
+	ModeCommit
 )
+
+// commitActions are the commands offered after selecting a commit. The
+// selected template is joined with the short hash to build the command line;
+// an empty template inserts the bare hash.
+var commitActions = []struct {
+	Label    string
+	Template string
+}{
+	{"git show", "git show"},
+	{"git diff", "git diff"},
+	{"git revert", "git revert"},
+	{"git cherry-pick", "git cherry-pick"},
+	{"git rebase --onto", "git rebase --onto"},
+	{"hash only", ""},
+}
 
 // Item represents a search result item
 type Item struct {
@@ -53,6 +70,7 @@ type model struct {
 	gitBranches    []git.Branch
 	fileEntries    []files.Entry
 	worktrees      []git.Worktree
+	commits        []git.Commit
 
 	// Items state
 	allItems       []Item           // All items for current mode (sorted newest/priority first)
@@ -64,6 +82,12 @@ type model struct {
 	choice      *string // Result string to print
 	choiceIsDir bool    // For files mode: whether the choice is a directory
 	fetchBranch bool    // True when ctrl+g selects current branch for git pull
+
+	// Commit action picker: non-empty pendingCommit means the picker is open
+	// and the list keys drive the action list instead of the commit list.
+	pendingCommit string
+	actionCursor  int
+	commitIsCmd   bool // True when the picked action produced a full command line
 	quitting    bool
 	statusMsg   string  // Transient status message (e.g., warning)
 	loading     bool   // True while async data loading is in progress
@@ -109,6 +133,14 @@ func loadFilesCmd() tea.Cmd {
 		}
 		c := files.NewCollector(cwd)
 		return filesLoadedMsg{entries: c.Collect()}
+	}
+}
+
+func loadCommitsCmd() tea.Cmd {
+	return func() tea.Msg {
+		r := git.NewRepository(".")
+		commits, _ := r.Commits()
+		return commitsLoadedMsg{commits: commits}
 	}
 }
 
