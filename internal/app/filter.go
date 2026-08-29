@@ -89,6 +89,26 @@ func (m *model) loadItemsForMode() {
 				IsDir:      true,
 			}
 		}
+	case ModeCommit:
+		// Commits: git log is newest first, reverse so the newest sits at the
+		// bottom next to the cursor.
+		n := len(m.commits)
+		if cap(m.allItems) >= n {
+			m.allItems = m.allItems[:n]
+		} else {
+			m.allItems = make([]Item, n)
+		}
+		for i := range m.commits {
+			c := m.commits[n-1-i]
+			m.allItems[i] = Item{
+				Text: c.Hash,
+				// Search hash and subject together so the message is
+				// incrementally searchable. Mirrors the display layout.
+				SearchText: c.Hash + " " + c.Subject,
+				Index:      n - 1 - i,
+				Original:   c,
+			}
+		}
 	default:
 		m.allItems = m.allItems[:0]
 	}
@@ -200,6 +220,10 @@ func (m *model) updateFilter(query string) {
 					if branch, ok := item.Original.(git.Branch); ok {
 						timestamp = branch.CommitTimestamp
 						isCurrent = branch.IsCurrent
+					}
+				case ModeCommit:
+					if c, ok := item.Original.(git.Commit); ok {
+						timestamp = c.When
 					}
 				}
 				// Score against the string the indexes were matched in, not the

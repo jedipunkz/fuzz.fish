@@ -121,6 +121,9 @@ func (m model) View() tea.View {
 
 	listView := listBuilder.String()
 	previewView := m.viewport.View()
+	if m.pendingCommit != "" {
+		previewView = m.renderActionPicker()
+	}
 
 	// List pane with border
 	// In lipgloss v2, Width/Height include borders, so add 2 for left+right / top+bottom borders
@@ -159,6 +162,28 @@ func (m model) View() tea.View {
 	v.AltScreen = true
 	v.Cursor = m.inputCursor()
 	return v
+}
+
+// renderActionPicker renders the commit action list in place of the preview
+// pane. It replaces the preview rather than overlaying it so the selected
+// commit stays visible in the list on the left.
+func (m model) renderActionPicker() string {
+	var b strings.Builder
+	b.WriteString(ui.LabelStyle.Render("Run on "+m.pendingCommit) + "\n\n")
+	for i, a := range commitActions {
+		line := "  " + a.Label
+		if a.Template != "" {
+			line = "  " + a.Template + " " + m.pendingCommit
+		}
+		if i == m.actionCursor {
+			b.WriteString(itemSelectedStyle.Render("▸ " + line[2:]))
+		} else {
+			b.WriteString(itemNormalStyle.Render(line))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("\n" + timeAgoNormalStyle.Render("enter: accept  esc: back"))
+	return b.String()
 }
 
 // inputCursor returns the textinput cursor offset to absolute screen coordinates.
@@ -226,6 +251,15 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 			icon = "📄"
 		}
 		prefix = icon + " "
+	case ModeCommit:
+		if c, ok := i.Original.(git.Commit); ok {
+			// Matches the SearchText built in loadItemsForMode, so match
+			// indexes cover the subject too.
+			text = text + " " + strings.ReplaceAll(c.Subject, "\n", " ")
+			if c.When > 0 {
+				timeAgo = formatTimeAgo(c.When)
+			}
+		}
 	case ModeWorktree:
 		icon := " "
 		if i.IsCurrent {

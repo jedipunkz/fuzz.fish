@@ -223,9 +223,17 @@ code {
 
 .overview {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   padding: 32px 0 84px;
+}
+
+/* Five cards tile evenly at 5 or fewer columns; 3 keeps the second row from
+   being a single orphan card between the wide and tablet layouts. */
+@media (max-width: 1100px) {
+  .overview {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .feature {

@@ -25,6 +25,7 @@ const shortcuts = [
   ['Ctrl+G', 'Switch to Git branch search mode'],
   ['Ctrl+S', 'Switch to file search mode'],
   ['Ctrl+W', 'Switch to Git worktree search mode'],
+  ['Ctrl+X', 'Switch to Git commit search mode'],
   ['Ctrl+P/N or Up/Down', 'Move through results'],
   ['Enter', 'Select the current item'],
   ['Ctrl+Y', 'Copy the selected item to the clipboard'],
@@ -51,6 +52,11 @@ const modes = [
     name: 'Worktrees',
     title: 'Git worktree switching',
     text: 'Search Git worktrees by path, see the checked-out branch for each result, and cd into the selected worktree.',
+  },
+  {
+    name: 'Commits',
+    title: 'Commit lookup by message',
+    text: 'Search commits by short hash or subject, preview the diffstat, then put git show, revert, or cherry-pick on the prompt.',
   },
 ];
 ---
@@ -97,7 +103,8 @@ const modes = [
           <p class="eyebrow">Fish Shell plugin</p>
           <h1 id="hero-title">fuzz.fish</h1>
           <p class="lead">
-            Fuzzy finding for command history, project files, and Git branches without leaving your Fish prompt.
+            Fuzzy finding for command history, project files, Git branches, and commits without leaving your Fish
+            prompt.
           </p>
           <div class="actions" aria-label="Project links">
             <a class="button button--primary" href="https://github.com/jedipunkz/fuzz.fish">GitHub</a>
@@ -130,10 +137,11 @@ const modes = [
       <section class="details" aria-labelledby="details-title">
         <div>
           <p class="eyebrow">Unified interface</p>
-          <h2 id="details-title">One picker, four workflows</h2>
+          <h2 id="details-title">One picker, five workflows</h2>
           <p>
             Press <kbd>Ctrl+R</kbd> to open fuzz.fish, then switch modes as the task changes. The default history
-            search is ready immediately, while Git branch, Git worktree, and file search are a keypress away.
+            search is ready immediately, while Git branch, Git worktree, Git commit, and file search are a keypress
+            away.
           </p>
         </div>
         <div class="shortcut-list" aria-label="Keyboard shortcuts">

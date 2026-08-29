@@ -54,6 +54,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case commitsLoadedMsg:
+		m.commits = msg.commits
+		if m.mode == ModeCommit {
+			m.loading = false
+			m.loadItemsForMode()
+			m.updateFilter(m.input.Value())
+		}
+		return m, nil
+
 	case filterTickMsg:
 		if msg.query == m.pendingQuery {
 			m.updateFilter(msg.query)
@@ -109,9 +118,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear status message on any key press
 		m.statusMsg = ""
 
+		// The action picker owns every key while it is open, so typing does
+		// not leak into the search box behind it.
+		if m.pendingCommit != "" {
+			return m.updateActionPicker(msg)
+		}
+
 		switch msg.String() {
 		case "enter":
 			if len(m.filtered) > 0 {
+				if m.mode == ModeCommit {
+					m.pendingCommit = m.filtered[m.cursor].Text
+					m.actionCursor = 0
+					return m, nil
+				}
 				m.selectItem()
 				m.quitting = true
 				return m, tea.Quit
@@ -153,6 +173,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+w":
 			// Switch to Worktree mode
 			cmd = m.switchToWorktreeMode()
+			return m, cmd
+		case "ctrl+x":
+			// Switch to Commit mode
+			cmd = m.switchToCommitMode()
 			return m, cmd
 		case "ctrl+r":
 			// Switch to History mode
@@ -324,6 +348,67 @@ func (m *model) switchToWorktreeMode() tea.Cmd {
 	return loadWorktreesCmd()
 }
 
+// switchToCommitMode switches to git commit mode (Ctrl+X)
+func (m *model) switchToCommitMode() tea.Cmd {
+	if m.mode == ModeCommit {
+		return nil
+	}
+	if !git.NewRepository(".").IsRepo() {
+		m.statusMsg = "⚠ Not a git repository"
+		return nil
+	}
+
+	m.mode = ModeCommit
+	m.input.SetValue("")
+	m.updatePlaceholder()
+	m.previewCache = make(map[string]string)
+	m.lastPreviewKey = ""
+
+	if len(m.commits) > 0 {
+		m.loadItemsForMode()
+		m.updateFilter("")
+		m.resetCursorToBottom()
+		m.updatePreview()
+		return nil
+	}
+
+	// Async load commits
+	m.loading = true
+	m.filtered = nil
+	m.allItems = nil
+	m.allItemsStr = nil
+	m.cursor = 0
+	m.offset = 0
+	return loadCommitsCmd()
+}
+
+// updateActionPicker handles keys while the commit action picker is open.
+func (m model) updateActionPicker(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		res := m.pendingCommit
+		if tmpl := commitActions[m.actionCursor].Template; tmpl != "" {
+			res = tmpl + " " + res
+		}
+		m.choice = &res
+		m.commitIsCmd = commitActions[m.actionCursor].Template != ""
+		m.quitting = true
+		return m, tea.Quit
+	case "esc", "ctrl+c":
+		m.pendingCommit = ""
+		return m, nil
+	case "down", "ctrl+n":
+		if m.actionCursor < len(commitActions)-1 {
+			m.actionCursor++
+		}
+	case "up", "ctrl+p":
+		if m.actionCursor > 0 {
+			m.actionCursor--
+		}
+	}
+	return m, nil
+}
+
 // updatePlaceholder updates the input placeholder based on current mode
 func (m *model) updatePlaceholder() {
 	switch m.mode {
@@ -334,6 +419,8 @@ func (m *model) updatePlaceholder() {
 	case ModeFiles:
 		m.input.Placeholder = ""
 	case ModeWorktree:
+		m.input.Placeholder = ""
+	case ModeCommit:
 		m.input.Placeholder = ""
 	}
 }
@@ -437,6 +524,15 @@ func (m *model) updatePreview() {
 			content = cached
 		} else {
 			content = entry.GeneratePreview(m.viewport.Width(), m.viewport.Height())
+			m.previewCache[cacheKey] = content
+		}
+	case ModeCommit:
+		c := item.Original.(git.Commit)
+		cacheKey = c.Hash
+		if cached, ok := m.previewCache[cacheKey]; ok {
+			content = cached
+		} else {
+			content = c.GeneratePreview(".", m.viewport.Width(), m.viewport.Height())
 			m.previewCache[cacheKey] = content
 		}
 	case ModeWorktree:

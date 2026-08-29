@@ -77,6 +77,12 @@ func Run(initialQuery string) {
 				}
 			case ModeWorktree:
 				fmt.Printf("DIR:%s", *m.choice)
+			case ModeCommit:
+				if m.commitIsCmd {
+					fmt.Printf("CMD:%s", *m.choice)
+				} else {
+					fmt.Printf("HASH:%s", *m.choice)
+				}
 			}
 		}
 	}

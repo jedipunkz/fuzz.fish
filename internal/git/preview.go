@@ -1,8 +1,10 @@
 package git
 
 import (
+	"os/exec"
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
@@ -50,5 +52,33 @@ func (w Worktree) GeneratePreview(width, height int) string {
 		sb.WriteString(ui.ContentStyle.Render("Current worktree") + "\n")
 	}
 
+	return sb.String()
+}
+
+// GeneratePreview generates a preview of the commit: metadata plus the
+// diffstat from `git show --stat`. The git binary is invoked with an argument
+// list (no shell) and the hash comes from git's own log output.
+func (c Commit) GeneratePreview(repoPath string, width, height int) string {
+	cmd := exec.Command("git", "show", "--stat", "--no-color", "--pretty=format:%an%n%ad%n%n%s%n%n%b", c.Hash)
+	cmd.Dir = repoPath
+	out, err := cmd.Output()
+	if err != nil {
+		return ui.ContentStyle.Render(c.Subject)
+	}
+
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	if height > 0 && len(lines) > height {
+		lines = lines[:height]
+	}
+
+	var sb strings.Builder
+	sb.WriteString(ui.LabelStyle.Render("Commit") + "\n")
+	sb.WriteString(ui.ContentStyle.Render(c.Hash) + "\n\n")
+	for i, line := range lines {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(ui.ContentStyle.Render(ansi.Truncate(line, width, "…")))
+	}
 	return sb.String()
 }
