@@ -1,14 +1,18 @@
-<p align="center">
-  <img src="./assets/fuzz.png" width="300" height="300" />
-</p>
-
 # fuzz.fish
+
+<img src="./assets/fuzz.png" align="left" width="180" hspace="24" vspace="8" alt="fuzz.fish logo" />
+
+fuzz.fish is a Fish Shell plugin that provides fuzzy finding for command history,
+files, git branches, git worktrees, and git commits.
+
+Press `ctrl+r` to open it, type to search, and switch modes with a single key.
+No external finder required — a single Go binary ships with the plugin.
 
 [![CI](https://github.com/jedipunkz/fuzz.fish/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jedipunkz/fuzz.fish/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/jedipunkz/fuzz.fish)](https://github.com/jedipunkz/fuzz.fish/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-fuzz.fish is a Fish Shell plugin that provides fuzzy finding for command history, files, git branches, and git worktrees.
+<br clear="left" />
 
 # Screenshot
 
