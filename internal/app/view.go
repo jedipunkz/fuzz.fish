@@ -311,26 +311,19 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 		}
 	}
 
+	matchStyle := matchNormalStyle
+	if isSelected {
+		matchStyle = matchSelectedStyle
+	}
+
 	// Render text with match highlighting
 	var textBuilder strings.Builder
-	textBuilder.Grow(len(text) * 20) // estimate: each char may get ANSI escape codes
+	textBuilder.Grow(len(text) + 64)
 	if prefix != "" {
 		textBuilder.WriteString(cmdStyle.Render(prefix))
 	}
-	for byteIdx, r := range text {
-		var charStyle lipgloss.Style
-		isMatch := byteIdx < len(matchBits) && matchBits[byteIdx]
-		if isMatch {
-			if isSelected {
-				charStyle = matchSelectedStyle
-			} else {
-				charStyle = matchNormalStyle
-			}
-		} else {
-			charStyle = cmdStyle
-		}
-		textBuilder.WriteString(charStyle.Render(string(r)))
-	}
+
+	writeStyledRuns(&textBuilder, text, matchBits, matchStyle, cmdStyle)
 
 	rendered := textBuilder.String()
 	renderedWidth := lipgloss.Width(rendered)
@@ -354,6 +347,39 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 	}
 
 	_, _ = fmt.Fprint(w, renderedCursor+rendered+timeAgoRendered)
+}
+
+// writeStyledRuns writes text to b, wrapping each run of consecutive matched
+// or unmatched characters in a single Render call. lipgloss resolves the style
+// and emits a pair of ANSI sequences per call, so styling character by
+// character cost ~18x more time and put escape codes around every character.
+//
+// Ranging a string yields rune start offsets, so a multi-byte character takes
+// its style from its first byte, which is how the matchers index it.
+func writeStyledRuns(b *strings.Builder, text string, matchBits []bool, matchStyle, cmdStyle lipgloss.Style) {
+	runStart := 0
+	runIsMatch := len(matchBits) > 0 && matchBits[0]
+
+	flush := func(end int) {
+		if runStart >= end {
+			return
+		}
+		if runIsMatch {
+			b.WriteString(matchStyle.Render(text[runStart:end]))
+		} else {
+			b.WriteString(cmdStyle.Render(text[runStart:end]))
+		}
+	}
+
+	for byteIdx := range text {
+		isMatch := byteIdx < len(matchBits) && matchBits[byteIdx]
+		if isMatch == runIsMatch {
+			continue
+		}
+		flush(byteIdx)
+		runStart, runIsMatch = byteIdx, isMatch
+	}
+	flush(len(text))
 }
 
 // formatTimeAgo formats a Unix timestamp as a relative time string
