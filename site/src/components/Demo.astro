@@ -1,0 +1,61 @@
+---
+const base = import.meta.env.BASE_URL;
+---
+
+<section class="section" id="demo" aria-labelledby="demo-title">
+  <div class="container demo">
+    <div class="demo__copy">
+      <p class="eyebrow">Recording</p>
+      <h2 id="demo-title">See it run</h2>
+      <p class="section-lead">
+        History search, a mode switch, a preview, and a selection — the whole loop takes a few
+        seconds and never leaves the terminal.
+      </p>
+    </div>
+
+    <figure class="demo__figure">
+      <img
+        src={`${base}assets/fuzz.gif`}
+        alt="Screen recording of fuzz.fish: typing a query, switching to Git branch mode, and selecting a branch"
+        width="1400"
+        height="800"
+        loading="lazy"
+        decoding="async"
+      />
+    </figure>
+  </div>
+</section>
+
+<style>
+  .demo {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.42fr) minmax(0, 1fr);
+    gap: 24px 48px;
+    align-items: center;
+  }
+
+  .demo__copy .section-lead {
+    margin-top: 14px;
+  }
+
+  .demo__figure {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    background: var(--bg);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .demo__figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  @media (max-width: 900px) {
+    .demo {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

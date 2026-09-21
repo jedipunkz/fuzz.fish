@@ -1,0 +1,194 @@
+---
+import CopyCommand from './CopyCommand.astro';
+import TuiMock from './TuiMock.astro';
+import { facts, installCommand, links } from '../lib/content';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="container hero__inner">
+    <div class="hero__copy">
+      <img class="hero__mark" src={`${base}assets/fuzz.png`} alt="fuzz.fish logo" width="72" height="72" />
+      <p class="eyebrow">Fish Shell plugin · Go · Bubble Tea</p>
+      <h1 id="hero-title">
+        fuzz<span class="hero__dot">.</span><span class="hero__accent">fish</span>
+      </h1>
+      <p class="hero__lead">
+        Fuzzy search your command history, project files, Git branches, worktrees, and commits —
+        in one picker, one keystroke away from the Fish prompt.
+      </p>
+
+      <CopyCommand command={installCommand} label="Copy the Fisher install command">
+        <span class="tok-cmd">fisher</span>{' '}<span class="tok-sub">install</span>{' '}<span
+          class="tok-arg">jedipunkz/fuzz.fish</span>
+      </CopyCommand>
+
+      <div class="hero__actions">
+        <a class="button button--primary" href="#install">Get started</a>
+        <a class="button button--ghost" href={links.repo} rel="noopener">Star on GitHub</a>
+      </div>
+
+      <ul class="hero__facts">
+        {facts.map((fact) => <li>{fact}</li>)}
+      </ul>
+    </div>
+
+    <figure class="hero__media">
+      <div class="terminal">
+        <div class="terminal__bar">
+          <span class="terminal__dot terminal__dot--red"></span>
+          <span class="terminal__dot terminal__dot--yellow"></span>
+          <span class="terminal__dot terminal__dot--green"></span>
+          <span class="terminal__title">fish — fuzz.fish</span>
+        </div>
+        <TuiMock />
+      </div>
+      <figcaption>
+        <kbd>ctrl+r</kbd> opens history search. Every other mode is a single key from there.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding-block: clamp(48px, 7vw, 88px) clamp(56px, 8vw, 96px);
+  }
+
+  .hero__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: clamp(32px, 5vw, 56px);
+    align-items: center;
+  }
+
+  .hero__copy {
+    display: grid;
+    gap: 22px;
+    justify-items: start;
+  }
+
+  .hero__copy :global(.copy) {
+    width: min(100%, 460px);
+  }
+
+  .hero__copy .eyebrow {
+    margin-bottom: 0;
+  }
+
+  .hero__mark {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    filter: drop-shadow(0 14px 28px rgb(122 162 247 / 26%));
+  }
+
+  .hero__dot {
+    color: var(--magenta);
+  }
+
+  .hero__accent {
+    background: linear-gradient(120deg, var(--blue), var(--cyan) 60%, var(--teal));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .hero__lead {
+    max-width: 54ch;
+    color: var(--ink-dim);
+    font-size: clamp(1.05rem, 1.6vw, 1.25rem);
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .hero__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .hero__facts li {
+    padding: 5px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgb(36 40 59 / 55%);
+    color: var(--ink-faint);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    letter-spacing: 0.01em;
+  }
+
+  .hero__media {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+  }
+
+  .terminal {
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .terminal__bar {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .terminal__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .terminal__dot--red {
+    background: var(--red);
+  }
+
+  .terminal__dot--yellow {
+    background: var(--yellow);
+  }
+
+  .terminal__dot--green {
+    background: var(--green);
+  }
+
+  .terminal__title {
+    flex: 1;
+    color: var(--ink-faint);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    text-align: center;
+  }
+
+  figcaption {
+    color: var(--ink-faint);
+    font-size: 0.86rem;
+  }
+
+  @media (max-width: 900px) {
+    .hero__inner {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+
+    .hero__mark {
+      width: 56px;
+      height: 56px;
+    }
+  }
+</style>

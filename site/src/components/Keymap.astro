@@ -1,0 +1,166 @@
+---
+import { commonKeys, details, modeKeys } from '../lib/content';
+---
+
+<section class="section" id="keys" aria-labelledby="keys-title">
+  <div class="container">
+    <div class="section__head">
+      <div>
+        <p class="eyebrow">Keymap</p>
+        <h2 id="keys-title">Everything is one key away</h2>
+      </div>
+      <p class="section-lead">
+        No modifier chords to memorise and no config file to write. The keys below are the whole
+        interface.
+      </p>
+    </div>
+
+    <div class="keys">
+      <div class="panel keys__panel">
+        <h3 class="keys__caption">Change mode</h3>
+        <dl>
+          {modeKeys.map((row) => (
+            <div class="keys__row">
+              <dt>{row.keys.map((key) => <kbd>{key}</kbd>)}</dt>
+              <dd>{row.action}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div class="panel keys__panel">
+        <h3 class="keys__caption">While searching</h3>
+        <dl>
+          {commonKeys.map((row) => (
+            <div class="keys__row">
+              <dt>{row.keys.map((key) => <kbd>{key}</kbd>)}</dt>
+              <dd>{row.action}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+
+    <ul class="notes">
+      {details.map((note) => (
+        <li>
+          <h3>{note.title}</h3>
+          <p>{note.text}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .section__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px 48px;
+    align-items: end;
+    margin-bottom: 36px;
+  }
+
+  .section__head .section-lead {
+    margin-top: 0;
+  }
+
+  .keys {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .keys__panel {
+    padding: 22px;
+  }
+
+  .keys__caption {
+    margin-bottom: 14px;
+    color: var(--cyan);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  dl {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+  }
+
+  .keys__row {
+    display: grid;
+    grid-template-columns: minmax(0, 0.46fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: baseline;
+    padding: 11px 6px;
+    border-top: 1px solid var(--line);
+  }
+
+  .keys__row:first-child {
+    border-top: 0;
+  }
+
+  dt {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+  }
+
+  dd {
+    margin: 0;
+    color: var(--ink-dim);
+    font-size: 0.95rem;
+  }
+
+  .notes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px 40px;
+    margin-top: 40px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .notes li {
+    padding-top: 20px;
+    border-top: 2px solid var(--line-strong);
+  }
+
+  .notes h3 {
+    margin-bottom: 8px;
+    font-size: 1.02rem;
+  }
+
+  .notes p {
+    color: var(--ink-dim);
+    font-size: 0.93rem;
+  }
+
+  @media (max-width: 980px) {
+    .section__head {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+
+    .keys,
+    .notes {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .keys__row {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    dt {
+      justify-self: start;
+    }
+  }
+</style>

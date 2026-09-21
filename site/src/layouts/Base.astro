@@ -1,0 +1,70 @@
+---
+import '../styles/global.css';
+import SiteNav from '../components/SiteNav.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import { absoluteUrl, description, repoUrl, title } from '../lib/site';
+
+const pageUrl = absoluteUrl();
+const imageUrl = absoluteUrl('assets/fuzz.png');
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareSourceCode',
+  name: 'fuzz.fish',
+  description,
+  url: pageUrl,
+  codeRepository: repoUrl,
+  license: `${repoUrl}/blob/main/LICENSE`,
+  programmingLanguage: 'Go',
+  runtimePlatform: 'Fish Shell',
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Linux, macOS',
+  author: {
+    '@type': 'Person',
+    name: 'jedipunkz',
+    url: 'https://github.com/jedipunkz',
+  },
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="jedipunkz" />
+    <meta name="theme-color" content="#16161e" />
+    <link rel="canonical" href={pageUrl} />
+    <link rel="icon" href={imageUrl} type="image/png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="fuzz.fish" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1080" />
+    <meta property="og:image:height" content="1080" />
+    <meta property="og:image:alt" content="fuzz.fish logo" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content="fuzz.fish logo" />
+
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <SiteNav />
+    <main id="main">
+      <slot />
+    </main>
+    <SiteFooter />
+  </body>
+</html>
