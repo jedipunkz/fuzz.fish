@@ -23,7 +23,10 @@ No external finder required — a single Go binary ships with the plugin.
 ## Requirements
 
 - [Fish Shell](https://fishshell.com/) 3.0+
-- [Go](https://golang.org/) 1.24+ (for building)
+
+Installing the plugin downloads a prebuilt binary for macOS and Linux
+(`amd64` / `arm64`). On any other platform it falls back to building from
+source, which needs [Go](https://golang.org/) 1.25+ and Git.
 
 ## Installation
 

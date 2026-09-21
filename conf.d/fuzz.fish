@@ -46,19 +46,91 @@ function _fuzz_fish_uninstall --on-event fuzz_uninstall
     end
 end
 
-# Helper function to rebuild binary (used by install and update hooks)
+# Helper function to install the binary (used by install and update hooks)
 function _fuzz_fish_rebuild_binary
     set -l bin_path "$FUZZ_FISH_BIN_PATH"
 
-    echo "🔨 fuzz.fish: Rebuilding binary from GitHub..."
+    echo "📥 fuzz.fish: Installing binary..."
 
     # Ensure functions directory exists
     mkdir -p (dirname "$bin_path")
 
+    # Remove old binary if exists
+    if test -f "$bin_path"
+        echo "   Removing old binary..."
+        rm -f "$bin_path"
+    end
+
+    if _fuzz_fish_download_binary "$bin_path"
+        return 0
+    end
+
+    echo "   No prebuilt binary available, falling back to building from source..."
+    _fuzz_fish_build_binary "$bin_path"
+end
+
+# Download the prebuilt binary for this platform from the latest release.
+# Returns non-zero when the platform has no asset, or the download fails, so
+# the caller can fall back to building from source.
+function _fuzz_fish_download_binary
+    set -l bin_path $argv[1]
+
+    if not type -q curl; or not type -q tar
+        return 1
+    end
+
+    set -l os
+    switch (uname -s)
+        case Darwin
+            set os darwin
+        case Linux
+            set os linux
+        case '*'
+            return 1
+    end
+
+    set -l arch
+    switch (uname -m)
+        case x86_64 amd64
+            set arch amd64
+        case arm64 aarch64
+            set arch arm64
+        case '*'
+            return 1
+    end
+
+    set -l asset "fuzz_"$os"_"$arch".tar.gz"
+    set -l url "https://github.com/jedipunkz/fuzz.fish/releases/latest/download/$asset"
+    set -l tmp_dir (mktemp -d)
+
+    echo "   Downloading $asset..."
+    if not curl -fsSL "$url" -o "$tmp_dir/$asset"
+        rm -rf "$tmp_dir"
+        return 1
+    end
+
+    if not tar -xzf "$tmp_dir/$asset" -C "$tmp_dir"; or not test -f "$tmp_dir/fuzz"
+        rm -rf "$tmp_dir"
+        return 1
+    end
+
+    mv "$tmp_dir/fuzz" "$bin_path"
+    chmod +x "$bin_path"
+    rm -rf "$tmp_dir"
+
+    echo "✅ fuzz.fish: Installed prebuilt binary"
+    echo "   Binary location: $bin_path"
+    return 0
+end
+
+# Fallback used when no release asset matches this platform: build from source.
+function _fuzz_fish_build_binary
+    set -l bin_path $argv[1]
+
     # Check dependencies
     if not type -q go
-        echo "⚠️  fuzz.fish: Go is not installed." >&2
-        echo "   Please install Go to use this plugin." >&2
+        echo "⚠️  fuzz.fish: no prebuilt binary for this platform and Go is not installed." >&2
+        echo "   Please install Go to build the plugin from source." >&2
         return 1
     end
 
@@ -66,12 +138,6 @@ function _fuzz_fish_rebuild_binary
         echo "⚠️  fuzz.fish: Git is not installed." >&2
         echo "   Please install Git to use this plugin." >&2
         return 1
-    end
-
-    # Remove old binary if exists
-    if test -f "$bin_path"
-        echo "   Removing old binary..."
-        rm -f "$bin_path"
     end
 
     # Create temporary directory
