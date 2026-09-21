@@ -1,0 +1,90 @@
+---
+import { links } from '../lib/content';
+
+const base = import.meta.env.BASE_URL;
+const year = new Date().getFullYear();
+
+const footerLinks = [
+  [links.readme, 'Documentation'],
+  [links.releases, 'Releases'],
+  [links.issues, 'Issues'],
+  [links.license, 'License'],
+  [links.fish, 'Fish Shell'],
+];
+---
+
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="footer__brand">
+      <img src={`${base}assets/fuzz.png`} alt="" width="36" height="36" />
+      <div>
+        <p class="footer__name">fuzz<span class="footer__dot">.</span>fish</p>
+        <p class="footer__meta">MIT License · © {year} jedipunkz</p>
+      </div>
+    </div>
+
+    <nav class="footer__links" aria-label="Project links">
+      {footerLinks.map(([href, label]) => (
+        <a href={href} rel="noopener">{label}</a>
+      ))}
+    </nav>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    border-top: 1px solid var(--line);
+    padding-block: 36px 44px;
+    background: rgb(22 22 30 / 70%);
+  }
+
+  .footer__inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 32px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer__brand {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .footer__brand img {
+    border-radius: 8px;
+  }
+
+  .footer__name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .footer__dot {
+    color: var(--magenta);
+  }
+
+  .footer__meta {
+    color: var(--ink-faint);
+    font-size: 0.8rem;
+  }
+
+  .footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+  }
+
+  .footer__links a {
+    color: var(--ink-dim);
+    font-size: 0.86rem;
+    text-decoration: none;
+  }
+
+  .footer__links a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+</style>

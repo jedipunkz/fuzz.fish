@@ -1,0 +1,124 @@
+---
+interface Props {
+  command: string;
+  label?: string;
+  size?: 'md' | 'sm';
+}
+
+const { command, label = 'Copy command', size = 'md' } = Astro.props;
+---
+
+<div class:list={['copy', `copy--${size}`]} data-copy-root data-command={command}>
+  <code class="copy__text">
+    <span class="tok-prompt" aria-hidden="true">❯&nbsp;</span>
+    <slot>{command}</slot>
+  </code>
+  <button class="copy__button" type="button" data-copy-button aria-label={label}>
+    <span data-copy-label>Copy</span>
+  </button>
+</div>
+
+<style>
+  .copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+
+  .copy__text {
+    display: block;
+    padding: 8px 10px;
+    color: var(--ink);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+
+  .copy--sm .copy__text {
+    padding: 4px 8px;
+    font-size: 0.82rem;
+  }
+
+  .copy__button {
+    min-width: 76px;
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid rgb(122 162 247 / 38%);
+    border-radius: var(--radius-sm);
+    background: rgb(122 162 247 / 14%);
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+      background-color 140ms ease,
+      border-color 140ms ease;
+  }
+
+  .copy--sm .copy__button {
+    min-width: 64px;
+    min-height: 32px;
+  }
+
+  .copy__button:hover {
+    border-color: var(--blue);
+    background: rgb(122 162 247 / 24%);
+  }
+
+  .copy__button[data-state='done'] {
+    border-color: var(--green);
+    background: rgb(158 206 106 / 18%);
+    color: var(--green);
+  }
+
+  .copy__button[data-state='error'] {
+    border-color: var(--red);
+    background: rgb(247 118 142 / 18%);
+    color: var(--red);
+  }
+
+  @media (max-width: 480px) {
+    .copy {
+      grid-template-columns: 1fr;
+    }
+
+    .copy__button {
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy-button]').forEach((button) => {
+    const root = button.closest<HTMLElement>('[data-copy-root]');
+    const label = button.querySelector('[data-copy-label]');
+
+    button.addEventListener('click', async () => {
+      const command = root?.dataset.command;
+
+      if (!command || !label) {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(command);
+        label.textContent = 'Copied';
+        button.dataset.state = 'done';
+      } catch {
+        label.textContent = 'Failed';
+        button.dataset.state = 'error';
+      }
+
+      window.setTimeout(() => {
+        label.textContent = 'Copy';
+        delete button.dataset.state;
+      }, 1600);
+    });
+  });
+</script>

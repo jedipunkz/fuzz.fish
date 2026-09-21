@@ -1,0 +1,130 @@
+---
+import { contributing, links } from '../lib/content';
+---
+
+<section class="section" id="contribute" aria-labelledby="contribute-title">
+  <div class="container">
+    <div class="section__head">
+      <div>
+        <p class="eyebrow">Open source</p>
+        <h2 id="contribute-title">Built in the open, MIT licensed</h2>
+      </div>
+      <p class="section-lead">
+        fuzz.fish is a small project maintained by{' '}<a
+          href="https://github.com/jedipunkz"
+          rel="noopener">jedipunkz</a>. Issues and pull requests
+        are the roadmap — nothing is hidden behind a private tracker.
+      </p>
+    </div>
+
+    <ul class="cards">
+      {contributing.map((item) => (
+        <li class="card">
+          <h3>{item.title}</h3>
+          <p>{item.text}</p>
+          <a href={item.href} rel="noopener">
+            {item.cta}
+            <span aria-hidden="true">→</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <div class="license">
+      <p>
+        Released under the <a href={links.license} rel="noopener">MIT License</a>. Use it, fork it,
+        ship it inside your own dotfiles.
+      </p>
+      <a class="button button--primary" href={links.repo} rel="noopener">Open the repository</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .section__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px 48px;
+    align-items: end;
+    margin-bottom: 36px;
+  }
+
+  .section__head .section-lead {
+    margin-top: 0;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .card {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, rgb(31 35 53 / 90%), rgb(26 27 38 / 90%));
+    transition: border-color 160ms ease;
+  }
+
+  .card:hover {
+    border-color: var(--magenta);
+  }
+
+  .card h3 {
+    font-size: 0.98rem;
+  }
+
+  .card p {
+    color: var(--ink-dim);
+    font-size: 0.88rem;
+  }
+
+  .card a {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .card a:hover {
+    text-decoration: underline;
+  }
+
+  .license {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 32px;
+    padding: 24px 26px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    background:
+      linear-gradient(120deg, rgb(122 162 247 / 12%), rgb(187 154 247 / 10%)),
+      var(--bg-elevated);
+  }
+
+  .license p {
+    max-width: 58ch;
+    color: var(--ink-dim);
+    font-size: 0.93rem;
+  }
+
+  @media (max-width: 980px) {
+    .section__head,
+    .cards {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+  }
+</style>

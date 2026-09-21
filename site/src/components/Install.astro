@@ -1,0 +1,213 @@
+---
+import CopyCommand from './CopyCommand.astro';
+import { links, maintenance, requirements, steps } from '../lib/content';
+---
+
+<section class="section" id="install" aria-labelledby="install-title">
+  <div class="container">
+    <div class="section__head">
+      <div>
+        <p class="eyebrow">Install</p>
+        <h2 id="install-title">Three steps, then ctrl+r</h2>
+      </div>
+      <p class="section-lead">
+        fuzz.fish installs with <a href={links.fisher} rel="noopener">Fisher</a> like any other Fish
+        plugin. The Go binary is compiled during install and lives next to your Fish config.
+      </p>
+    </div>
+
+    <div class="install">
+      <ol class="steps">
+        {steps.map((step, index) => (
+          <li class="step">
+            <span class="step__index" aria-hidden="true">{index + 1}</span>
+            <div class="step__body">
+              <h3>{step.label}</h3>
+              {step.command && <CopyCommand command={step.command} size="sm" label={`Copy: ${step.label}`} />}
+              <p>{step.note}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <aside class="side">
+        <div class="panel side__block">
+          <h3 class="side__caption">Requirements</h3>
+          <ul>
+            {requirements.map(([name, text]) => (
+              <li>
+                <strong>{name}</strong>
+                <span>{text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div class="panel side__block">
+          <h3 class="side__caption">Maintenance</h3>
+          <dl>
+            {maintenance.map(([label, command]) => (
+              <div class="side__row">
+                <dt>{label}</dt>
+                <dd><code>{command}</code></dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<style>
+  .section__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px 48px;
+    align-items: end;
+    margin-bottom: 36px;
+  }
+
+  .section__head .section-lead {
+    margin-top: 0;
+  }
+
+  .install {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+    gap: 16px 40px;
+    align-items: start;
+  }
+
+  .steps {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 16px;
+    padding: 20px 22px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: rgb(31 35 53 / 62%);
+  }
+
+  .step__index {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgb(122 162 247 / 42%);
+    border-radius: 50%;
+    background: rgb(122 162 247 / 12%);
+    color: var(--blue);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .step__body {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .step h3 {
+    font-size: 0.96rem;
+  }
+
+  .step p {
+    color: var(--ink-faint);
+    font-size: 0.83rem;
+  }
+
+  .side {
+    display: grid;
+    gap: 16px;
+  }
+
+  .side__block {
+    padding: 20px 22px;
+  }
+
+  .side__caption {
+    margin-bottom: 14px;
+    color: var(--magenta);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .side ul {
+    display: grid;
+    gap: 14px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .side li {
+    display: grid;
+    gap: 3px;
+    padding-left: 14px;
+    border-left: 2px solid var(--line-strong);
+  }
+
+  .side li strong {
+    font-size: 0.9rem;
+    font-weight: 650;
+  }
+
+  .side li span {
+    color: var(--ink-faint);
+    font-size: 0.82rem;
+  }
+
+  dl {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+  }
+
+  .side__row {
+    display: grid;
+    gap: 5px;
+  }
+
+  dt {
+    color: var(--ink-faint);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0;
+  }
+
+  dd code {
+    display: block;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--green);
+    font-size: 0.84rem;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 980px) {
+    .section__head,
+    .install {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+  }
+</style>
