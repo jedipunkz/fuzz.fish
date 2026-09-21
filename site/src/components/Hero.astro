@@ -1,6 +1,5 @@
 ---
 import CopyCommand from './CopyCommand.astro';
-import TuiMock from './TuiMock.astro';
 import { facts, installCommand, links } from '../lib/content';
 
 const base = import.meta.env.BASE_URL;
@@ -9,11 +8,13 @@ const base = import.meta.env.BASE_URL;
 <section class="hero" aria-labelledby="hero-title">
   <div class="container hero__inner">
     <div class="hero__copy">
-      <img class="hero__mark" src={`${base}assets/fuzz.png`} alt="fuzz.fish logo" width="72" height="72" />
       <p class="eyebrow">Fish Shell plugin · Go · Bubble Tea</p>
-      <h1 id="hero-title">
-        fuzz<span class="hero__dot">.</span><span class="hero__accent">fish</span>
-      </h1>
+      <div class="hero__title">
+        <img class="hero__mark" src={`${base}assets/fuzz.png`} alt="fuzz.fish logo" width="96" height="96" />
+        <h1 id="hero-title">
+          fuzz<span class="hero__dot">.</span><span class="hero__accent">fish</span>
+        </h1>
+      </div>
       <p class="hero__lead">
         Fuzzy search your command history, project files, Git branches, worktrees, and commits —
         in one picker, one keystroke away from the Fish prompt.
@@ -42,7 +43,15 @@ const base = import.meta.env.BASE_URL;
           <span class="terminal__dot terminal__dot--green"></span>
           <span class="terminal__title">fish — fuzz.fish</span>
         </div>
-        <TuiMock />
+        <img
+          class="terminal__screen"
+          src={`${base}assets/fuzz.gif`}
+          alt="Screen recording of fuzz.fish: typing a query, switching modes, and selecting a result"
+          width="1400"
+          height="800"
+          loading="eager"
+          decoding="async"
+        />
       </div>
       <figcaption>
         <kbd>ctrl+r</kbd> opens history search. Every other mode is a single key from there.
@@ -70,18 +79,35 @@ const base = import.meta.env.BASE_URL;
   }
 
   .hero__copy :global(.copy) {
-    width: min(100%, 460px);
+    width: min(100%, 560px);
   }
 
   .hero__copy .eyebrow {
     margin-bottom: 0;
   }
 
+  .hero__title {
+    display: flex;
+    gap: clamp(12px, 2vw, 22px);
+    align-items: center;
+  }
+
   .hero__mark {
-    width: 72px;
-    height: 72px;
-    border-radius: 16px;
-    filter: drop-shadow(0 14px 28px rgb(122 162 247 / 26%));
+    flex-shrink: 0;
+    width: clamp(64px, 8vw, 96px);
+    height: auto;
+    filter: drop-shadow(0 14px 28px rgb(255 158 100 / 22%));
+  }
+
+  .hero__title h1 {
+    margin: 0;
+  }
+
+  .terminal__screen {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--bg);
   }
 
   .hero__dot {
@@ -186,9 +212,8 @@ const base = import.meta.env.BASE_URL;
       gap: 32px;
     }
 
-    .hero__mark {
-      width: 56px;
-      height: 56px;
+    .hero__title {
+      gap: 14px;
     }
   }
 </style>
