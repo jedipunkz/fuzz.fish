@@ -65,6 +65,27 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Build release binaries
+        run: |
+          # Build before the tag is pushed: a failure here must not leave a
+          # tag pointing at a release that has no assets.
+          mkdir -p dist
+          for target in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
+            goos="${target%/*}"
+            goarch="${target#*/}"
+            GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
+              go build -trimpath -ldflags "-s -w" -o dist/fuzz ./cmd/fuzz
+            tar -czf "dist/fuzz_${goos}_${goarch}.tar.gz" -C dist fuzz
+            rm dist/fuzz
+          done
+          ls -lh dist
+
       - name: Create and push tag
         run: |
           NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
@@ -103,4 +124,5 @@ jobs:
           NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
           gh release create "$NEW_VERSION" \
             --title "Release $NEW_VERSION" \
-            --notes-file release_body.txt
+            --notes-file release_body.txt \
+            dist/*.tar.gz
