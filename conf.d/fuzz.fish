@@ -21,10 +21,12 @@ function _fuzz_fish_ensure_binary
     _fuzz_fish_rebuild_binary
 end
 
-# Install hook - build binary on initial install
+# Install hook - install binary on initial install
 function _fuzz_fish_install --on-event fuzz_install
     echo "📦 fuzz.fish: Running install hook..."
-    _fuzz_fish_rebuild_binary
+    # Ensure, not reinstall: sourcing this file already installed the binary in
+    # an interactive shell, and fisher fires this event right afterwards.
+    _fuzz_fish_ensure_binary
 end
 
 # Update hook - rebuild binary when plugin is updated
