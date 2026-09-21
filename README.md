@@ -14,11 +14,17 @@ No external finder required — a single Go binary ships with the plugin.
 
 <br clear="left" />
 
-# Screenshot
-
 <p align="center">
-  <img src="./assets/fuzz.gif" width="800"/>
+  <img src="./assets/fuzz.gif" width="800" alt="fuzz.fish searching command history, files, and git branches"/>
 </p>
+
+## Why fuzz.fish?
+
+- **Nothing else to install.** No `fzf`, `fd`, `ripgrep`, or `bat` alongside it: the plugin is a single Go binary plus Fish keybindings.
+- **One keybinding, five modes.** `ctrl+r` opens the finder; `ctrl+s`, `ctrl+w`, `ctrl+g` and `ctrl+x` switch modes without closing it.
+- **Every mode has a preview.** History shows when and where the command ran and what surrounded it, files show syntax-highlighted content, and branches, worktrees and commits show their git context.
+- **History ranked by frecency.** Match quality ranks first, then `log1p(frequency)` scaled by how recently you last ran the command, so what you actually repeat surfaces first.
+- **Git beyond branches.** Worktrees and commits are first-class: `ctrl+x` matches a commit by hash or subject and puts `git show` / `git diff` / `git revert` / `git cherry-pick` on the prompt without running it.
 
 ## Requirements
 
