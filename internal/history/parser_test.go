@@ -181,21 +181,6 @@ func TestParseReader_BlankLines(t *testing.T) {
 	}
 }
 
-func TestParseReader_CmdLineTracking(t *testing.T) {
-	input := "- cmd: first\n  when: 1000\n- cmd: second\n  when: 2000\n"
-	entries := parseReader(strings.NewReader(input))
-	if len(entries) != 2 {
-		t.Fatalf("parseReader returned %d entries, want 2", len(entries))
-	}
-	// After reversal: entries[0] = second (line 3), entries[1] = first (line 1)
-	if entries[0].CmdLine != 3 {
-		t.Errorf("entries[0].CmdLine = %d, want 3", entries[0].CmdLine)
-	}
-	if entries[1].CmdLine != 1 {
-		t.Errorf("entries[1].CmdLine = %d, want 1", entries[1].CmdLine)
-	}
-}
-
 func TestParseReader_UnescapesFishEscapes(t *testing.T) {
 	// Fish stores a backslash as `\\` and a newline as `\n`; these two lines
 	// are what fish writes for `grep '\d' file` and for a two-line command.

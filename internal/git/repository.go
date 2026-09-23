@@ -12,13 +12,11 @@ import (
 
 // Branch represents a git branch
 type Branch struct {
-	Name              string
-	IsCurrent         bool
-	IsRemote          bool
-	LastCommit        string
-	LastCommitMessage string
-	CommitDate        string
-	CommitTimestamp   int64 // Unix timestamp for recency scoring
+	Name            string
+	IsCurrent       bool
+	IsRemote        bool
+	LastCommit      string
+	CommitTimestamp int64 // Unix timestamp for recency scoring
 }
 
 // Repository provides git operations for a working directory
@@ -95,13 +93,11 @@ func (r *Repository) Branches() ([]Branch, error) {
 		}
 
 		branch := Branch{
-			Name:              name,
-			IsCurrent:         name == currentBranch,
-			IsRemote:          isRemote,
-			LastCommit:        shortHash,
-			LastCommitMessage: "",
-			CommitDate:        "",
-			CommitTimestamp:   timestamps[refName],
+			Name:            name,
+			IsCurrent:       name == currentBranch,
+			IsRemote:        isRemote,
+			LastCommit:      shortHash,
+			CommitTimestamp: timestamps[refName],
 		}
 
 		if isRemote {

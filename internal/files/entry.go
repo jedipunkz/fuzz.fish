@@ -2,7 +2,6 @@ package files
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"strings"
 
@@ -19,28 +18,6 @@ const (
 type Entry struct {
 	Path  string
 	IsDir bool
-}
-
-// GetInfo returns file info (size and mode) for the entry
-func (e Entry) GetInfo() (int64, fs.FileMode) {
-	info, err := os.Stat(e.Path)
-	if err != nil {
-		return 0, 0
-	}
-	return info.Size(), info.Mode()
-}
-
-// Icon returns the appropriate icon for a file or directory
-func (e Entry) Icon() string {
-	if e.IsDir {
-		return iconDir
-	}
-	return iconFile
-}
-
-// Format formats the entry for display in the TUI list
-func (e Entry) Format() string {
-	return e.Icon() + " " + e.Path
 }
 
 // GeneratePreview generates a preview of the file entry for the TUI preview window

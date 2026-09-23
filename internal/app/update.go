@@ -240,7 +240,6 @@ func (m *model) switchToGitBranchMode() tea.Cmd {
 
 	m.mode = ModeGitBranch
 	m.input.SetValue("")
-	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
 	m.lastPreviewKey = ""
 
@@ -271,7 +270,6 @@ func (m *model) switchToHistoryMode() tea.Cmd {
 
 	m.mode = ModeHistory
 	m.input.SetValue("")
-	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
 	m.lastPreviewKey = ""
 
@@ -303,7 +301,6 @@ func (m *model) switchToFilesMode() tea.Cmd {
 
 	m.mode = ModeFiles
 	m.input.SetValue("")
-	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
 	m.lastPreviewKey = ""
 
@@ -334,7 +331,6 @@ func (m *model) switchToWorktreeMode() tea.Cmd {
 
 	m.mode = ModeWorktree
 	m.input.SetValue("")
-	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
 	m.lastPreviewKey = ""
 
@@ -369,7 +365,6 @@ func (m *model) switchToCommitMode() tea.Cmd {
 
 	m.mode = ModeCommit
 	m.input.SetValue("")
-	m.updatePlaceholder()
 	m.previewCache = make(map[string]string)
 	m.lastPreviewKey = ""
 
@@ -417,22 +412,6 @@ func (m model) updateActionPicker(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
-}
-
-// updatePlaceholder updates the input placeholder based on current mode
-func (m *model) updatePlaceholder() {
-	switch m.mode {
-	case ModeHistory:
-		m.input.Placeholder = ""
-	case ModeGitBranch:
-		m.input.Placeholder = ""
-	case ModeFiles:
-		m.input.Placeholder = ""
-	case ModeWorktree:
-		m.input.Placeholder = ""
-	case ModeCommit:
-		m.input.Placeholder = ""
-	}
 }
 
 // completeSelectedItem fills the input field with the currently selected item's text
