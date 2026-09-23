@@ -5,6 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
 	"github.com/jedipunkz/fuzz.fish/internal/files"
@@ -166,5 +167,43 @@ func TestUpdate_LoadingStaysWithTheActiveMode(t *testing.T) {
 	}
 	if len(got.historyEntries) != 1 {
 		t.Errorf("historyEntries = %d, want the loaded entry to be kept", len(got.historyEntries))
+	}
+}
+
+func TestSwitchToCachedMode_ClearsLoading(t *testing.T) {
+	m := model{
+		mode:           ModeHistory,
+		input:          textinput.New(),
+		viewport:       viewport.New(),
+		previewCache:   map[string]string{},
+		ready:          true,
+		width:          80,
+		listWidth:      40,
+		mainHeight:     10,
+		historyEntries: []history.Entry{{Cmd: "ls", When: 1, Count: 1}},
+	}
+	m.loadItemsForMode()
+	m.updateFilter("")
+
+	// Files mode has no cached data, so the walk starts and loading is set.
+	if cmd := m.switchToFilesMode(); cmd == nil {
+		t.Fatal("switchToFilesMode() returned no load command")
+	}
+	// Back to history before the walk finishes: the cached path runs.
+	m.switchToHistoryMode()
+
+	// The walk completes for a mode the user already left.
+	updated, _ := m.Update(filesLoadedMsg{entries: []files.Entry{{Path: "a.go"}}})
+	got, ok := updated.(model)
+	if !ok {
+		t.Fatalf("Update() returned %T, want model", updated)
+	}
+
+	got.updateFilter("zzz-no-such-entry")
+	if len(got.filtered) != 0 {
+		t.Fatalf("filtered = %d items, want an empty list", len(got.filtered))
+	}
+	if strings.Contains(got.View().Content, "Loading...") {
+		t.Error("view renders Loading... after switching to a mode with cached data")
 	}
 }
