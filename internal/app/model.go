@@ -14,7 +14,10 @@ import (
 // Async load completion messages
 type historyLoadedMsg struct{ entries []history.Entry }
 type branchesLoadedMsg struct{ branches []git.Branch }
-type filesLoadedMsg struct{ entries []files.Entry }
+type filesLoadedMsg struct {
+	entries   []files.Entry
+	truncated bool
+}
 type worktreesLoadedMsg struct{ worktrees []git.Worktree }
 type commitsLoadedMsg struct{ commits []git.Commit }
 
@@ -132,7 +135,8 @@ func loadFilesCmd() tea.Cmd {
 			return filesLoadedMsg{}
 		}
 		c := files.NewCollector(cwd)
-		return filesLoadedMsg{entries: c.Collect()}
+		entries := c.Collect()
+		return filesLoadedMsg{entries: entries, truncated: c.Truncated}
 	}
 }
 

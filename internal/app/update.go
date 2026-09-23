@@ -40,6 +40,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.fileEntries = msg.entries
 		if m.mode == ModeFiles {
 			m.loading = false
+			if msg.truncated {
+				m.statusMsg = "⚠ showing first " + strconv.Itoa(len(msg.entries)) + " files"
+			}
 			m.loadItemsForMode()
 			m.updateFilter(m.input.Value())
 		}
