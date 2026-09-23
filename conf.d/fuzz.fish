@@ -20,7 +20,7 @@ end
 # The release this script expects. Downloads are pinned to it, so a plugin
 # revision always installs the binary it was written against instead of
 # whatever is newest. The release workflow rewrites this line before tagging.
-set -gu __fuzz_fish_version v0.4.1
+set -gu __fuzz_fish_version v0.4.2
 
 # Internal function to build/install the binary
 function _fuzz_fish_ensure_binary
