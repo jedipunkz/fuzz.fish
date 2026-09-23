@@ -27,10 +27,18 @@ function _fuzz_fish_ensure_binary
     set -l bin_path "$FUZZ_FISH_BIN_PATH"
 
     if test -f "$bin_path"
-        # A binary older than --version writes its error to stderr and exits
-        # non-zero, leaving an empty capture. That compares unequal like any
-        # other mismatch, so no separate case is needed.
-        set -l installed ("$bin_path" --version 2>/dev/null | string trim)
+        # Only a binary that answers --version can be judged stale. One that
+        # exits non-zero, or prints nothing, predates the flag, and the pinned
+        # release may predate it too -- reinstalling would hand back the same
+        # binary and rebuild again on every startup. Accept it instead; the
+        # fuzz_update event still forces a rebuild. `set` reports the status of
+        # the command substitution, so the check costs a single exec.
+        set -l installed ("$bin_path" --version 2>/dev/null)
+        set -l reported $status
+        set installed (string trim -- "$installed")
+        if test $reported -ne 0; or test -z "$installed"
+            return 0
+        end
         if test "$installed" = "$__fuzz_fish_version"
             return 0
         end
