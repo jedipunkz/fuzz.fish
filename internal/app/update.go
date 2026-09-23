@@ -111,6 +111,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Previews are rendered for a fixed pane size, so every cached render
+		// and the change-detection key are stale once the pane is resized.
+		m.previewCache = make(map[string]string)
+		m.lastPreviewKey = ""
+
 		m.validateCursor()
 		m.updatePreview()
 
