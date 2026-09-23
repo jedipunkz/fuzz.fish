@@ -1,7 +1,9 @@
 package git
 
 import (
+	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 
 	gogit "github.com/go-git/go-git/v5"
@@ -47,6 +49,9 @@ func (r *Repository) Branches() ([]Branch, error) {
 
 	// Get current branch (reusing the repo object)
 	currentBranch := r.currentBranch(repo)
+
+	// Read all branch commit timestamps in one git invocation
+	timestamps := r.branchTimestamps()
 
 	// Get all references
 	refs, err := repo.References()
@@ -96,6 +101,7 @@ func (r *Repository) Branches() ([]Branch, error) {
 			LastCommit:        shortHash,
 			LastCommitMessage: "",
 			CommitDate:        "",
+			CommitTimestamp:   timestamps[refName],
 		}
 
 		if isRemote {
@@ -139,4 +145,38 @@ func (r *Repository) currentBranch(repo *gogit.Repository) string {
 	}
 
 	return ""
+}
+
+// branchTimestamps reads the committer timestamp of every branch ref in one
+// `git for-each-ref` invocation. The git binary is invoked with an argument
+// list (no shell), so ref names are never interpreted by a shell. A missing
+// git binary or a failed command yields a nil map, leaving timestamps at 0.
+func (r *Repository) branchTimestamps() map[string]int64 {
+	cmd := exec.Command("git", "for-each-ref",
+		"--format=%(refname)%00%(committerdate:unix)", "refs/heads", "refs/remotes")
+	cmd.Dir = r.Path
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+	return parseRefTimestamps(string(out))
+}
+
+// parseRefTimestamps parses NUL-separated `git for-each-ref` records, one per
+// line, into a map from full ref name to unix timestamp.
+func parseRefTimestamps(out string) map[string]int64 {
+	timestamps := make(map[string]int64)
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimRight(line, "\r")
+		if line == "" {
+			continue
+		}
+		refName, ts, ok := strings.Cut(line, "\x00")
+		if !ok {
+			continue
+		}
+		when, _ := strconv.ParseInt(ts, 10, 64)
+		timestamps[refName] = when
+	}
+	return timestamps
 }

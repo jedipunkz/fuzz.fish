@@ -2,6 +2,7 @@ package git
 
 import (
 	"os"
+	"os/exec"
 	"testing"
 )
 
@@ -110,5 +111,75 @@ func TestBranches_InGitRepo(t *testing.T) {
 	}
 	if currentCount > 1 {
 		t.Errorf("expected at most 1 current branch, got %d", currentCount)
+	}
+}
+
+func TestParseRefTimestamps(t *testing.T) {
+	out := "refs/heads/main\x001700000000\n" +
+		"refs/heads/feat/branch with space\x001699999999\n" +
+		"refs/remotes/origin/main\x001700000001\n" +
+		"\n" +
+		"refs/heads/no-separator\n"
+
+	got := parseRefTimestamps(out)
+
+	want := map[string]int64{
+		"refs/heads/main":                   1700000000,
+		"refs/heads/feat/branch with space": 1699999999,
+		"refs/remotes/origin/main":          1700000001,
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("got %d refs, want %d", len(got), len(want))
+	}
+	for ref, ts := range want {
+		if got[ref] != ts {
+			t.Errorf("timestamp for %q = %d, want %d", ref, got[ref], ts)
+		}
+	}
+}
+
+// initTestRepo creates a git repository in a temp directory with a single
+// commit on branch "main" and returns its path.
+func initTestRepo(t *testing.T) string {
+	t.Helper()
+
+	dir := t.TempDir()
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(),
+			"GIT_CONFIG_GLOBAL=/dev/null",
+			"GIT_CONFIG_SYSTEM=/dev/null",
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.com",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.com",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+
+	run("init", "--initial-branch=main")
+	run("commit", "--allow-empty", "-m", "initial commit")
+
+	return dir
+}
+
+func TestBranches_CommitTimestamp(t *testing.T) {
+	dir := initTestRepo(t)
+
+	branches, err := NewRepository(dir).Branches()
+	if err != nil {
+		t.Fatalf("Branches() returned unexpected error: %v", err)
+	}
+	if len(branches) != 1 {
+		t.Fatalf("got %d branches, want 1", len(branches))
+	}
+	if branches[0].Name != "main" {
+		t.Errorf("branch name = %q, want %q", branches[0].Name, "main")
+	}
+	if branches[0].CommitTimestamp <= 0 {
+		t.Errorf("CommitTimestamp = %d, want a positive unix timestamp", branches[0].CommitTimestamp)
 	}
 }
