@@ -123,4 +123,15 @@ EOF
 
 ### Release
 
-Releases are created via GitHub Actions (`release.yml`) with manual `workflow_dispatch`. Choose `patch`, `minor`, or `major` version bump. Do not create tags manually.
+Releasing takes two steps, because `main` is protected by a ruleset and the
+workflow cannot bump anything on it.
+
+1. Open a PR bumping `set -gu __fuzz_fish_version` in `conf.d/fuzz.fish` to the
+   version about to be released, and merge it.
+2. Run GitHub Actions (`release.yml`) with manual `workflow_dispatch`, choosing
+   `patch`, `minor`, or `major`.
+
+The workflow refuses to release unless the pin already matches the version it
+computes, so the tag always points at a tree that pins that same tag. The
+plugin downloads its binary from `releases/download/$__fuzz_fish_version`, which
+is why the two must agree. Do not create tags manually.
