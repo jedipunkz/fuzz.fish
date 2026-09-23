@@ -59,7 +59,7 @@ func Run(initialQuery string) {
 				fmt.Printf("CMD:%s", *m.choice)
 			case ModeGitBranch:
 				if m.fetchBranch {
-					cmd := exec.Command("git", "pull", "origin", *m.choice)
+					cmd := exec.Command("git", "pull")
 					cmd.Stdin = tty
 					cmd.Stdout = tty
 					cmd.Stderr = tty
