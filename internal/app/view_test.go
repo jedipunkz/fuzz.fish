@@ -1,12 +1,15 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"unicode/utf8"
 
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/jedipunkz/fuzz.fish/internal/files"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
@@ -205,5 +208,62 @@ func TestSwitchToCachedMode_ClearsLoading(t *testing.T) {
 	}
 	if strings.Contains(got.View().Content, "Loading...") {
 		t.Error("view renders Loading... after switching to a mode with cached data")
+	}
+}
+
+func TestUpdate_ResizeRegeneratesPreview(t *testing.T) {
+	dir := t.TempDir()
+	paths := []string{filepath.Join(dir, "a.go"), filepath.Join(dir, "b.go")}
+	for i, path := range paths {
+		body := "// " + strings.Repeat(string(rune('a'+i)), 300) + "\n"
+		if err := os.WriteFile(path, []byte(body+body), 0o600); err != nil {
+			t.Fatalf("WriteFile(%s): %v", path, err)
+		}
+	}
+
+	m := model{
+		mode:         ModeFiles,
+		viewport:     viewport.New(),
+		previewCache: map[string]string{},
+		fileEntries:  []files.Entry{{Path: paths[0]}, {Path: paths[1]}},
+	}
+	m.loadItemsForMode()
+	m.updateFilter("")
+
+	resize := func(m model, width, height int) model {
+		updated, _ := m.Update(tea.WindowSizeMsg{Width: width, Height: height})
+		got, ok := updated.(model)
+		if !ok {
+			t.Fatalf("Update() returned %T, want model", updated)
+		}
+		return got
+	}
+	// wantView renders the selected entry for the pane size the model
+	// currently has, independently of the model's own preview state.
+	wantView := func(m model) string {
+		entry := m.filtered[m.cursor].Original.(files.Entry)
+		vp := viewport.New()
+		vp.SetWidth(m.viewport.Width())
+		vp.SetHeight(m.viewport.Height())
+		vp.SetContent(entry.GeneratePreview(m.viewport.Width(), m.viewport.Height()))
+		return vp.View()
+	}
+
+	m = resize(m, 200, 30)
+	m = resize(m, 60, 30)
+
+	if got, want := m.viewport.View(), wantView(m); got != want {
+		t.Errorf("preview after resize was not re-rendered for the new pane size:\n%s\nwant:\n%s", got, want)
+	}
+
+	// Moving away and back must not restore the render cached at the old size.
+	selected := m.cursor
+	m.cursor = (selected + 1) % len(m.filtered)
+	m.updatePreview()
+	m.cursor = selected
+	m.updatePreview()
+
+	if got, want := m.viewport.View(), wantView(m); got != want {
+		t.Errorf("preview served a cached render from the old pane size:\n%s\nwant:\n%s", got, want)
 	}
 }
