@@ -2,6 +2,7 @@ package files
 
 import (
 	"io/fs"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -11,6 +12,10 @@ type Collector struct {
 	Root     string
 	MaxFiles int
 	SkipDirs map[string]bool
+
+	// Truncated reports whether the last Collect hit MaxFiles and dropped
+	// the remaining entries.
+	Truncated bool
 }
 
 // NewCollector creates a Collector with sensible defaults
@@ -35,8 +40,75 @@ func NewCollector(root string) *Collector {
 	}
 }
 
-// Collect walks the directory tree and returns all collected entries
+// Collect returns the entries below Root. Inside a git repository the listing
+// comes from git, so .gitignore rules apply and dotfiles are included;
+// elsewhere it falls back to walking the tree.
 func (c *Collector) Collect() []Entry {
+	c.Truncated = false
+
+	if entries, ok := c.collectGit(); ok {
+		return entries
+	}
+	return c.collectWalk()
+}
+
+// collectGit lists the tracked and untracked-but-not-ignored files under Root
+// via git. It reports false when Root is not in a repository or git fails, so
+// the caller can fall back to walking.
+func (c *Collector) collectGit() ([]Entry, bool) {
+	// Argument list, no shell. -z keeps paths verbatim instead of quoting
+	// the ones with unusual characters.
+	cmd := exec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z")
+	cmd.Dir = c.Root
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, false
+	}
+
+	entries, truncated := entriesFromLsFiles(string(out), c.MaxFiles)
+	c.Truncated = truncated
+	return entries, true
+}
+
+// entriesFromLsFiles converts NUL-separated `git ls-files` output into file
+// entries plus the directory entries implied by their path prefixes, since git
+// lists files only. It stops at maxFiles and reports whether it did.
+func entriesFromLsFiles(out string, maxFiles int) ([]Entry, bool) {
+	entries := make([]Entry, 0, 512)
+	seenDirs := make(map[string]bool)
+
+	for _, path := range strings.Split(out, "\x00") {
+		if path == "" {
+			continue
+		}
+
+		for i := 0; i < len(path); i++ {
+			if path[i] != '/' {
+				continue
+			}
+			dir := path[:i]
+			if seenDirs[dir] {
+				continue
+			}
+			if len(entries) >= maxFiles {
+				return entries, true
+			}
+			seenDirs[dir] = true
+			entries = append(entries, Entry{Path: dir, IsDir: true})
+		}
+
+		if len(entries) >= maxFiles {
+			return entries, true
+		}
+		entries = append(entries, Entry{Path: path, IsDir: false})
+	}
+
+	return entries, false
+}
+
+// collectWalk walks the directory tree, skipping dotfiles and known heavy
+// directories. Used outside git repositories.
+func (c *Collector) collectWalk() []Entry {
 	// Pre-allocate with a reasonable initial capacity to reduce re-allocations
 	files := make([]Entry, 0, 512)
 
@@ -47,6 +119,7 @@ func (c *Collector) Collect() []Entry {
 
 		// Check file limit
 		if len(files) >= c.MaxFiles {
+			c.Truncated = true
 			return filepath.SkipAll
 		}
 
