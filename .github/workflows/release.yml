@@ -84,6 +84,8 @@ jobs:
             tar -czf "dist/fuzz_${goos}_${goarch}.tar.gz" -C dist fuzz
             rm dist/fuzz
           done
+          # Relative names so each line matches the published asset name.
+          (cd dist && sha256sum *.tar.gz > checksums.txt)
           ls -lh dist
 
       - name: Create and push tag
@@ -125,4 +127,5 @@ jobs:
           gh release create "$NEW_VERSION" \
             --title "Release $NEW_VERSION" \
             --notes-file release_body.txt \
-            dist/*.tar.gz
+            dist/*.tar.gz \
+            dist/checksums.txt

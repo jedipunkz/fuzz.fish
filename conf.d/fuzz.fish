@@ -80,6 +80,42 @@ function _fuzz_fish_rebuild_binary
     _fuzz_fish_build_binary "$bin_path"
 end
 
+# Compare a downloaded asset against its line in the release checksums.txt.
+# Returns non-zero when no digest tool is available, when the file has no entry
+# for this asset, or when the digests differ, so the caller can fall back to
+# building from source rather than installing an unverified binary.
+function _fuzz_fish_verify_checksum
+    set -l file $argv[1]
+    set -l asset $argv[2]
+    set -l checksums $argv[3]
+
+    set -l actual
+    if type -q shasum
+        set actual (shasum -a 256 "$file" | string split -f1 ' ')
+    else if type -q sha256sum
+        set actual (sha256sum "$file" | string split -f1 ' ')
+    else
+        echo "fuzz.fish: neither shasum nor sha256sum is available to verify $asset" >&2
+        return 1
+    end
+
+    # Both tools print "<digest>  <name>"; GNU binary mode prints "<digest> *<name>".
+    set -l pattern (string escape --style=regex -- $asset)
+    set -l expected (string match -rg '^([0-9a-f]{64}) [ *]'$pattern'$' <"$checksums")
+
+    if test (count $expected) -ne 1
+        echo "fuzz.fish: no checksum entry for $asset" >&2
+        return 1
+    end
+
+    if test "$expected[1]" != "$actual[1]"
+        echo "fuzz.fish: checksum mismatch for $asset" >&2
+        return 1
+    end
+
+    return 0
+end
+
 # Download the prebuilt binary for this platform from the latest release.
 # Returns non-zero when the platform has no asset, or the download fails, so
 # the caller can fall back to building from source.
@@ -111,11 +147,22 @@ function _fuzz_fish_download_binary
     end
 
     set -l asset "fuzz_"$os"_"$arch".tar.gz"
-    set -l url "https://github.com/jedipunkz/fuzz.fish/releases/latest/download/$asset"
+    set -l base "https://github.com/jedipunkz/fuzz.fish/releases/latest/download"
     set -l tmp_dir (mktemp -d)
 
     echo "   Downloading $asset..."
-    if not curl -fsSL "$url" -o "$tmp_dir/$asset"
+    if not curl -fsSL "$base/$asset" -o "$tmp_dir/$asset"
+        rm -rf "$tmp_dir"
+        return 1
+    end
+
+    if not curl -fsSL "$base/checksums.txt" -o "$tmp_dir/checksums.txt"
+        echo "fuzz.fish: could not download checksums.txt for $asset" >&2
+        rm -rf "$tmp_dir"
+        return 1
+    end
+
+    if not _fuzz_fish_verify_checksum "$tmp_dir/$asset" "$asset" "$tmp_dir/checksums.txt"
         rm -rf "$tmp_dir"
         return 1
     end
