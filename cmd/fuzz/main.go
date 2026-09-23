@@ -8,8 +8,7 @@ import (
 )
 
 // version is stamped by the release workflow with
-// -ldflags "-X main.version=<tag>". conf.d/fuzz.fish compares this against the
-// version it pins and reinstalls the binary when they differ.
+// -ldflags "-X main.version=<tag>". Builds from source report "dev".
 var version = "dev"
 
 func main() {
