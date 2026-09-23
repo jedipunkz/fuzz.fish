@@ -1,11 +1,20 @@
 # fuzz.fish - Context-aware Fish history viewer
 # Initialization and key bindings
 
-# Set the binary path
+# Drop the universal value older versions stored. It was never read back --
+# the path is recomputed from $__fish_config_dir on every start -- and it
+# outlived uninstall. Erasing a variable that is already gone is a silent no-op.
+set -e -U FUZZ_FISH_BIN_PATH
+
+# Set the binary path. Global, not universal: nothing depends on the value
+# surviving a restart. `-u` unexports it -- every reader below is a fish
+# function in this shell, so child processes have no use for it. The flag has to
+# be explicit: a shell started from one that still exported the variable
+# inherits it as an exported global, and a plain `set -g` would keep it that way.
 if set -q __fish_config_dir
-    set -Ux FUZZ_FISH_BIN_PATH "$__fish_config_dir/functions/fuzz"
+    set -gu FUZZ_FISH_BIN_PATH "$__fish_config_dir/functions/fuzz"
 else
-    set -Ux FUZZ_FISH_BIN_PATH "$HOME/.config/fish/functions/fuzz"
+    set -gu FUZZ_FISH_BIN_PATH "$HOME/.config/fish/functions/fuzz"
 end
 
 # Internal function to build/install the binary
