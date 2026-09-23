@@ -4,8 +4,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jedipunkz/fuzz.fish/internal/git"
-	"github.com/jedipunkz/fuzz.fish/internal/history"
 	"github.com/jedipunkz/fuzz.fish/internal/scoring"
 )
 
@@ -83,22 +81,7 @@ func (m *model) globFilter(tokens []string) {
 		}
 		idx = sortDedupe(idx)
 
-		item := m.allItems[i]
-		var timestamp int64
-		var frequency int
-		var isCurrent bool
-		switch m.mode {
-		case ModeHistory:
-			if entry, ok := item.Original.(history.Entry); ok {
-				timestamp = entry.When
-				frequency = entry.Count
-			}
-		case ModeGitBranch:
-			if branch, ok := item.Original.(git.Branch); ok {
-				timestamp = branch.CommitTimestamp
-				isCurrent = branch.IsCurrent
-			}
-		}
+		timestamp, frequency, isCurrent := m.scoringSignals(m.allItems[i])
 		// Glob matches have no fuzzy score to pass through: matchedLen is not on
 		// the same scale as one, and using it would shift the balance between
 		// match quality and frecency compared with the fuzzy path. MatchBonus

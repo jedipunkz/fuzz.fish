@@ -141,6 +141,27 @@ func sortDedupe(ids []int) []int {
 	return out
 }
 
+// scoringSignals extracts an item's secondary ranking inputs: the recency
+// timestamp, the usage frequency behind frecency, and whether the item is the
+// current branch. Modes that carry none of them score on match quality alone.
+func (m *model) scoringSignals(item Item) (timestamp int64, frequency int, isCurrent bool) {
+	switch m.mode {
+	case ModeHistory:
+		if entry, ok := item.Original.(history.Entry); ok {
+			timestamp, frequency = entry.When, entry.Count
+		}
+	case ModeGitBranch:
+		if branch, ok := item.Original.(git.Branch); ok {
+			timestamp, isCurrent = branch.CommitTimestamp, branch.IsCurrent
+		}
+	case ModeCommit:
+		if c, ok := item.Original.(git.Commit); ok {
+			timestamp = c.When
+		}
+	}
+	return timestamp, frequency, isCurrent
+}
+
 // updateFilter updates the filtered items based on the query
 func (m *model) updateFilter(query string) {
 	if query == "" {
@@ -206,26 +227,7 @@ func (m *model) updateFilter(query string) {
 			now := scoring.CurrentTimestamp()
 			scores := make([]float64, len(matches))
 			for i, mat := range matches {
-				item := m.allItems[mat.Index]
-				var timestamp int64
-				var frequency int
-				var isCurrent bool
-				switch m.mode {
-				case ModeHistory:
-					if entry, ok := item.Original.(history.Entry); ok {
-						timestamp = entry.When
-						frequency = entry.Count
-					}
-				case ModeGitBranch:
-					if branch, ok := item.Original.(git.Branch); ok {
-						timestamp = branch.CommitTimestamp
-						isCurrent = branch.IsCurrent
-					}
-				case ModeCommit:
-					if c, ok := item.Original.(git.Commit); ok {
-						timestamp = c.When
-					}
-				}
+				timestamp, frequency, isCurrent := m.scoringSignals(m.allItems[mat.Index])
 				// Score against the string the indexes were matched in, not the
 				// display text: they differ in worktree mode, where the branch
 				// suffix is part of the search string.
