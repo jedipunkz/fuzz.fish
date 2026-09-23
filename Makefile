@@ -3,15 +3,11 @@ FISH_CONFIG_DIR ?= $(XDG_CONFIG_HOME)/fish
 FUNCTIONS_DIR := $(FISH_CONFIG_DIR)/functions
 CONFD_DIR := $(FISH_CONFIG_DIR)/conf.d
 BIN_PATH := $(FUNCTIONS_DIR)/fuzz
-# Stamp the version conf.d/fuzz.fish pins, so a locally installed binary is not
-# treated as stale and reinstalled from the release on the next shell startup.
-VERSION := $(shell sed -n 's/^set -gu __fuzz_fish_version //p' conf.d/fuzz.fish)
-LDFLAGS := -X main.version=$(VERSION)
 
 .PHONY: build test lint install uninstall reinstall
 
 build:
-	go build -ldflags "$(LDFLAGS)" -o fuzz ./cmd/fuzz
+	go build -o fuzz ./cmd/fuzz
 
 test:
 	go test ./...
@@ -23,7 +19,7 @@ lint:
 # the shell integration in conf.d/ and the binary in functions/.
 install:
 	mkdir -p $(FUNCTIONS_DIR) $(CONFD_DIR)
-	go build -ldflags "$(LDFLAGS)" -o $(BIN_PATH) ./cmd/fuzz
+	go build -o $(BIN_PATH) ./cmd/fuzz
 	cp conf.d/fuzz.fish $(CONFD_DIR)/fuzz.fish
 
 uninstall:

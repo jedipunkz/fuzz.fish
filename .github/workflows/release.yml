@@ -90,24 +90,11 @@ jobs:
           (cd dist && sha256sum *.tar.gz > checksums.txt)
           ls -lh dist
 
-      - name: Pin plugin version in conf.d/fuzz.fish
-        run: |
-          NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
-          # The script downloads from releases/download/$__fuzz_fish_version,
-          # so the tag has to point at a tree that already pins that tag.
-          sed -i "s|^set -gu __fuzz_fish_version .*|set -gu __fuzz_fish_version $NEW_VERSION|" conf.d/fuzz.fish
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- conf.d/fuzz.fish; then
-            echo "conf.d/fuzz.fish already pins $NEW_VERSION"
-          else
-            git commit -m "chore: pin plugin version to $NEW_VERSION" conf.d/fuzz.fish
-            git push origin "HEAD:${{ github.ref_name }}"
-          fi
-
       - name: Create and push tag
         run: |
           NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
           git push origin "$NEW_VERSION"
 
