@@ -17,16 +17,27 @@ else
     set -gu FUZZ_FISH_BIN_PATH "$HOME/.config/fish/functions/fuzz"
 end
 
+# The release this script expects. Downloads are pinned to it, so a plugin
+# revision always installs the binary it was written against instead of
+# whatever is newest. The release workflow rewrites this line before tagging.
+set -gu __fuzz_fish_version v0.4.1
+
 # Internal function to build/install the binary
 function _fuzz_fish_ensure_binary
     set -l bin_path "$FUZZ_FISH_BIN_PATH"
 
-    # If binary exists, nothing to do
     if test -f "$bin_path"
-        return 0
+        # A binary older than --version writes its error to stderr and exits
+        # non-zero, leaving an empty capture. That compares unequal like any
+        # other mismatch, so no separate case is needed.
+        set -l installed ("$bin_path" --version 2>/dev/null | string trim)
+        if test "$installed" = "$__fuzz_fish_version"
+            return 0
+        end
+        echo "🔄 fuzz.fish: installed binary ($installed) does not match $__fuzz_fish_version"
     end
 
-    # Binary not found, build it using the same logic as rebuild
+    # Missing or stale, build it using the same logic as rebuild
     _fuzz_fish_rebuild_binary
 end
 
@@ -116,7 +127,7 @@ function _fuzz_fish_verify_checksum
     return 0
 end
 
-# Download the prebuilt binary for this platform from the latest release.
+# Download the prebuilt binary for this platform from the pinned release.
 # Returns non-zero when the platform has no asset, or the download fails, so
 # the caller can fall back to building from source.
 function _fuzz_fish_download_binary
@@ -147,7 +158,9 @@ function _fuzz_fish_download_binary
     end
 
     set -l asset "fuzz_"$os"_"$arch".tar.gz"
-    set -l base "https://github.com/jedipunkz/fuzz.fish/releases/latest/download"
+    # Pinned, not "latest": the asset and the checksums.txt that verifies it
+    # must both come from the release this script was written against.
+    set -l base "https://github.com/jedipunkz/fuzz.fish/releases/download/$__fuzz_fish_version"
     set -l tmp_dir (mktemp -d)
 
     echo "   Downloading $asset..."
@@ -202,8 +215,9 @@ function _fuzz_fish_build_binary
     set -l tmp_dir (mktemp -d)
     echo "   Cloning repository to $tmp_dir..."
 
-    # Clone repository
-    if git clone --depth 1 https://github.com/jedipunkz/fuzz.fish.git "$tmp_dir" >/dev/null 2>&1
+    # Clone the pinned release, not the default branch, so the fallback build
+    # produces the same version this script expects.
+    if git clone --depth 1 --branch "$__fuzz_fish_version" https://github.com/jedipunkz/fuzz.fish.git "$tmp_dir" >/dev/null 2>&1
         echo "   Clone successful"
     else
         echo "❌ fuzz.fish: Failed to clone repository!" >&2
@@ -221,7 +235,9 @@ function _fuzz_fish_build_binary
     echo "   Downloading dependencies..."
     go mod download >/dev/null 2>&1
 
-    if go build -o "$bin_path" ./cmd/fuzz
+    # Stamp the version the release workflow would stamp, otherwise the binary
+    # reports "dev" and _fuzz_fish_ensure_binary rebuilds it on every startup.
+    if go build -ldflags "-X main.version=$__fuzz_fish_version" -o "$bin_path" ./cmd/fuzz
         popd >/dev/null
         echo "✅ fuzz.fish: Build successful!"
         echo "   Binary location: $bin_path"

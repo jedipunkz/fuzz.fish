@@ -74,13 +74,15 @@ jobs:
       - name: Build release binaries
         run: |
           # Build before the tag is pushed: a failure here must not leave a
-          # tag pointing at a release that has no assets.
+          # tag pointing at a release that has no assets. The version is a step
+          # output, so it is available here without the tag existing yet.
+          NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
           mkdir -p dist
           for target in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
             goos="${target%/*}"
             goarch="${target#*/}"
             GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
-              go build -trimpath -ldflags "-s -w" -o dist/fuzz ./cmd/fuzz
+              go build -trimpath -ldflags "-s -w -X main.version=$NEW_VERSION" -o dist/fuzz ./cmd/fuzz
             tar -czf "dist/fuzz_${goos}_${goarch}.tar.gz" -C dist fuzz
             rm dist/fuzz
           done
@@ -88,11 +90,24 @@ jobs:
           (cd dist && sha256sum *.tar.gz > checksums.txt)
           ls -lh dist
 
+      - name: Pin plugin version in conf.d/fuzz.fish
+        run: |
+          NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
+          # The script downloads from releases/download/$__fuzz_fish_version,
+          # so the tag has to point at a tree that already pins that tag.
+          sed -i "s|^set -gu __fuzz_fish_version .*|set -gu __fuzz_fish_version $NEW_VERSION|" conf.d/fuzz.fish
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- conf.d/fuzz.fish; then
+            echo "conf.d/fuzz.fish already pins $NEW_VERSION"
+          else
+            git commit -m "chore: pin plugin version to $NEW_VERSION" conf.d/fuzz.fish
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
+
       - name: Create and push tag
         run: |
           NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
           git push origin "$NEW_VERSION"
 
