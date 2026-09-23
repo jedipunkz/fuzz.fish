@@ -232,18 +232,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// switchToGitBranchMode switches to git branch mode (Ctrl+G)
-func (m *model) switchToGitBranchMode() tea.Cmd {
-	if m.mode == ModeGitBranch {
+// switchMode moves to mode and resets the per-mode view state. cached says the
+// mode's data is already in the model; otherwise load is returned so Bubble Tea
+// fetches it and the *LoadedMsg handler finishes the switch.
+func (m *model) switchMode(mode SearchMode, cached bool, load tea.Cmd) tea.Cmd {
+	if m.mode == mode {
 		return nil
 	}
 
-	m.mode = ModeGitBranch
+	m.mode = mode
 	m.input.SetValue("")
 	m.previewCache = make(map[string]string)
 	m.lastPreviewKey = ""
 
-	if len(m.gitBranches) > 0 {
+	if cached {
 		m.loading = false
 		m.loadItemsForMode()
 		m.updateFilter("")
@@ -252,139 +254,44 @@ func (m *model) switchToGitBranchMode() tea.Cmd {
 		return nil
 	}
 
-	// Async load branches
 	m.loading = true
 	m.filtered = nil
 	m.allItems = nil
 	m.allItemsStr = nil
 	m.cursor = 0
 	m.offset = 0
-	return loadBranchesCmd()
+	return load
 }
 
-// switchToHistoryMode switches directly to history mode (Ctrl+R)
+// switchToGitBranchMode switches to git branch mode (Ctrl+G)
+func (m *model) switchToGitBranchMode() tea.Cmd {
+	return m.switchMode(ModeGitBranch, len(m.gitBranches) > 0, loadBranchesCmd())
+}
+
+// switchToHistoryMode switches directly to history mode (Ctrl+R). The initial
+// load may still be in flight, in which case its result no longer reaches this
+// mode on its own, so an empty cache starts a fresh load.
 func (m *model) switchToHistoryMode() tea.Cmd {
-	if m.mode == ModeHistory {
-		return nil
-	}
-
-	m.mode = ModeHistory
-	m.input.SetValue("")
-	m.previewCache = make(map[string]string)
-	m.lastPreviewKey = ""
-
-	if len(m.historyEntries) > 0 {
-		m.loading = false
-		m.loadItemsForMode()
-		m.updateFilter("")
-		m.resetCursorToBottom()
-		m.updatePreview()
-		return nil
-	}
-
-	// Async load history: the initial load may still be in flight, in which
-	// case its result no longer reaches this mode on its own.
-	m.loading = true
-	m.filtered = nil
-	m.allItems = nil
-	m.allItemsStr = nil
-	m.cursor = 0
-	m.offset = 0
-	return loadHistoryCmd()
+	return m.switchMode(ModeHistory, len(m.historyEntries) > 0, loadHistoryCmd())
 }
 
 // switchToFilesMode switches to files mode (Ctrl+S)
 func (m *model) switchToFilesMode() tea.Cmd {
-	if m.mode == ModeFiles {
-		return nil
-	}
-
-	m.mode = ModeFiles
-	m.input.SetValue("")
-	m.previewCache = make(map[string]string)
-	m.lastPreviewKey = ""
-
-	if len(m.fileEntries) > 0 {
-		m.loading = false
-		m.loadItemsForMode()
-		m.updateFilter("")
-		m.resetCursorToBottom()
-		m.updatePreview()
-		return nil
-	}
-
-	// Async load files
-	m.loading = true
-	m.filtered = nil
-	m.allItems = nil
-	m.allItemsStr = nil
-	m.cursor = 0
-	m.offset = 0
-	return loadFilesCmd()
+	return m.switchMode(ModeFiles, len(m.fileEntries) > 0, loadFilesCmd())
 }
 
 // switchToWorktreeMode switches to git worktree mode (Ctrl+W)
 func (m *model) switchToWorktreeMode() tea.Cmd {
-	if m.mode == ModeWorktree {
-		return nil
-	}
-
-	m.mode = ModeWorktree
-	m.input.SetValue("")
-	m.previewCache = make(map[string]string)
-	m.lastPreviewKey = ""
-
-	if len(m.worktrees) > 0 {
-		m.loading = false
-		m.loadItemsForMode()
-		m.updateFilter("")
-		m.resetCursorToBottom()
-		m.updatePreview()
-		return nil
-	}
-
-	// Async load worktrees
-	m.loading = true
-	m.filtered = nil
-	m.allItems = nil
-	m.allItemsStr = nil
-	m.cursor = 0
-	m.offset = 0
-	return loadWorktreesCmd()
+	return m.switchMode(ModeWorktree, len(m.worktrees) > 0, loadWorktreesCmd())
 }
 
 // switchToCommitMode switches to git commit mode (Ctrl+X)
 func (m *model) switchToCommitMode() tea.Cmd {
-	if m.mode == ModeCommit {
-		return nil
-	}
-	if !git.NewRepository(".").IsRepo() {
+	if m.mode != ModeCommit && !git.NewRepository(".").IsRepo() {
 		m.statusMsg = "⚠ Not a git repository"
 		return nil
 	}
-
-	m.mode = ModeCommit
-	m.input.SetValue("")
-	m.previewCache = make(map[string]string)
-	m.lastPreviewKey = ""
-
-	if len(m.commits) > 0 {
-		m.loading = false
-		m.loadItemsForMode()
-		m.updateFilter("")
-		m.resetCursorToBottom()
-		m.updatePreview()
-		return nil
-	}
-
-	// Async load commits
-	m.loading = true
-	m.filtered = nil
-	m.allItems = nil
-	m.allItemsStr = nil
-	m.cursor = 0
-	m.offset = 0
-	return loadCommitsCmd()
+	return m.switchMode(ModeCommit, len(m.commits) > 0, loadCommitsCmd())
 }
 
 // updateActionPicker handles keys while the commit action picker is open.
@@ -490,51 +397,39 @@ func (m *model) updatePreview() {
 	}
 	m.lastPreviewKey = key
 
-	var content string
-	var cacheKey string
+	width, height := m.viewport.Width(), m.viewport.Height()
 
+	var content string
 	switch m.mode {
 	case ModeHistory:
 		entry := item.Original.(history.Entry)
-		content = entry.GeneratePreview(m.historyEntries, item.Index, m.viewport.Width(), m.viewport.Height())
+		content = entry.GeneratePreview(m.historyEntries, item.Index, width, height)
 	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
-		cacheKey = branch.Name
-		if cached, ok := m.previewCache[cacheKey]; ok {
-			content = cached
-		} else {
-			content = branch.GeneratePreview(m.viewport.Width(), m.viewport.Height())
-			m.previewCache[cacheKey] = content
-		}
+		content = m.cachedPreview(branch.Name, func() string { return branch.GeneratePreview(width, height) })
 	case ModeFiles:
 		entry := item.Original.(files.Entry)
-		cacheKey = entry.Path
-		if cached, ok := m.previewCache[cacheKey]; ok {
-			content = cached
-		} else {
-			content = entry.GeneratePreview(m.viewport.Width(), m.viewport.Height())
-			m.previewCache[cacheKey] = content
-		}
+		content = m.cachedPreview(entry.Path, func() string { return entry.GeneratePreview(width, height) })
 	case ModeCommit:
 		c := item.Original.(git.Commit)
-		cacheKey = c.Hash
-		if cached, ok := m.previewCache[cacheKey]; ok {
-			content = cached
-		} else {
-			content = c.GeneratePreview(".", m.viewport.Width(), m.viewport.Height())
-			m.previewCache[cacheKey] = content
-		}
+		content = m.cachedPreview(c.Hash, func() string { return c.GeneratePreview(".", width, height) })
 	case ModeWorktree:
 		wt := item.Original.(git.Worktree)
-		cacheKey = wt.Path
-		if cached, ok := m.previewCache[cacheKey]; ok {
-			content = cached
-		} else {
-			content = wt.GeneratePreview(m.viewport.Width(), m.viewport.Height())
-			m.previewCache[cacheKey] = content
-		}
+		content = m.cachedPreview(wt.Path, func() string { return wt.GeneratePreview(width, height) })
 	}
 	m.viewport.SetContent(content)
+}
+
+// cachedPreview returns the stored render for key, generating and storing it on
+// a miss. History previews are deliberately not routed through here: they depend
+// on the entry's neighbours, not on the entry alone.
+func (m *model) cachedPreview(key string, generate func() string) string {
+	if cached, ok := m.previewCache[key]; ok {
+		return cached
+	}
+	content := generate()
+	m.previewCache[key] = content
+	return content
 }
 
 // selectItem handles item selection

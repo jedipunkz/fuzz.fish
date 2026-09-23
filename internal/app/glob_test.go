@@ -4,7 +4,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
+	"github.com/jedipunkz/fuzz.fish/internal/scoring"
 )
 
 func TestQueryHasGlob(t *testing.T) {
@@ -93,5 +95,28 @@ func TestGlobFilterHistory(t *testing.T) {
 		if !got[w] {
 			t.Errorf("expected %q in filtered results, got %v", w, got)
 		}
+	}
+}
+
+// TestGlobFilterCommitRecency verifies that glob queries score commits by
+// recency. Before the scoring signals were shared with the fuzzy path, the glob
+// path had no ModeCommit arm and every commit scored with a zero timestamp.
+func TestGlobFilterCommitRecency(t *testing.T) {
+	now := scoring.CurrentTimestamp()
+	commits := []git.Commit{
+		{Hash: "0000001", Subject: "refactor scoring", When: now - 365*24*3600},
+		{Hash: "0000002", Subject: "refactor scoring", When: now},
+	}
+
+	m := &model{mode: ModeCommit, commits: commits, previewCache: map[string]string{}}
+	m.loadItemsForMode()
+	m.updateFilter("*refactor")
+
+	if len(m.filtered) != 2 {
+		t.Fatalf("filtered = %d items, want 2", len(m.filtered))
+	}
+	// Higher score sits at the bottom, so the newer commit must be last.
+	if got := m.filtered[len(m.filtered)-1].Text; got != "0000002" {
+		t.Errorf("bottom item = %q, want the newer commit %q", got, "0000002")
 	}
 }
