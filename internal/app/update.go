@@ -240,6 +240,7 @@ func (m *model) switchToGitBranchMode() tea.Cmd {
 	m.lastPreviewKey = ""
 
 	if len(m.gitBranches) > 0 {
+		m.loading = false
 		m.loadItemsForMode()
 		m.updateFilter("")
 		m.resetCursorToBottom()
@@ -270,6 +271,7 @@ func (m *model) switchToHistoryMode() tea.Cmd {
 	m.lastPreviewKey = ""
 
 	if len(m.historyEntries) > 0 {
+		m.loading = false
 		m.loadItemsForMode()
 		m.updateFilter("")
 		m.resetCursorToBottom()
@@ -301,6 +303,7 @@ func (m *model) switchToFilesMode() tea.Cmd {
 	m.lastPreviewKey = ""
 
 	if len(m.fileEntries) > 0 {
+		m.loading = false
 		m.loadItemsForMode()
 		m.updateFilter("")
 		m.resetCursorToBottom()
@@ -331,6 +334,7 @@ func (m *model) switchToWorktreeMode() tea.Cmd {
 	m.lastPreviewKey = ""
 
 	if len(m.worktrees) > 0 {
+		m.loading = false
 		m.loadItemsForMode()
 		m.updateFilter("")
 		m.resetCursorToBottom()
@@ -365,6 +369,7 @@ func (m *model) switchToCommitMode() tea.Cmd {
 	m.lastPreviewKey = ""
 
 	if len(m.commits) > 0 {
+		m.loading = false
 		m.loadItemsForMode()
 		m.updateFilter("")
 		m.resetCursorToBottom()
