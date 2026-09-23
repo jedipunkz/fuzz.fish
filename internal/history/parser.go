@@ -83,19 +83,16 @@ func parseReader(r io.Reader) []Entry {
 	var entries []Entry
 	var current *Entry
 	scanner := bufio.NewScanner(r)
-	lineNum := 0
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		lineNum++
 
 		if strings.HasPrefix(line, "- cmd: ") {
 			if current != nil {
 				entries = append(entries, *current)
 			}
 			current = &Entry{
-				Cmd:     unescape(strings.TrimPrefix(line, "- cmd: ")),
-				CmdLine: lineNum,
+				Cmd: unescape(strings.TrimPrefix(line, "- cmd: ")),
 			}
 		} else if current != nil {
 			if strings.HasPrefix(line, "  when: ") {
