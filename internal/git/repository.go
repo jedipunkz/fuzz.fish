@@ -64,13 +64,16 @@ func (r *Repository) Branches() ([]Branch, error) {
 	err = refs.ForEach(func(ref *plumbing.Reference) error {
 		refName := ref.Name().String()
 
-		// Skip HEAD and other non-branch references
-		if strings.Contains(refName, "HEAD") {
+		// Only process branches (local and remote)
+		if !strings.HasPrefix(refName, "refs/heads/") && !strings.HasPrefix(refName, "refs/remotes/") {
 			return nil
 		}
 
-		// Only process branches (local and remote)
-		if !strings.HasPrefix(refName, "refs/heads/") && !strings.HasPrefix(refName, "refs/remotes/") {
+		// Skip the HEAD refs: remote-tracking symbolic HEADs
+		// (`refs/remotes/<remote>/HEAD`) and a branch literally named HEAD.
+		// Matching the ref name exactly keeps branches whose name merely
+		// contains "HEAD" (e.g. "fix/HEAD-detach") in the list.
+		if refName == "refs/heads/HEAD" || strings.HasSuffix(refName, "/HEAD") {
 			return nil
 		}
 
