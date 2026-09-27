@@ -7,6 +7,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
@@ -173,8 +175,8 @@ func TestUpdate_LoadingStaysWithTheActiveMode(t *testing.T) {
 	}
 }
 
-// TestViewShowsModeTag verifies every search mode renders a lowercase tag
-// next to the input line.
+// TestViewShowsModeTag verifies every search mode renders a lowercase tag in
+// a fixed-width frame at the right edge of the input row.
 func TestViewShowsModeTag(t *testing.T) {
 	for mode, want := range map[SearchMode]string{
 		ModeHistory:   "[history]",
@@ -193,8 +195,25 @@ func TestViewShowsModeTag(t *testing.T) {
 			listWidth:    40,
 			mainHeight:   10,
 		}
-		if !strings.Contains(m.View().Content, want) {
+		var tagLine string
+		for _, line := range strings.Split(m.View().Content, "\n") {
+			if strings.Contains(line, want) {
+				tagLine = line
+				break
+			}
+		}
+		if tagLine == "" {
 			t.Errorf("mode %d renders no %q tag", mode, want)
+			continue
+		}
+		// The tag lives in a frame: its line is bisected by vertical border
+		// drawers and must close with one at the right screen edge.
+		stripped := ansi.Strip(tagLine)
+		if strings.Count(stripped, "│") < 2 {
+			t.Errorf("mode tag %q rendered outside a frame: %q", want, stripped)
+		}
+		if !strings.HasSuffix(stripped, "│") {
+			t.Errorf("mode tag frame is not flush with the right edge: %q", stripped)
 		}
 	}
 }
