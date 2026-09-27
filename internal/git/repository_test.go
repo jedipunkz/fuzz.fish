@@ -183,3 +183,43 @@ func TestBranches_CommitTimestamp(t *testing.T) {
 		t.Errorf("CommitTimestamp = %d, want a positive unix timestamp", branches[0].CommitTimestamp)
 	}
 }
+
+func TestBranches_KeepsBranchesContainingHEAD(t *testing.T) {
+	dir := initTestRepo(t)
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(),
+			"GIT_CONFIG_GLOBAL=/dev/null",
+			"GIT_CONFIG_SYSTEM=/dev/null",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	run("branch", "fix/HEAD-detach")
+
+	branches, err := NewRepository(dir).Branches()
+	if err != nil {
+		t.Fatalf("Branches() returned unexpected error: %v", err)
+	}
+
+	found := false
+	for _, b := range branches {
+		if b.Name == "fix/HEAD-detach" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("branch fix/HEAD-detach missing from %v", branchNames(branches))
+	}
+}
+
+func branchNames(branches []Branch) []string {
+	names := make([]string, len(branches))
+	for i, b := range branches {
+		names[i] = b.Name
+	}
+	return names
+}
