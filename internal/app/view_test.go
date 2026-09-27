@@ -7,6 +7,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
@@ -170,6 +172,77 @@ func TestUpdate_LoadingStaysWithTheActiveMode(t *testing.T) {
 	}
 	if len(got.historyEntries) != 1 {
 		t.Errorf("historyEntries = %d, want the loaded entry to be kept", len(got.historyEntries))
+	}
+}
+
+// TestViewShowsModeTag verifies every search mode renders a lowercase tag in
+// a fixed-width frame at the right edge of the input row.
+func TestViewShowsModeTag(t *testing.T) {
+	for mode, want := range map[SearchMode]string{
+		ModeHistory:   "history",
+		ModeGitBranch: "branch",
+		ModeFiles:     "files",
+		ModeWorktree:  "worktree",
+		ModeCommit:    "commit",
+	} {
+		m := model{
+			mode:         mode,
+			input:        textinput.New(),
+			viewport:     viewport.New(),
+			previewCache: map[string]string{},
+			ready:        true,
+			width:        80,
+			listWidth:    40,
+			mainHeight:   10,
+		}
+		var tagLine string
+		for _, line := range strings.Split(m.View().Content, "\n") {
+			if strings.Contains(line, want) {
+				tagLine = line
+				break
+			}
+		}
+		if tagLine == "" {
+			t.Errorf("mode %d renders no %q tag", mode, want)
+			continue
+		}
+		// The tag lives in a frame: its line is bisected by vertical border
+		// drawers and must close with one at the right screen edge.
+		stripped := ansi.Strip(tagLine)
+		if strings.Count(stripped, "│") < 2 {
+			t.Errorf("mode tag %q rendered outside a frame: %q", want, stripped)
+		}
+		if !strings.HasSuffix(stripped, "│") {
+			t.Errorf("mode tag frame is not flush with the right edge: %q", stripped)
+		}
+	}
+}
+
+// TestViewModeTagStaysClearOfStatusMessages verifies the tag is appended
+// after an active status message so the warning stays nearest to the cursor.
+func TestViewModeTagStaysClearOfStatusMessages(t *testing.T) {
+	m := model{
+		mode:         ModeFiles,
+		input:        textinput.New(),
+		viewport:     viewport.New(),
+		previewCache: map[string]string{},
+		ready:        true,
+		width:        80,
+		listWidth:    40,
+		mainHeight:   10,
+		statusMsg:    "⚠ not a git repository",
+	}
+	content := m.View().Content
+	statusIdx := strings.Index(content, "not a git repository")
+	tagIdx := strings.Index(content, "files")
+	if statusIdx < 0 {
+		t.Errorf("status message missing:\n%s", content)
+	}
+	if tagIdx < 0 {
+		t.Errorf("mode tag missing with a status message present:\n%s", content)
+	}
+	if statusIdx >= 0 && tagIdx >= 0 && tagIdx < statusIdx {
+		t.Errorf("mode tag rendered before the status message:\n%s", content)
 	}
 }
 

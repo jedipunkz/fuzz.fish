@@ -86,10 +86,9 @@ func (m model) View() tea.View {
 		// In lipgloss v2, Width/Height include borders, so add 2 for left+right / top+bottom borders
 		listBox := boxStyle.Width(m.listWidth + 2).Height(m.mainHeight + 2).Render(listView)
 		previewBox := boxStyle.Width(m.viewport.Width() + 2).Height(m.mainHeight + 2).Render(previewView)
-		inputBox := boxStyle.Width(m.width).Padding(0, 1).Render(inputView)
 
 		mainView := lipgloss.JoinHorizontal(lipgloss.Top, listBox, previewBox)
-		v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, mainView, inputBox))
+		v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, mainView, m.inputRowView(inputView)))
 		v.AltScreen = true
 		v.Cursor = m.inputCursor()
 		return v
@@ -144,11 +143,7 @@ func (m model) View() tea.View {
 		inputContent = inputView + "  " + warningStyle.Render(m.statusMsg)
 	}
 
-	// Input box with border
-	inputBox := boxStyle.
-		Width(m.width).
-		Padding(0, 1).
-		Render(inputContent)
+	inputRow := m.inputRowView(inputContent)
 
 	mainView := lipgloss.JoinHorizontal(lipgloss.Top,
 		listBox,
@@ -157,11 +152,29 @@ func (m model) View() tea.View {
 
 	v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left,
 		mainView,
-		inputBox,
+		inputRow,
 	))
 	v.AltScreen = true
 	v.Cursor = m.inputCursor()
 	return v
+}
+
+// modeLabel returns the lowercase mode tag shown next to the input line so the
+// user can tell which search mode is active.
+func (mode SearchMode) label() string {
+	switch mode {
+	case ModeHistory:
+		return "history"
+	case ModeGitBranch:
+		return "branch"
+	case ModeFiles:
+		return "files"
+	case ModeWorktree:
+		return "worktree"
+	case ModeCommit:
+		return "commit"
+	}
+	return ""
 }
 
 // renderActionPicker renders the commit action list in place of the preview
@@ -184,6 +197,31 @@ func (m model) renderActionPicker() string {
 	}
 	b.WriteString("\n" + timeAgoNormalStyle.Render("enter: accept  esc: back"))
 	return b.String()
+}
+
+// modeTagBoxWidth is the fixed total width (padding and borders included) of
+// the mode tag frame at the right edge of the input row. Fixed, so switching
+// modes never reshapes the row; 8 content cells fit the longest label
+// ("worktree").
+const modeTagBoxWidth = 12
+
+// inputRowView lays out the input box and the mode tag frame as one row
+// spanning the full width. The tag frame hugs the right edge; the cursor
+// position is not affected because the tag frames in to the right of it.
+func (m model) inputRowView(content string) string {
+	tagBox := boxStyle.
+		Width(modeTagBoxWidth).
+		Padding(0, 1).
+		Render(ui.InactiveContextStyle.Render(m.mode.label()))
+
+	// The two boxes fill the row exactly, so the tag box ends flush with the
+	// right edge.
+	inputBox := boxStyle.
+		Width(m.width-modeTagBoxWidth).
+		Padding(0, 1).
+		Render(content)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, inputBox, tagBox)
 }
 
 // inputCursor returns the textinput cursor offset to absolute screen coordinates.
