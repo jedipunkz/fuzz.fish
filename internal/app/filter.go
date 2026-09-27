@@ -113,14 +113,18 @@ func (m *model) loadItemsForMode() {
 		m.allItems = m.allItems[:0]
 	}
 
-	// Pre-build search strings to avoid per-keystroke allocation
+	// Pre-build the search strings and their lowercase view: fuzzy matching
+	// consumes allItemsStr, and glob matching would otherwise re-lowercase
+	// every item on every keystroke.
 	m.allItemsStr = make([]string, len(m.allItems))
-	for i, item := range m.allItems {
-		if item.SearchText != "" {
-			m.allItemsStr[i] = item.SearchText
-		} else {
-			m.allItemsStr[i] = item.Text
+	m.allItemsStrLower = make([]string, len(m.allItems))
+	for i := range m.allItems {
+		s := m.allItems[i].SearchText
+		if s == "" {
+			s = m.allItems[i].Text
 		}
+		m.allItemsStr[i] = s
+		m.allItemsStrLower[i] = strings.ToLower(s)
 	}
 }
 
@@ -188,43 +192,71 @@ func (m *model) updateFilter(query string) {
 		} else if len(tokens) > 0 {
 			matches := fuzzy.Find(tokens[0], m.allItemsStr)
 
-			// Aggregate per-item match quality across every token. Multi-token
-			// queries ("git pull") AND each token, but the combined score must
-			// reflect all tokens: summed fuzzy score and the union of matched
-			// indexes. Keeping only the first token's data hides where later
-			// tokens matched, so a contiguous match ("git pull origin main")
-			// could not be distinguished from a scattered one
-			// ("git config pull.rebase true").
-			aggScore := make(map[int]int, len(matches))
-			aggIdx := make(map[int][]int, len(matches))
-			for _, mat := range matches {
-				aggScore[mat.Index] = mat.Score
-				aggIdx[mat.Index] = append([]int(nil), mat.MatchedIndexes...)
-			}
+			// Per-match aggregation aligned with the matches slice; built by
+			// whichever path matches this query, then fed to the shared
+			// scoring/sorting tail below.
+			aggScores := make([]int, len(matches))
+			aggIdx := make([][]int, len(matches))
 
-			for _, token := range tokens[1:] {
-				if len(matches) == 0 {
-					break
-				}
-				subset := make([]string, len(matches))
+			if len(tokens) == 1 {
+				// Single-token queries (the common case) need no cross-token
+				// aggregation: fuzzy.Find's score and match indexes feed
+				// scoring and highlighting directly, avoiding map allocations.
 				for i, mat := range matches {
-					subset[i] = m.allItemsStr[mat.Index]
+					aggScores[i] = mat.Score
+					aggIdx[i] = sortDedupe(mat.MatchedIndexes)
 				}
-				subMatches := fuzzy.Find(token, subset)
-				newMatches := make(fuzzy.Matches, len(subMatches))
-				for i, sm := range subMatches {
-					orig := matches[sm.Index]
-					aggScore[orig.Index] += sm.Score
-					aggIdx[orig.Index] = append(aggIdx[orig.Index], sm.MatchedIndexes...)
-					newMatches[i] = orig
+			} else {
+				// Multi-token queries ("git pull") AND each token, but the
+				// combined score must reflect all tokens: summed fuzzy score
+				// and the union of matched indexes. Keeping only the first
+				// token's data hides where later tokens matched, so a
+				// contiguous match ("git pull origin main") could not be
+				// distinguished from a scattered one
+				// ("git config pull.rebase true").
+				//
+				// Aggregation is keyed by the allItems index (matches change
+				// order between token passes), then materialized aligned with
+				// the final matches below.
+				aggScore := make(map[int]int, len(matches))
+				aggIdxByKey := make(map[int][]int, len(matches))
+				for _, mat := range matches {
+					aggScore[mat.Index] = mat.Score
+					aggIdxByKey[mat.Index] = append([]int(nil), mat.MatchedIndexes...)
 				}
-				matches = newMatches
-			}
 
-			// Sort and dedupe each item's matched indexes so gap/boundary
-			// bonuses and highlighting see the full, ordered match set.
-			for idx, ids := range aggIdx {
-				aggIdx[idx] = sortDedupe(ids)
+				// subset and newMatches are reused across token passes within
+				// this filter run: capacity stabilizes after the first pass.
+				subset := make([]string, len(matches))
+				newMatches := fuzzy.Matches{}
+
+				for _, token := range tokens[1:] {
+					if len(matches) == 0 {
+						break
+					}
+					subset = subset[:len(matches)]
+					for i, mat := range matches {
+						subset[i] = m.allItemsStr[mat.Index]
+					}
+					subMatches := fuzzy.Find(token, subset)
+					if cap(newMatches) < len(subMatches) {
+						newMatches = make(fuzzy.Matches, 0, len(matches))
+					} else {
+						newMatches = newMatches[:0]
+					}
+					for _, sm := range subMatches {
+						orig := matches[sm.Index]
+						aggScore[orig.Index] += sm.Score
+						aggIdxByKey[orig.Index] = append(aggIdxByKey[orig.Index], sm.MatchedIndexes...)
+						newMatches = append(newMatches, orig)
+					}
+					matches = newMatches
+				}
+
+				for i, mat := range matches {
+					aggScores[i] = aggScore[mat.Index]
+					aggIdx[i] = sortDedupe(aggIdxByKey[mat.Index])
+				}
 			}
 
 			// Pre-calculate scores for all matches (O(n) instead of O(n log n) in comparator)
@@ -236,7 +268,7 @@ func (m *model) updateFilter(query string) {
 				// Score against the string the indexes were matched in, not the
 				// display text: they differ in worktree mode, where the branch
 				// suffix is part of the search string.
-				scores[i] = config.ItemScore(m.allItemsStr[mat.Index], aggScore[mat.Index], aggIdx[mat.Index], timestamp, frequency, isCurrent, now)
+				scores[i] = config.ItemScore(m.allItemsStr[mat.Index], aggScores[i], aggIdx[i], timestamp, frequency, isCurrent, now)
 			}
 
 			// Create index array for sorting (scores array must stay aligned with original matches)
@@ -257,7 +289,7 @@ func (m *model) updateFilter(query string) {
 			for rank, idx := range indices {
 				mat := matches[idx]
 				item := m.allItems[mat.Index]
-				item.MatchedIndexes = aggIdx[mat.Index]
+				item.MatchedIndexes = aggIdx[idx]
 				m.filtered[rank] = item
 			}
 		} else {

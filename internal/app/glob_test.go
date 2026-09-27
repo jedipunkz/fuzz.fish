@@ -71,12 +71,11 @@ func TestGlobFilterHistory(t *testing.T) {
 		"nvim cmd/fuzz/main.go",
 	}
 	m := &model{mode: ModeHistory}
-	m.allItems = make([]Item, len(cmds))
-	m.allItemsStr = make([]string, len(cmds))
+	m.historyEntries = make([]history.Entry, len(cmds))
 	for i, c := range cmds {
-		m.allItems[i] = Item{Text: c, Index: i, Original: history.Entry{Cmd: c, Count: 1}}
-		m.allItemsStr[i] = c
+		m.historyEntries[i] = history.Entry{Cmd: c, Count: 1}
 	}
+	m.loadItemsForMode()
 
 	m.updateFilter("nvim *.go")
 

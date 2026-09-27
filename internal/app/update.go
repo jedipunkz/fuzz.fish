@@ -261,6 +261,7 @@ func (m *model) switchMode(mode SearchMode, cached bool, load tea.Cmd) tea.Cmd {
 	m.filtered = nil
 	m.allItems = nil
 	m.allItemsStr = nil
+	m.allItemsStrLower = nil
 	m.cursor = 0
 	m.offset = 0
 	return load
