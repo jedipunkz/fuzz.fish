@@ -162,17 +162,22 @@ func (m *model) scoringSignals(item Item) (timestamp int64, frequency int, isCur
 	return timestamp, frequency, isCurrent
 }
 
+// filterAllItems fills filtered with a copy of allItems, reusing the slice
+// when capacity allows.
+func (m *model) filterAllItems() {
+	if cap(m.filtered) >= len(m.allItems) {
+		m.filtered = m.filtered[:len(m.allItems)]
+	} else {
+		m.filtered = make([]Item, len(m.allItems))
+	}
+	copy(m.filtered, m.allItems)
+}
+
 // updateFilter updates the filtered items based on the query
 func (m *model) updateFilter(query string) {
 	if query == "" {
 		// Return all items (which are already in display order)
-		// Reuse existing slice if capacity allows
-		if cap(m.filtered) >= len(m.allItems) {
-			m.filtered = m.filtered[:len(m.allItems)]
-		} else {
-			m.filtered = make([]Item, len(m.allItems))
-		}
-		copy(m.filtered, m.allItems)
+		m.filterAllItems()
 	} else {
 		// Fuzzy search using pre-built search strings (avoids per-keystroke allocation)
 		tokens := strings.Fields(query)
@@ -257,12 +262,7 @@ func (m *model) updateFilter(query string) {
 			}
 		} else {
 			// Query is just whitespace, treat as empty
-			if cap(m.filtered) >= len(m.allItems) {
-				m.filtered = m.filtered[:len(m.allItems)]
-			} else {
-				m.filtered = make([]Item, len(m.allItems))
-			}
-			copy(m.filtered, m.allItems)
+			m.filterAllItems()
 		}
 	}
 

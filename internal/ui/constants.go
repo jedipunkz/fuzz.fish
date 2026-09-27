@@ -1,5 +1,11 @@
 package ui
 
+// File/directory list icons
+const (
+	IconFile = "📄"
+	IconDir  = "📁"
+)
+
 // Binary detection and preview constants
 const (
 	// BinaryDetectionBytes is the number of bytes to read for binary detection
