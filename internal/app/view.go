@@ -212,7 +212,6 @@ func (m model) inputRowView(content string) string {
 	tagBox := boxStyle.
 		Width(modeTagBoxWidth).
 		Padding(0, 1).
-		Align(lipgloss.Right).
 		Render(ui.InactiveContextStyle.Render(m.mode.label()))
 
 	// The two boxes fill the row exactly, so the tag box ends flush with the
