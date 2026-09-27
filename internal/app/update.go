@@ -10,6 +10,7 @@ import (
 	"github.com/jedipunkz/fuzz.fish/internal/files"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
+	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
 // Update handles messages and updates the model
@@ -23,7 +24,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == ModeHistory {
 			m.loading = false
 			m.loadItemsForMode()
-			m.updateFilter(m.input.Value())
+			return m, m.updateFilter(m.input.Value())
 		}
 		return m, nil
 
@@ -32,7 +33,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == ModeGitBranch {
 			m.loading = false
 			m.loadItemsForMode()
-			m.updateFilter(m.input.Value())
+			return m, m.updateFilter(m.input.Value())
 		}
 		return m, nil
 
@@ -44,7 +45,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.statusMsg = "⚠ showing first " + strconv.Itoa(len(msg.entries)) + " files"
 			}
 			m.loadItemsForMode()
-			m.updateFilter(m.input.Value())
+			return m, m.updateFilter(m.input.Value())
 		}
 		return m, nil
 
@@ -53,7 +54,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == ModeWorktree {
 			m.loading = false
 			m.loadItemsForMode()
-			m.updateFilter(m.input.Value())
+			return m, m.updateFilter(m.input.Value())
 		}
 		return m, nil
 
@@ -62,13 +63,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == ModeCommit {
 			m.loading = false
 			m.loadItemsForMode()
-			m.updateFilter(m.input.Value())
+			return m, m.updateFilter(m.input.Value())
+		}
+		return m, nil
+
+	case previewReadyMsg:
+		// Renders produced for a previous pane size (before a resize cleared
+		// the cache) are dropped without caching. Stale results from fast
+		// scrolling are still cached — only the render is skipped — because
+		// returning to that item should not pay generation twice.
+		if msg.gen == m.previewGen {
+			m.previewCache[msg.key] = msg.content
+			if msg.key == m.lastPreviewKey {
+				m.viewport.SetContent(msg.content)
+			}
 		}
 		return m, nil
 
 	case filterTickMsg:
 		if msg.query == m.pendingQuery {
-			m.updateFilter(msg.query)
+			return m, m.updateFilter(msg.query)
 		}
 		return m, nil
 
@@ -116,11 +130,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Previews are rendered for a fixed pane size, so every cached render
 		// and the change-detection key are stale once the pane is resized.
+		// The generation counter also drops async renders still in flight.
 		m.previewCache = make(map[string]string)
 		m.lastPreviewKey = ""
+		m.previewGen++
 
 		m.validateCursor()
-		m.updatePreview()
+		cmds = append(cmds, m.updatePreview())
 
 	case tea.KeyPressMsg:
 		// Clear status message on any key press
@@ -146,7 +162,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "tab":
 			if len(m.filtered) > 0 {
-				m.completeSelectedItem()
+				return m, m.completeSelectedItem()
 			}
 			return m, nil
 		case "ctrl+c", "esc":
@@ -199,7 +215,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor >= m.offset+m.mainHeight {
 					m.offset = m.cursor - m.mainHeight + 1
 				}
-				m.updatePreview()
+				return m, m.updatePreview()
 			}
 			return m, nil
 		case "up", "ctrl+p":
@@ -211,7 +227,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor < m.offset {
 					m.offset = m.cursor
 				}
-				m.updatePreview()
+				return m, m.updatePreview()
 			}
 			return m, nil
 		}
@@ -251,10 +267,9 @@ func (m *model) switchMode(mode SearchMode, cached bool, load tea.Cmd) tea.Cmd {
 	if cached {
 		m.loading = false
 		m.loadItemsForMode()
-		m.updateFilter("")
+		filterCmd := m.updateFilter("")
 		m.resetCursorToBottom()
-		m.updatePreview()
-		return nil
+		return tea.Batch(filterCmd, m.updatePreview())
 	}
 
 	m.loading = true
@@ -326,11 +341,11 @@ func (m model) updateActionPicker(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 // completeSelectedItem fills the input field with the currently selected item's text
-func (m *model) completeSelectedItem() {
+func (m *model) completeSelectedItem() tea.Cmd {
 	text := m.filtered[m.cursor].Text
 	m.input.SetValue(text)
 	m.input.CursorEnd()
-	m.updateFilter(text)
+	return m.updateFilter(text)
 }
 
 // resetCursorToBottom resets the cursor to the bottom of the list
@@ -382,12 +397,23 @@ func previewKey(mode SearchMode, item Item) string {
 	return strconv.Itoa(int(mode)) + "\x00" + strconv.Itoa(item.Index) + "\x00" + item.Text
 }
 
-// updatePreview updates the preview pane content
-func (m *model) updatePreview() {
+// generatePreviewCmd runs an expensive preview generator in a tea.Cmd.
+func generatePreviewCmd(gen int, key string, generate func() string) tea.Cmd {
+	return func() tea.Msg {
+		return previewReadyMsg{gen: gen, key: key, content: generate()}
+	}
+}
+
+// updatePreview updates the preview pane content and returns the tea.Cmd that
+// generates it asynchronously. ModeHistory, ModeGitBranch and ModeWorktree
+// previews are pure string building and render synchronously; the file
+// preview (disk I/O + syntax highlighting) and the commit preview (a git show
+// subprocess) generate off the update loop so navigation cannot stall.
+func (m *model) updatePreview() tea.Cmd {
 	if len(m.filtered) == 0 {
 		m.viewport.SetContent("")
 		m.lastPreviewKey = ""
-		return
+		return nil
 	}
 
 	item := m.filtered[m.cursor]
@@ -397,31 +423,45 @@ func (m *model) updatePreview() {
 	// item sitting at that position.
 	key := previewKey(m.mode, item)
 	if key == m.lastPreviewKey {
-		return
+		return nil
 	}
 	m.lastPreviewKey = key
 
 	width, height := m.viewport.Width(), m.viewport.Height()
 
-	var content string
 	switch m.mode {
 	case ModeHistory:
 		entry := item.Original.(history.Entry)
-		content = entry.GeneratePreview(m.historyEntries, item.Index, width, height)
+		m.viewport.SetContent(entry.GeneratePreview(m.historyEntries, item.Index, width, height))
 	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
-		content = m.cachedPreview(branch.Name, func() string { return branch.GeneratePreview(width, height) })
-	case ModeFiles:
-		entry := item.Original.(files.Entry)
-		content = m.cachedPreview(entry.Path, func() string { return entry.GeneratePreview(width, height) })
-	case ModeCommit:
-		c := item.Original.(git.Commit)
-		content = m.cachedPreview(c.Hash, func() string { return c.GeneratePreview(".", width, height) })
+		m.viewport.SetContent(m.cachedPreview(branch.Name, func() string { return branch.GeneratePreview(width, height) }))
 	case ModeWorktree:
 		wt := item.Original.(git.Worktree)
-		content = m.cachedPreview(wt.Path, func() string { return wt.GeneratePreview(width, height) })
+		m.viewport.SetContent(m.cachedPreview(wt.Path, func() string { return wt.GeneratePreview(width, height) }))
+	case ModeFiles:
+		entry := item.Original.(files.Entry)
+		if content, ok := m.previewCache[entry.Path]; ok {
+			m.viewport.SetContent(content)
+			return nil
+		}
+		// The render is unwritten until the cmd runs; show a hint meanwhile.
+		m.viewport.SetContent(ui.InactiveContextStyle.Render("  loading preview..."))
+		return generatePreviewCmd(m.previewGen, key, func() string {
+			return entry.GeneratePreview(width, height)
+		})
+	case ModeCommit:
+		c := item.Original.(git.Commit)
+		if content, ok := m.previewCache[c.Hash]; ok {
+			m.viewport.SetContent(content)
+			return nil
+		}
+		m.viewport.SetContent(ui.InactiveContextStyle.Render("  loading preview..."))
+		return generatePreviewCmd(m.previewGen, key, func() string {
+			return c.GeneratePreview(".", width, height)
+		})
 	}
-	m.viewport.SetContent(content)
+	return nil
 }
 
 // cachedPreview returns the stored render for key, generating and storing it on

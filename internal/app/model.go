@@ -24,6 +24,16 @@ type commitsLoadedMsg struct{ commits []git.Commit }
 // Filter debounce message
 type filterTickMsg struct{ query string }
 
+// previewReadyMsg delivers preview content generated inside a tea.Cmd so the
+// update loop is not blocked by subprocesses and disk I/O. gen identifies the
+// resize generation the render was produced for: renders from older
+// generations are dropped (the version they were sized for is gone).
+type previewReadyMsg struct {
+	gen     int
+	key     string
+	content string
+}
+
 // SearchMode represents the current search mode
 type SearchMode int
 
@@ -107,6 +117,7 @@ type model struct {
 	// Preview cache
 	previewCache   map[string]string // Cache for file previews
 	lastPreviewKey string            // Identifies the item the preview was rendered for
+	previewGen     int               // Increments on resize; drops async renders made for a stale pane size
 }
 
 // Init initializes the model
