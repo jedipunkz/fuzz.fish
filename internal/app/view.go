@@ -143,6 +143,9 @@ func (m model) View() tea.View {
 	if m.statusMsg != "" {
 		inputContent = inputView + "  " + warningStyle.Render(m.statusMsg)
 	}
+	// Mode tag: dim and trailing, so it does not compete with the query text
+	// and the cursor position is not shifted (nothing is prepended).
+	inputContent += "  " + ui.InactiveContextStyle.Render("["+m.mode.label()+"]")
 
 	// Input box with border
 	inputBox := boxStyle.
@@ -162,6 +165,24 @@ func (m model) View() tea.View {
 	v.AltScreen = true
 	v.Cursor = m.inputCursor()
 	return v
+}
+
+// modeLabel returns the lowercase tag shown next to the input line so the
+// user can tell which search mode is active.
+func (mode SearchMode) label() string {
+	switch mode {
+	case ModeHistory:
+		return "history"
+	case ModeGitBranch:
+		return "branch"
+	case ModeFiles:
+		return "files"
+	case ModeWorktree:
+		return "worktree"
+	case ModeCommit:
+		return "commit"
+	}
+	return ""
 }
 
 // renderActionPicker renders the commit action list in place of the preview

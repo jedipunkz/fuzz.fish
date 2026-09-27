@@ -173,6 +173,60 @@ func TestUpdate_LoadingStaysWithTheActiveMode(t *testing.T) {
 	}
 }
 
+// TestViewShowsModeTag verifies every search mode renders a lowercase tag
+// next to the input line.
+func TestViewShowsModeTag(t *testing.T) {
+	for mode, want := range map[SearchMode]string{
+		ModeHistory:   "[history]",
+		ModeGitBranch: "[branch]",
+		ModeFiles:     "[files]",
+		ModeWorktree:  "[worktree]",
+		ModeCommit:    "[commit]",
+	} {
+		m := model{
+			mode:         mode,
+			input:        textinput.New(),
+			viewport:     viewport.New(),
+			previewCache: map[string]string{},
+			ready:        true,
+			width:        80,
+			listWidth:    40,
+			mainHeight:   10,
+		}
+		if !strings.Contains(m.View().Content, want) {
+			t.Errorf("mode %d renders no %q tag", mode, want)
+		}
+	}
+}
+
+// TestViewModeTagStaysClearOfStatusMessages verifies the tag is appended
+// after an active status message so the warning stays nearest to the cursor.
+func TestViewModeTagStaysClearOfStatusMessages(t *testing.T) {
+	m := model{
+		mode:         ModeFiles,
+		input:        textinput.New(),
+		viewport:     viewport.New(),
+		previewCache: map[string]string{},
+		ready:        true,
+		width:        80,
+		listWidth:    40,
+		mainHeight:   10,
+		statusMsg:    "⚠ not a git repository",
+	}
+	content := m.View().Content
+	statusIdx := strings.Index(content, "not a git repository")
+	tagIdx := strings.Index(content, "[files]")
+	if statusIdx < 0 {
+		t.Errorf("status message missing:\n%s", content)
+	}
+	if tagIdx < 0 {
+		t.Errorf("mode tag missing with a status message present:\n%s", content)
+	}
+	if statusIdx >= 0 && tagIdx >= 0 && tagIdx < statusIdx {
+		t.Errorf("mode tag rendered before the status message:\n%s", content)
+	}
+}
+
 func TestSwitchToCachedMode_ClearsLoading(t *testing.T) {
 	m := model{
 		mode:           ModeHistory,
