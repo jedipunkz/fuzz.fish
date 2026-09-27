@@ -159,7 +159,7 @@ func (m model) View() tea.View {
 	return v
 }
 
-// modeLabel returns the lowercase tag shown next to the input line so the
+// modeLabel returns the lowercase mode tag shown next to the input line so the
 // user can tell which search mode is active.
 func (mode SearchMode) label() string {
 	switch mode {
@@ -201,8 +201,9 @@ func (m model) renderActionPicker() string {
 
 // modeTagBoxWidth is the fixed total width (padding and borders included) of
 // the mode tag frame at the right edge of the input row. Fixed, so switching
-// modes never reshapes the row.
-const modeTagBoxWidth = 16
+// modes never reshapes the row; 8 content cells fit the longest label
+// ("worktree").
+const modeTagBoxWidth = 12
 
 // inputRowView lays out the input box and the mode tag frame as one row
 // spanning the full width. The tag frame hugs the right edge; the cursor
@@ -212,7 +213,7 @@ func (m model) inputRowView(content string) string {
 		Width(modeTagBoxWidth).
 		Padding(0, 1).
 		Align(lipgloss.Right).
-		Render(ui.InactiveContextStyle.Render("[" + m.mode.label() + "]"))
+		Render(ui.InactiveContextStyle.Render(m.mode.label()))
 
 	// The two boxes fill the row exactly, so the tag box ends flush with the
 	// right edge.

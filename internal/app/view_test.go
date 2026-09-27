@@ -179,11 +179,11 @@ func TestUpdate_LoadingStaysWithTheActiveMode(t *testing.T) {
 // a fixed-width frame at the right edge of the input row.
 func TestViewShowsModeTag(t *testing.T) {
 	for mode, want := range map[SearchMode]string{
-		ModeHistory:   "[history]",
-		ModeGitBranch: "[branch]",
-		ModeFiles:     "[files]",
-		ModeWorktree:  "[worktree]",
-		ModeCommit:    "[commit]",
+		ModeHistory:   "history",
+		ModeGitBranch: "branch",
+		ModeFiles:     "files",
+		ModeWorktree:  "worktree",
+		ModeCommit:    "commit",
 	} {
 		m := model{
 			mode:         mode,
@@ -234,7 +234,7 @@ func TestViewModeTagStaysClearOfStatusMessages(t *testing.T) {
 	}
 	content := m.View().Content
 	statusIdx := strings.Index(content, "not a git repository")
-	tagIdx := strings.Index(content, "[files]")
+	tagIdx := strings.Index(content, "files")
 	if statusIdx < 0 {
 		t.Errorf("status message missing:\n%s", content)
 	}
