@@ -10,6 +10,7 @@ import (
 type Worktree struct {
 	Path      string
 	Branch    string // short branch name, or "(detached)" / "(bare)"
+	Hash      string // full commit hash, anchors the preview's recent-commit walk
 	Head      string // short commit hash
 	IsCurrent bool   // whether this worktree is the one we are running in
 }
@@ -73,6 +74,7 @@ func parseWorktreePorcelain(out string) []Worktree {
 			cur.Branch = "(detached)"
 			hasCur = true
 		case "HEAD":
+			cur.Hash = value
 			if len(value) > 7 {
 				cur.Head = value[:7]
 			} else {

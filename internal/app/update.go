@@ -445,7 +445,14 @@ func (m *model) updatePreview() tea.Cmd {
 		})
 	case ModeWorktree:
 		wt := item.Original.(git.Worktree)
-		m.viewport.SetContent(m.cachedPreview(wt.Path, func() string { return wt.GeneratePreview(width, height) }))
+		if content, ok := m.previewCache[wt.Path]; ok {
+			m.viewport.SetContent(content)
+			return nil
+		}
+		m.viewport.SetContent(ui.InactiveContextStyle.Render("  loading preview..."))
+		return generatePreviewCmd(m.previewGen, key, func() string {
+			return wt.GeneratePreview(".", width, height)
+		})
 	case ModeFiles:
 		entry := item.Original.(files.Entry)
 		if content, ok := m.previewCache[entry.Path]; ok {
@@ -469,18 +476,6 @@ func (m *model) updatePreview() tea.Cmd {
 		})
 	}
 	return nil
-}
-
-// cachedPreview returns the stored render for key, generating and storing it on
-// a miss. History previews are deliberately not routed through here: they depend
-// on the entry's neighbours, not on the entry alone.
-func (m *model) cachedPreview(key string, generate func() string) string {
-	if cached, ok := m.previewCache[key]; ok {
-		return cached
-	}
-	content := generate()
-	m.previewCache[key] = content
-	return content
 }
 
 // selectItem handles item selection
