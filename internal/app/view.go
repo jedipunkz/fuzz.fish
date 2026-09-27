@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
@@ -17,8 +17,8 @@ import (
 // Pre-computed styles to avoid per-render allocation (lipgloss.NewStyle is expensive)
 var (
 	boxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(ui.ColorBorder))
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(ui.ColorBorder))
 
 	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("220"))
 
@@ -246,9 +246,9 @@ func (m model) renderItem(w io.Writer, index int, i Item) {
 	case ModeFiles:
 		var icon string
 		if i.IsDir {
-			icon = "📁"
+			icon = ui.IconDir
 		} else {
-			icon = "📄"
+			icon = ui.IconFile
 		}
 		prefix = icon + " "
 	case ModeCommit:

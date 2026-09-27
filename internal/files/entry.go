@@ -8,12 +8,6 @@ import (
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
-// iconFile and iconDir are pre-allocated icon strings to avoid repeated allocation
-const (
-	iconFile = "📄"
-	iconDir  = "📁"
-)
-
 // Entry represents a file or directory
 type Entry struct {
 	Path  string
@@ -67,9 +61,9 @@ func (e Entry) DirectoryListing() string {
 
 	for i := 0; i < limit; i++ {
 		dirEntry := entries[i]
-		icon := iconFile
+		icon := ui.IconFile
 		if dirEntry.IsDir() {
-			icon = iconDir
+			icon = ui.IconDir
 		}
 		sb.WriteString(ui.InactiveContextStyle.Render("  "+icon+" "+dirEntry.Name()) + "\n")
 	}
