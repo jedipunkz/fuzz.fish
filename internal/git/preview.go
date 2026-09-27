@@ -9,8 +9,30 @@ import (
 )
 
 // branchRecentCommits is how many `git log --oneline` style commits the
-// branch preview lists.
+// branch and worktree previews list.
 const branchRecentCommits = 5
+
+// writeRecentCommits appends the Recent commits section: the hash and the
+// subject are color-coded with subdued theme colors, and lines fold instead
+// of truncating (summaries may hold long or multibyte subjects with no
+// spaces for word wrapping; Hardwrap keeps the ANSI coloring intact).
+// Branches whose commit cannot be read render no section.
+func writeRecentCommits(sb *strings.Builder, repoPath, hash string, width int) {
+	repo := Repository{Path: repoPath}
+	commits := repo.RecentCommits(hash, branchRecentCommits)
+	if len(commits) == 0 {
+		return
+	}
+
+	sb.WriteString("\n")
+	sb.WriteString(ui.ContextHeaderStyle.Render("Recent commits") + "\n")
+	for _, c := range commits {
+		line := ui.CommitHashStyle.Render(c.Hash) + " " +
+			ui.CommitSubjectStyle.Render(strings.ReplaceAll(c.Subject, "\n", " "))
+		sb.WriteString(ansi.Hardwrap(line, width, false))
+		sb.WriteString("\n")
+	}
+}
 
 // GeneratePreview generates a preview of the branch: metadata plus the
 // branch's last commits, newest first. The walk is anchored on the branch's
@@ -37,28 +59,15 @@ func (b Branch) GeneratePreview(repoPath string, width, height int) string {
 		sb.WriteString(ui.ContentStyle.Render("Local branch") + "\n")
 	}
 
-	repo := Repository{Path: repoPath}
-	if commits := repo.RecentCommits(b.Hash, branchRecentCommits); len(commits) > 0 {
-		sb.WriteString("\n")
-		sb.WriteString(ui.ContextHeaderStyle.Render("Recent commits") + "\n")
-		for _, c := range commits {
-			// Color-code id and subject with subdued theme colors.
-			line := ui.CommitHashStyle.Render(c.Hash) + " " +
-				ui.CommitSubjectStyle.Render(strings.ReplaceAll(c.Subject, "\n", " "))
-			// Wrap instead of truncating: a summary may hold long subjects,
-			// and multibyte messages have no spaces for word wrapping.
-			// Hardwrap keeps the ANSI coloring intact and folds where the
-			// display width runs out.
-			sb.WriteString(ansi.Hardwrap(line, width, false))
-			sb.WriteString("\n")
-		}
-	}
+	writeRecentCommits(&sb, repoPath, b.Hash, width)
 
 	return sb.String()
 }
 
-// GeneratePreview generates a lightweight preview of the worktree
-func (w Worktree) GeneratePreview(width, height int) string {
+// GeneratePreview generates a preview of the worktree: metadata plus the
+// worktree's last commits. The walk anchors on the worktree HEAD's full
+// commit hash; a bare or unborn worktree keeps the metadata-only preview.
+func (w Worktree) GeneratePreview(repoPath string, width, height int) string {
 	var sb strings.Builder
 
 	sb.WriteString(ui.LabelStyle.Render("Path") + "\n")
@@ -75,6 +84,8 @@ func (w Worktree) GeneratePreview(width, height int) string {
 		sb.WriteString(ui.LabelStyle.Render("Type") + "\n")
 		sb.WriteString(ui.ContentStyle.Render("Current worktree") + "\n")
 	}
+
+	writeRecentCommits(&sb, repoPath, w.Hash, width)
 
 	return sb.String()
 }
