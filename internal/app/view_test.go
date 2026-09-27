@@ -211,6 +211,27 @@ func TestSwitchToCachedMode_ClearsLoading(t *testing.T) {
 	}
 }
 
+// runCmd executes a returned tea.Cmd and feeds the produced message back
+// into the model, recursing through tea.BatchMsg so that a whole Update's
+// command batch is processed synchronously.
+func runCmd(m model, cmd tea.Cmd) model {
+	if cmd == nil {
+		return m
+	}
+	switch msgs := cmd().(type) {
+	case tea.BatchMsg:
+		for _, c := range msgs {
+			m = runCmd(m, c)
+		}
+	default:
+		updated, _ := m.Update(msgs)
+		if got, ok := updated.(model); ok {
+			m = got
+		}
+	}
+	return m
+}
+
 func TestUpdate_ResizeRegeneratesPreview(t *testing.T) {
 	dir := t.TempDir()
 	paths := []string{filepath.Join(dir, "a.go"), filepath.Join(dir, "b.go")}
@@ -228,15 +249,18 @@ func TestUpdate_ResizeRegeneratesPreview(t *testing.T) {
 		fileEntries:  []files.Entry{{Path: paths[0]}, {Path: paths[1]}},
 	}
 	m.loadItemsForMode()
-	m.updateFilter("")
+	m = runCmd(m, m.updateFilter(""))
 
+	// File previews generate in a tea.Cmd; resize feeds that command's result
+	// back in so the render lands the same way the first synchronous single
+	// pass did.
 	resize := func(m model, width, height int) model {
-		updated, _ := m.Update(tea.WindowSizeMsg{Width: width, Height: height})
+		updated, cmd := m.Update(tea.WindowSizeMsg{Width: width, Height: height})
 		got, ok := updated.(model)
 		if !ok {
 			t.Fatalf("Update() returned %T, want model", updated)
 		}
-		return got
+		return runCmd(got, cmd)
 	}
 	// wantView renders the selected entry for the pane size the model
 	// currently has, independently of the model's own preview state.
@@ -259,9 +283,9 @@ func TestUpdate_ResizeRegeneratesPreview(t *testing.T) {
 	// Moving away and back must not restore the render cached at the old size.
 	selected := m.cursor
 	m.cursor = (selected + 1) % len(m.filtered)
-	m.updatePreview()
+	m = runCmd(m, m.updatePreview())
 	m.cursor = selected
-	m.updatePreview()
+	m = runCmd(m, m.updatePreview())
 
 	if got, want := m.viewport.View(), wantView(m); got != want {
 		t.Errorf("preview served a cached render from the old pane size:\n%s\nwant:\n%s", got, want)

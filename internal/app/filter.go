@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
 	"github.com/jedipunkz/fuzz.fish/internal/scoring"
@@ -177,8 +178,10 @@ func (m *model) filterAllItems() {
 	copy(m.filtered, m.allItems)
 }
 
-// updateFilter updates the filtered items based on the query
-func (m *model) updateFilter(query string) {
+// updateFilter updates the filtered items based on the query and returns the
+// tea.Cmd generating the preview of the newly selected item (nil when the
+// render is synchronous).
+func (m *model) updateFilter(query string) tea.Cmd {
 	if query == "" {
 		// Return all items (which are already in display order)
 		m.filterAllItems()
@@ -308,5 +311,5 @@ func (m *model) updateFilter(query string) {
 		m.cursor = 0
 		m.offset = 0
 	}
-	m.updatePreview()
+	return m.updatePreview()
 }
