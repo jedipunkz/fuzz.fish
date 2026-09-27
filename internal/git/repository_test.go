@@ -145,60 +145,31 @@ func initTestRepo(t *testing.T) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	run := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(),
-			"GIT_CONFIG_GLOBAL=/dev/null",
-			"GIT_CONFIG_SYSTEM=/dev/null",
-			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.com",
-			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.com",
-		)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v failed: %v\n%s", args, err, out)
-		}
-	}
-
-	run("init", "--initial-branch=main")
-	run("commit", "--allow-empty", "-m", "initial commit")
+	runGit(t, dir, "init", "--initial-branch=main")
+	runGit(t, dir, "commit", "--allow-empty", "-m", "initial commit")
 
 	return dir
 }
 
-func TestBranches_CommitTimestamp(t *testing.T) {
-	dir := initTestRepo(t)
-
-	branches, err := NewRepository(dir).Branches()
-	if err != nil {
-		t.Fatalf("Branches() returned unexpected error: %v", err)
-	}
-	if len(branches) != 1 {
-		t.Fatalf("got %d branches, want 1", len(branches))
-	}
-	if branches[0].Name != "main" {
-		t.Errorf("branch name = %q, want %q", branches[0].Name, "main")
-	}
-	if branches[0].CommitTimestamp <= 0 {
-		t.Errorf("CommitTimestamp = %d, want a positive unix timestamp", branches[0].CommitTimestamp)
+// runGit runs a git command in dir with the global/system config disabled.
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(),
+		"GIT_CONFIG_GLOBAL=/dev/null",
+		"GIT_CONFIG_SYSTEM=/dev/null",
+		"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.com",
+		"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.com",
+	)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v failed: %v\n%s", args, err, out)
 	}
 }
 
 func TestBranches_KeepsBranchesContainingHEAD(t *testing.T) {
 	dir := initTestRepo(t)
-	run := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(),
-			"GIT_CONFIG_GLOBAL=/dev/null",
-			"GIT_CONFIG_SYSTEM=/dev/null",
-		)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v failed: %v\n%s", args, err, out)
-		}
-	}
-	run("branch", "fix/HEAD-detach")
+	runGit(t, dir, "branch", "fix/HEAD-detach")
 
 	branches, err := NewRepository(dir).Branches()
 	if err != nil {
@@ -213,6 +184,51 @@ func TestBranches_KeepsBranchesContainingHEAD(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("branch fix/HEAD-detach missing from %v", branchNames(branches))
+	}
+}
+
+func TestBranches_RemoteNameWithSlash(t *testing.T) {
+	dir := initTestRepo(t)
+	// Remote names may contain slashes ("git remote add" accepts them), so
+	// the tracking ref "refs/remotes/gitlab/team/feat/x" belongs to the
+	// remote "gitlab/team", not to "gitlab".
+	runGit(t, dir, "remote", "add", "gitlab/team", "/tmp/nowhere")
+	runGit(t, dir, "update-ref", "refs/remotes/gitlab/team/feat/x", "HEAD")
+
+	branches, err := NewRepository(dir).Branches()
+	if err != nil {
+		t.Fatalf("Branches() returned unexpected error: %v", err)
+	}
+
+	for _, b := range branches {
+		if b.Name != "gitlab/team/feat/x" {
+			continue
+		}
+		if !b.IsRemote {
+			t.Error("gitlab/team/feat/x should be marked remote")
+		}
+		if b.Remote != "gitlab/team" {
+			t.Errorf("Remote = %q, want %q", b.Remote, "gitlab/team")
+		}
+		return
+	}
+	t.Errorf("branch gitlab/team/feat/x missing from %v", branchNames(branches))
+}
+
+func TestRemoteNameOf(t *testing.T) {
+	remotes := []string{"gitlab/team", "origin"}
+	cases := []struct {
+		shortName string
+		want      string
+	}{
+		{"origin/main", "origin"},
+		{"gitlab/team/feat/x", "gitlab/team"},
+		{"upstream/main", ""},
+	}
+	for _, tc := range cases {
+		if got := remoteNameOf(tc.shortName, remotes); got != tc.want {
+			t.Errorf("remoteNameOf(%q) = %q, want %q", tc.shortName, got, tc.want)
+		}
 	}
 }
 

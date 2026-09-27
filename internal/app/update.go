@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/atotto/clipboard"
 	tea "charm.land/bubbletea/v2"
+	"github.com/atotto/clipboard"
 	"github.com/jedipunkz/fuzz.fish/internal/files"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
@@ -446,9 +446,16 @@ func (m *model) selectItem() {
 		branch := item.Original.(git.Branch)
 		res := branch.Name
 		if branch.IsRemote {
-			parts := strings.SplitN(res, "/", 2)
-			if len(parts) == 2 {
-				res = parts[1]
+			// Strip exactly the configured remote part ("gitlab/team" may
+			// itself contain slashes); fall back to dropping the first
+			// segment when the tracking ref has no configured remote.
+			if branch.Remote != "" {
+				res = strings.TrimPrefix(res, branch.Remote+"/")
+			} else {
+				parts := strings.SplitN(res, "/", 2)
+				if len(parts) == 2 {
+					res = parts[1]
+				}
 			}
 		}
 		m.choice = &res

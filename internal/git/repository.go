@@ -15,6 +15,7 @@ type Branch struct {
 	Name            string
 	IsCurrent       bool
 	IsRemote        bool
+	Remote          string // Configured remote name the branch tracks, e.g. "gitlab/team"
 	LastCommit      string
 	CommitTimestamp int64 // Unix timestamp for recency scoring
 }
@@ -47,6 +48,10 @@ func (r *Repository) Branches() ([]Branch, error) {
 
 	// Get current branch (reusing the repo object)
 	currentBranch := r.currentBranch(repo)
+
+	// Configured remote names, longest first: a remote name may itself
+	// contain slashes ("gitlab/team"), so the longest prefix wins.
+	remotes := remoteSortedNames(repo)
 
 	// Read all branch commit timestamps in one git invocation
 	timestamps := r.branchTimestamps()
@@ -99,6 +104,7 @@ func (r *Repository) Branches() ([]Branch, error) {
 			Name:            name,
 			IsCurrent:       name == currentBranch,
 			IsRemote:        isRemote,
+			Remote:          remoteNameOf(name, remotes),
 			LastCommit:      shortHash,
 			CommitTimestamp: timestamps[refName],
 		}
@@ -143,6 +149,38 @@ func (r *Repository) currentBranch(repo *gogit.Repository) string {
 		return head.Name().Short()
 	}
 
+	return ""
+}
+
+// remoteSortedNames returns the repository's configured remote names sorted by
+// length, longest first. Longest-prefix matching is required because a remote
+// name may itself contain slashes (e.g. "gitlab/team"), which would otherwise
+// be eaten one segment at a time.
+func remoteSortedNames(repo *gogit.Repository) []string {
+	cfg, err := repo.Config()
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(cfg.Remotes))
+	for name := range cfg.Remotes {
+		names = append(names, name)
+	}
+	sort.Slice(names, func(i, j int) bool {
+		return len(names[i]) > len(names[j])
+	})
+	return names
+}
+
+// remoteNameOf reports which configured remote a remote-tracking branch name
+// (the part after "refs/remotes/") belongs to: "origin/main" with remote
+// "origin" → "origin". Empty when no configured remote name is a prefix of
+// the name, e.g. for a stale tracking ref after the remote was removed.
+func remoteNameOf(shortName string, remotes []string) string {
+	for _, remote := range remotes {
+		if strings.HasPrefix(shortName, remote+"/") {
+			return remote
+		}
+	}
 	return ""
 }
 
