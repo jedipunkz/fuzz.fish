@@ -65,7 +65,9 @@ func (m *model) globFilter(tokens []string) {
 	hits := make([]hit, 0, len(m.allItems))
 
 	for i := range m.allItems {
-		text := strings.ToLower(m.allItemsStr[i])
+		// Lowercased at load time in loadItemsForMode: re-lowercasing every
+		// candidate string here would allocate once per item per keystroke.
+		text := m.allItemsStrLower[i]
 		var idx []int
 		ok := true
 		for _, token := range lowerTokens {

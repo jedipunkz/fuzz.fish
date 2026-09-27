@@ -76,9 +76,10 @@ type model struct {
 	commits        []git.Commit
 
 	// Items state
-	allItems       []Item           // All items for current mode (sorted newest/priority first)
-	allItemsStr    []string         // Pre-built search strings for fuzzy matching (avoids per-keystroke allocation)
-	filtered       []Item           // Filtered items
+	allItems         []Item   // All items for current mode (sorted newest/priority first)
+	allItemsStr      []string // Pre-built search strings for fuzzy matching (avoids per-keystroke allocation)
+	allItemsStrLower []string // Lowercase view of allItemsStr, pre-built once per load for glob matching
+	filtered         []Item   // Filtered items
 
 	cursor      int
 	offset      int
@@ -91,9 +92,9 @@ type model struct {
 	pendingCommit string
 	actionCursor  int
 	commitIsCmd   bool // True when the picked action produced a full command line
-	quitting    bool
-	statusMsg   string  // Transient status message (e.g., warning)
-	loading     bool   // True while async data loading is in progress
+	quitting      bool
+	statusMsg     string // Transient status message (e.g., warning)
+	loading       bool   // True while async data loading is in progress
 
 	pendingQuery string // For filter debounce
 
@@ -104,8 +105,8 @@ type model struct {
 	mainHeight int
 
 	// Preview cache
-	previewCache     map[string]string // Cache for file previews
-	lastPreviewKey   string            // Identifies the item the preview was rendered for
+	previewCache   map[string]string // Cache for file previews
+	lastPreviewKey string            // Identifies the item the preview was rendered for
 }
 
 // Init initializes the model
