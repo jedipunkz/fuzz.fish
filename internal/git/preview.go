@@ -42,8 +42,15 @@ func (b Branch) GeneratePreview(repoPath string, width, height int) string {
 		sb.WriteString("\n")
 		sb.WriteString(ui.ContextHeaderStyle.Render("Recent commits") + "\n")
 		for _, c := range commits {
-			line := c.Hash + " " + strings.ReplaceAll(c.Subject, "\n", " ")
-			sb.WriteString(ui.ContentStyle.Render(ansi.Truncate(line, width, "…")) + "\n")
+			// Color-code id and subject with subdued theme colors.
+			line := ui.CommitHashStyle.Render(c.Hash) + " " +
+				ui.CommitSubjectStyle.Render(strings.ReplaceAll(c.Subject, "\n", " "))
+			// Wrap instead of truncating: a summary may hold long subjects,
+			// and multibyte messages have no spaces for word wrapping.
+			// Hardwrap keeps the ANSI coloring intact and folds where the
+			// display width runs out.
+			sb.WriteString(ansi.Hardwrap(line, width, false))
+			sb.WriteString("\n")
 		}
 	}
 

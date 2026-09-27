@@ -40,4 +40,13 @@ var (
 
 	InactiveContextStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color(ColorComment))
+
+	// Muted styles for the Recent commits list: the commit id and the subject
+	// are color-coded so they scan apart, in subdued theme colors that do not
+	// compete with the metadata above.
+	CommitHashStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(ColorBlue))
+
+	CommitSubjectStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(ColorComment))
 )
