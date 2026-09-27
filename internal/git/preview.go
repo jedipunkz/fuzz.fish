@@ -8,8 +8,15 @@ import (
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
-// GeneratePreview generates a lightweight preview of the branch
-func (b Branch) GeneratePreview(width, height int) string {
+// branchRecentCommits is how many `git log --oneline` style commits the
+// branch preview lists.
+const branchRecentCommits = 5
+
+// GeneratePreview generates a preview of the branch: metadata plus the
+// branch's last commits, newest first. The walk is anchored on the branch's
+// full commit hash; branches without a readable commit keep the metadata-only
+// preview.
+func (b Branch) GeneratePreview(repoPath string, width, height int) string {
 	var sb strings.Builder
 
 	// Branch info
@@ -28,6 +35,16 @@ func (b Branch) GeneratePreview(width, height int) string {
 		sb.WriteString(ui.ContentStyle.Render("Remote branch") + "\n")
 	} else {
 		sb.WriteString(ui.ContentStyle.Render("Local branch") + "\n")
+	}
+
+	repo := Repository{Path: repoPath}
+	if commits := repo.RecentCommits(b.Hash, branchRecentCommits); len(commits) > 0 {
+		sb.WriteString("\n")
+		sb.WriteString(ui.ContextHeaderStyle.Render("Recent commits") + "\n")
+		for _, c := range commits {
+			line := c.Hash + " " + strings.ReplaceAll(c.Subject, "\n", " ")
+			sb.WriteString(ui.ContentStyle.Render(ansi.Truncate(line, width, "…")) + "\n")
+		}
 	}
 
 	return sb.String()

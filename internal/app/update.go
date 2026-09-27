@@ -435,7 +435,14 @@ func (m *model) updatePreview() tea.Cmd {
 		m.viewport.SetContent(entry.GeneratePreview(m.historyEntries, item.Index, width, height))
 	case ModeGitBranch:
 		branch := item.Original.(git.Branch)
-		m.viewport.SetContent(m.cachedPreview(branch.Name, func() string { return branch.GeneratePreview(width, height) }))
+		if content, ok := m.previewCache[branch.Name]; ok {
+			m.viewport.SetContent(content)
+			return nil
+		}
+		m.viewport.SetContent(ui.InactiveContextStyle.Render("  loading preview..."))
+		return generatePreviewCmd(m.previewGen, key, func() string {
+			return branch.GeneratePreview(".", width, height)
+		})
 	case ModeWorktree:
 		wt := item.Original.(git.Worktree)
 		m.viewport.SetContent(m.cachedPreview(wt.Path, func() string { return wt.GeneratePreview(width, height) }))
