@@ -65,6 +65,38 @@ func TestBranchPreviewRecentCommits(t *testing.T) {
 	if !strings.Contains(preview, "second") {
 		t.Errorf("preview missing the newest commit subject:\n%s", preview)
 	}
+	// id and subject are color-coded: every colored commit id gets the
+	// hash-blue run, and the subject line gets the muted comment color run.
+	if !strings.Contains(preview, "\x1b[38;2;122;162;247m") {
+		t.Errorf("commit id not rendered in the hash color:\n%s", preview)
+	}
+	if !strings.Contains(preview, "\x1b[38;2;154;165;206msecond\x1b") {
+		t.Errorf("commit subject not rendered in the muted color:\n%s", preview)
+	}
+}
+
+func TestBranchPreviewWrapsLongSubjects(t *testing.T) {
+	dir := initTestRepo(t)
+	runGit(t, dir, "commit", "--allow-empty", "-m", strings.Repeat("x", 100))
+
+	branches, err := NewRepository(dir).Branches()
+	if err != nil {
+		t.Fatalf("Branches() returned unexpected error: %v", err)
+	}
+
+	preview := branches[0].GeneratePreview(dir, 40, 30)
+	wrapped := 0
+	for _, line := range strings.Split(preview, "\n") {
+		if strings.Count(line, "x") > 20 {
+			wrapped++
+		}
+	}
+	if wrapped < 2 {
+		t.Errorf("long subject not folded onto multiple lines (x-heavy lines = %d):\n%s", wrapped, preview)
+	}
+	if strings.Contains(preview, "…") {
+		t.Error("long subject was truncated, want it folded")
+	}
 }
 
 // TestBranchPreviewWithoutLog verifies the fallback for branches whose commit
