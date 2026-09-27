@@ -16,6 +16,7 @@ type Branch struct {
 	IsCurrent       bool
 	IsRemote        bool
 	Remote          string // Configured remote name the branch tracks, e.g. "gitlab/team"
+	Hash            string // Full commit hash, anchors the preview's recent-commit walk
 	LastCommit      string
 	CommitTimestamp int64 // Unix timestamp for recency scoring
 }
@@ -105,6 +106,7 @@ func (r *Repository) Branches() ([]Branch, error) {
 			IsCurrent:       name == currentBranch,
 			IsRemote:        isRemote,
 			Remote:          remoteNameOf(name, remotes),
+			Hash:            hashStr,
 			LastCommit:      shortHash,
 			CommitTimestamp: timestamps[refName],
 		}
