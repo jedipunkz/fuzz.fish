@@ -68,6 +68,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case pullRequestsLoadedMsg:
+		m.pullRequests = msg.prs
+		if m.mode == ModePullRequest {
+			m.loading = false
+			if msg.err != nil {
+				m.statusMsg = "⚠ " + msg.err.Error()
+			}
+			m.loadItemsForMode()
+			return m, m.updateFilter(m.input.Value())
+		}
+		return m, nil
+
 	case previewReadyMsg:
 		// Renders produced for a previous pane size (before a resize cleared
 		// the cache) are dropped without caching. Stale results from fast
@@ -203,6 +215,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Switch to Commit mode
 			cmd = m.switchToCommitMode()
 			return m, cmd
+		case config.ActionPullRequest:
+			cmd = m.switchToPullRequestMode()
+			return m, cmd
 		case config.ActionHistory:
 			// Switch to History mode
 			cmd = m.switchToHistoryMode()
@@ -312,6 +327,16 @@ func (m *model) switchToCommitMode() tea.Cmd {
 		return nil
 	}
 	return m.switchMode(ModeCommit, len(m.commits) > 0, loadCommitsCmd())
+}
+
+// switchToPullRequestMode switches to pull request mode (Ctrl+J). Needs gh,
+// authenticated with `gh auth login`; load errors show in the status line.
+func (m *model) switchToPullRequestMode() tea.Cmd {
+	if m.mode != ModePullRequest && !git.NewRepository(".").IsRepo() {
+		m.statusMsg = "⚠ Not a git repository"
+		return nil
+	}
+	return m.switchMode(ModePullRequest, len(m.pullRequests) > 0, loadPullRequestsCmd())
 }
 
 // updateActionPicker handles keys while the commit action picker is open.
@@ -475,6 +500,9 @@ func (m *model) updatePreview() tea.Cmd {
 		return generatePreviewCmd(m.previewGen, key, func() string {
 			return c.GeneratePreview(".", width, height)
 		})
+	case ModePullRequest:
+		pr := item.Original.(git.PullRequest)
+		m.viewport.SetContent(pr.GeneratePreview(width))
 	}
 	return nil
 }
@@ -515,6 +543,13 @@ func (m *model) selectItem() {
 		if ok {
 			res := wt.Path
 			m.choice = &res
+		}
+	case ModePullRequest:
+		pr, ok := item.Original.(git.PullRequest)
+		if ok {
+			res := pr.URL
+			m.choice = &res
+			m.choicePR = pr
 		}
 	}
 }

@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
@@ -79,6 +82,10 @@ func Run(initialQuery string, keys map[string]string) {
 				}
 			case ModeWorktree:
 				fmt.Printf("DIR:%s", *m.choice)
+			case ModePullRequest:
+				if dir := checkoutPullRequest(m.choicePR, tty); dir != "" {
+					fmt.Printf("DIR:%s", dir)
+				}
 			case ModeCommit:
 				if m.commitIsCmd {
 					fmt.Printf("CMD:%s", *m.choice)
@@ -88,4 +95,30 @@ func Run(initialQuery string, keys map[string]string) {
 			}
 		}
 	}
+}
+
+// checkoutPullRequest fetches the pull request's head branch with
+// `gh pr checkout` and returns the directory to cd into: the worktree that
+// already has the branch checked out, else the current worktree's root.
+// A failed checkout is reported but still returns the directory.
+func checkoutPullRequest(pr git.PullRequest, tty *os.File) string {
+	dir := pr.Worktree
+	if dir == "" {
+		out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "git rev-parse failed: %v\n", err)
+			return ""
+		}
+		dir = strings.TrimSpace(string(out))
+	}
+
+	cmd := exec.Command("gh", "pr", "checkout", strconv.Itoa(pr.Number))
+	cmd.Dir = dir
+	cmd.Stdin = tty
+	cmd.Stdout = tty
+	cmd.Stderr = tty
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "gh pr checkout failed: %v\n", err)
+	}
+	return dir
 }

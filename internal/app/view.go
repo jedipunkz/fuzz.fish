@@ -173,6 +173,8 @@ func (mode SearchMode) label() string {
 		return "worktree"
 	case ModeCommit:
 		return "commit"
+	case ModePullRequest:
+		return "pr"
 	}
 	return ""
 }

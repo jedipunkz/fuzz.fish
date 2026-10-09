@@ -15,34 +15,36 @@ import (
 
 // Action names, used as keys under `keybinds:` in the config file.
 const (
-	ActionHistory   = "history"
-	ActionGitBranch = "git_branch"
-	ActionFiles     = "files"
-	ActionWorktree  = "worktree"
-	ActionCommit    = "commit"
-	ActionSelect    = "select"
-	ActionComplete  = "complete"
-	ActionCopy      = "copy"
-	ActionQuit      = "quit"
-	ActionUp        = "up"
-	ActionDown      = "down"
+	ActionHistory     = "history"
+	ActionGitBranch   = "git_branch"
+	ActionFiles       = "files"
+	ActionWorktree    = "worktree"
+	ActionCommit      = "commit"
+	ActionPullRequest = "pull_request"
+	ActionSelect      = "select"
+	ActionComplete    = "complete"
+	ActionCopy        = "copy"
+	ActionQuit        = "quit"
+	ActionUp          = "up"
+	ActionDown        = "down"
 )
 
 // DefaultKeybinds maps each action to the keys bound to it when the config
 // file does not override that action. Keys use Bubble Tea's KeyPressMsg.String()
 // notation (e.g. "ctrl+r", "enter", "up").
 var DefaultKeybinds = map[string][]string{
-	ActionHistory:   {"ctrl+r"},
-	ActionGitBranch: {"ctrl+g"},
-	ActionFiles:     {"ctrl+s"},
-	ActionWorktree:  {"ctrl+w"},
-	ActionCommit:    {"ctrl+x"},
-	ActionSelect:    {"enter"},
-	ActionComplete:  {"tab"},
-	ActionCopy:      {"ctrl+y"},
-	ActionQuit:      {"esc", "ctrl+c"},
-	ActionUp:        {"up", "ctrl+p"},
-	ActionDown:      {"down", "ctrl+n"},
+	ActionHistory:     {"ctrl+r"},
+	ActionGitBranch:   {"ctrl+g"},
+	ActionFiles:       {"ctrl+s"},
+	ActionWorktree:    {"ctrl+w"},
+	ActionCommit:      {"ctrl+x"},
+	ActionPullRequest: {"ctrl+j"},
+	ActionSelect:      {"enter"},
+	ActionComplete:    {"tab"},
+	ActionCopy:        {"ctrl+y"},
+	ActionQuit:        {"esc", "ctrl+c"},
+	ActionUp:          {"up", "ctrl+p"},
+	ActionDown:        {"down", "ctrl+n"},
 }
 
 type file struct {
