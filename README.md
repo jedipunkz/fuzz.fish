@@ -3,7 +3,7 @@
 <img src="./assets/fuzz.png" align="left" width="180" hspace="24" vspace="8" alt="fuzz.fish logo" />
 
 fuzz.fish is a Fish Shell plugin that provides fuzzy finding for command history,
-files, git branches, git worktrees, and git commits.
+files, git branches, git worktrees, git commits, and GitHub pull requests.
 
 Press `ctrl+r` to open it, type to search, and switch modes with a single key.
 No external finder required — a single Go binary ships with the plugin.
@@ -21,7 +21,7 @@ No external finder required — a single Go binary ships with the plugin.
 ## Why fuzz.fish?
 
 - **Nothing else to install.** No `fzf`, `fd`, `ripgrep`, or `bat` alongside it: the plugin is a single Go binary plus Fish keybindings.
-- **One keybinding, five modes.** `ctrl+r` opens the finder; `ctrl+s`, `ctrl+w`, `ctrl+g` and `ctrl+x` switch modes without closing it.
+- **One keybinding, six modes.** `ctrl+r` opens the finder; `ctrl+s`, `ctrl+w`, `ctrl+g`, `ctrl+x` and `ctrl+j` switch modes without closing it.
 - **Every mode has a preview.** History shows when and where the command ran and what surrounded it, files show syntax-highlighted content, and branches, worktrees and commits show their git context. Branch and worktree previews list their last 5 commits, oneline style.
 - **History ranked by frecency.** Match quality ranks first, then `log1p(frequency)` scaled by how recently you last ran the command, so what you actually repeat surfaces first.
 - **Git beyond branches.** Worktrees and commits are first-class: `ctrl+x` matches a commit by hash or subject and puts `git show` / `git diff` / `git revert` / `git cherry-pick` on the prompt without running it.
@@ -29,6 +29,7 @@ No external finder required — a single Go binary ships with the plugin.
 ## Requirements
 
 - [Fish Shell](https://fishshell.com/) 3.0+
+- [GitHub CLI (`gh`)](https://cli.github.com/), authenticated with `gh auth login` — only for Pull Request Search (`ctrl+j`). The other modes work without it.
 
 Installing the plugin downloads a prebuilt binary for macOS and Linux
 (`amd64` / `arm64`). On any other platform it falls back to building from
@@ -53,6 +54,7 @@ Press `ctrl+r` to open fuzz.fish, then type to search. Switch modes at any time 
 | `ctrl+w` | Git Worktree Search | `cd` into the worktree |
 | `ctrl+g` | Git Branch Search | Switch to the selected branch |
 | `ctrl+x` | Git Commit Search | Pick a command to run against the commit |
+| `ctrl+j` | Pull Request Search (needs `gh`) | Check out the PR branch and `cd` into it |
 
 Common keys:
 
@@ -70,6 +72,7 @@ Notes:
 - In Git Branch Search mode, pressing `ctrl+g` again on the current branch runs `git pull origin <branch>`.
 - Git Commit Search matches both the short hash and the commit subject. `enter` opens a small action list (`git show`, `git diff`, `git revert`, `git cherry-pick`, `git rebase --onto`, or the bare hash); the chosen command is placed on the prompt without running it. `ctrl+x` outside a git repository shows a warning instead of switching modes.
 - File Search skips hidden files and build directories such as `node_modules` and `vendor`.
+- Pull Request Search lists the open pull requests of the current repository via `gh pr list`, searchable by number and title. The preview shows the pull request, repository, author, head branch, and the local worktree that has the branch checked out. `enter` runs `gh pr checkout <number>` (fetching the remote branch) inside that worktree and `cd`s into it; with no such worktree it runs in the current worktree and `cd`s to its root. If `gh` is missing or not authenticated, the error is shown in the status line.
 
 ## Configuration
 
@@ -84,6 +87,7 @@ keybinds:
   files: [ctrl+s]
   worktree: [ctrl+w]
   commit: [ctrl+x]
+  pull_request: [ctrl+j]
   select: [enter]
   complete: [tab]
   copy: [ctrl+y]
