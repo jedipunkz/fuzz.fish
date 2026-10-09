@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -48,7 +49,14 @@ var DefaultKeybinds = map[string][]string{
 }
 
 type file struct {
-	Keybinds map[string][]string `yaml:"keybinds"`
+	Keybinds    map[string][]string `yaml:"keybinds"`
+	WorktreeDir string              `yaml:"worktree_dir"`
+}
+
+// Config is the resolved user configuration.
+type Config struct {
+	Keys        map[string]string // key → action
+	WorktreeDir string            // absolute path, "" when unset
 }
 
 // Path returns the config file location.
@@ -60,40 +68,70 @@ func Path() (string, error) {
 	return filepath.Join(home, ".config", "fuzz.fish", "fuzz.fish.yaml"), nil
 }
 
-// LoadKeymap reads the config file and returns a key → action lookup table.
-// A missing file yields the defaults.
-func LoadKeymap() (map[string]string, error) {
+// Load reads the config file. A missing file yields the defaults.
+func Load() (Config, error) {
 	path, err := Path()
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return ParseKeymap(nil)
+		return Parse(nil)
 	}
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
-	km, err := ParseKeymap(data)
+	cfg, err := Parse(data)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return Config{}, fmt.Errorf("%s: %w", path, err)
 	}
-	return km, nil
+	return cfg, nil
 }
 
-// ParseKeymap builds the key → action table from YAML. Actions listed in the
-// YAML replace their default keys; an empty list unbinds the action.
-func ParseKeymap(data []byte) (map[string]string, error) {
+// Parse resolves the configuration from YAML.
+func Parse(data []byte) (Config, error) {
 	var f file
 	if len(bytes.TrimSpace(data)) > 0 {
 		dec := yaml.NewDecoder(bytes.NewReader(data))
 		dec.KnownFields(true)
 		if err := dec.Decode(&f); err != nil {
-			return nil, err
+			return Config{}, err
 		}
 	}
 
-	for action := range f.Keybinds {
+	keys, err := buildKeymap(f.Keybinds)
+	if err != nil {
+		return Config{}, err
+	}
+	dir, err := expandDir(f.WorktreeDir)
+	if err != nil {
+		return Config{}, err
+	}
+	return Config{Keys: keys, WorktreeDir: dir}, nil
+}
+
+// expandDir expands a leading "~" and requires an absolute path.
+func expandDir(dir string) (string, error) {
+	if dir == "" {
+		return "", nil
+	}
+	if dir == "~" || strings.HasPrefix(dir, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		dir = filepath.Join(home, dir[1:])
+	}
+	if !filepath.IsAbs(dir) {
+		return "", fmt.Errorf("worktree_dir must be an absolute path or start with ~/: %q", dir)
+	}
+	return filepath.Clean(dir), nil
+}
+
+// buildKeymap builds the key → action table. Actions listed in overrides
+// replace their default keys; an empty list unbinds the action.
+func buildKeymap(overrides map[string][]string) (map[string]string, error) {
+	for action := range overrides {
 		if _, ok := DefaultKeybinds[action]; !ok {
 			return nil, fmt.Errorf("unknown keybind action %q", action)
 		}
@@ -108,7 +146,7 @@ func ParseKeymap(data []byte) (map[string]string, error) {
 
 	km := make(map[string]string)
 	for _, action := range actions {
-		keys, ok := f.Keybinds[action]
+		keys, ok := overrides[action]
 		if !ok {
 			keys = DefaultKeybinds[action]
 		}
