@@ -24,11 +24,11 @@ func main() {
 		return
 	}
 
-	keys, err := config.LoadKeymap()
+	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "fuzz: config: %v\n", err)
 		os.Exit(1)
 	}
 
-	app.Run(*query, keys)
+	app.Run(*query, cfg)
 }

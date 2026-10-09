@@ -3,7 +3,9 @@ package git
 import (
 	"encoding/json"
 	"errors"
+	"net/url"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -22,7 +24,8 @@ type PullRequest struct {
 	URL        string
 	Repository string // base repository as owner/name
 	Author     string
-	Branch     string // head branch name; "owner:branch" for fork PRs
+	Branch     string // head branch name
+	Fork       string // head repository owner for fork PRs, "" otherwise
 	Worktree   string // local worktree with the head branch checked out, "" if none
 }
 
@@ -94,7 +97,7 @@ func parsePullRequests(data []byte, worktrees []Worktree) ([]PullRequest, error)
 		if p.IsCrossRepository {
 			// A fork's branch name says nothing about local branches: a fork
 			// PR from "main" must not match the local main worktree.
-			pr.Branch = p.HeadRepositoryOwner.Login + ":" + p.HeadRefName
+			pr.Fork = p.HeadRepositoryOwner.Login
 		} else {
 			pr.Worktree = branchPath[p.HeadRefName]
 		}
@@ -105,16 +108,51 @@ func parsePullRequests(data []byte, worktrees []Worktree) ([]PullRequest, error)
 
 // repositoryFromURL extracts "owner/name" from a pull request URL such as
 // https://github.com/owner/name/pull/1.
-func repositoryFromURL(url string) string {
-	_, path, ok := strings.Cut(url, "://")
-	if !ok {
-		return ""
+func repositoryFromURL(rawURL string) string {
+	_, repo := splitPullRequestURL(rawURL)
+	return repo
+}
+
+// splitPullRequestURL returns the host and "owner/name" of a pull request URL.
+func splitPullRequestURL(rawURL string) (host, repo string) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", ""
 	}
-	parts := strings.Split(path, "/")
-	if len(parts) < 3 {
-		return ""
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) < 2 {
+		return u.Host, ""
 	}
-	return parts[1] + "/" + parts[2]
+	return u.Host, parts[0] + "/" + parts[1]
+}
+
+// PullRequestWorktreePath returns where a new worktree for pr is created.
+// With worktreeDir set it is <worktreeDir>/<host>/<owner>/<name>/<branch>;
+// otherwise <parent of the main worktree>/<main worktree name>-pr-<number>.
+func (r *Repository) PullRequestWorktreePath(pr PullRequest, worktreeDir string) (string, error) {
+	if worktreeDir != "" {
+		host, repo := splitPullRequestURL(pr.URL)
+		if host == "" || repo == "" || pr.Branch == "" {
+			return "", errors.New("cannot derive worktree path from " + pr.URL)
+		}
+		path := filepath.Join(worktreeDir, host, filepath.FromSlash(repo), filepath.FromSlash(pr.Branch))
+		// Refuse paths that escape worktreeDir (e.g. a crafted branch name).
+		if rel, err := filepath.Rel(worktreeDir, path); err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+			return "", errors.New("worktree path escapes worktree_dir: " + path)
+		}
+		return path, nil
+	}
+
+	worktrees, err := r.Worktrees()
+	if err != nil {
+		return "", err
+	}
+	if len(worktrees) == 0 {
+		return "", errors.New("no main worktree found")
+	}
+	// `git worktree list` always prints the main worktree first.
+	main := filepath.Clean(worktrees[0].Path)
+	return filepath.Join(filepath.Dir(main), filepath.Base(main)+"-pr-"+strconv.Itoa(pr.Number)), nil
 }
 
 // GeneratePreview renders the pull request details. Pure string building.
@@ -123,13 +161,17 @@ func (pr PullRequest) GeneratePreview(width int) string {
 	if worktree == "" {
 		worktree = "-"
 	}
+	branch := pr.Branch
+	if pr.Fork != "" {
+		branch = pr.Fork + ":" + branch
+	}
 
 	var sb strings.Builder
 	for i, f := range []struct{ label, value string }{
 		{"Pull Request", "#" + strconv.Itoa(pr.Number) + " " + pr.Title + "\n" + pr.URL},
 		{"Repository", pr.Repository},
 		{"Author", pr.Author},
-		{"Branch", pr.Branch},
+		{"Branch", branch},
 		{"Worktree", worktree},
 	} {
 		if i > 0 {
