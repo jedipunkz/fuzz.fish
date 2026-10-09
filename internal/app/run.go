@@ -14,7 +14,8 @@ import (
 
 // Run starts the application. initialQuery pre-fills the search box (e.g. with
 // the current Fish command line) so results are already filtered on startup.
-func Run(initialQuery string) {
+// keys maps a key string to a config.Action* name.
+func Run(initialQuery string, keys map[string]string) {
 	ti := textinput.New()
 	ti.Placeholder = ""
 	ti.CharLimit = 156
@@ -32,6 +33,7 @@ func Run(initialQuery string) {
 
 	m := model{
 		mode:         ModeHistory,
+		keys:         keys,
 		input:        ti,
 		viewport:     viewport.New(),
 		previewCache: make(map[string]string),

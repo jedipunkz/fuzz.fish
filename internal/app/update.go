@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
+	"github.com/jedipunkz/fuzz.fish/internal/config"
 	"github.com/jedipunkz/fuzz.fish/internal/files"
 	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/history"
@@ -148,8 +149,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateActionPicker(msg)
 		}
 
-		switch msg.String() {
-		case "enter":
+		switch m.keys[msg.String()] {
+		case config.ActionSelect:
 			if len(m.filtered) > 0 {
 				if m.mode == ModeCommit {
 					m.pendingCommit = m.filtered[m.cursor].Text
@@ -160,21 +161,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.quitting = true
 				return m, tea.Quit
 			}
-		case "tab":
+		case config.ActionComplete:
 			if len(m.filtered) > 0 {
 				return m, m.completeSelectedItem()
 			}
 			return m, nil
-		case "ctrl+c", "esc":
+		case config.ActionQuit:
 			m.quitting = true
 			return m, tea.Quit
-		case "ctrl+y":
+		case config.ActionCopy:
 			if len(m.filtered) > 0 {
 				_ = clipboard.WriteAll(m.filtered[m.cursor].Text)
 				m.quitting = true
 				return m, tea.Quit
 			}
-		case "ctrl+g":
+		case config.ActionGitBranch:
 			if m.mode == ModeGitBranch {
 				// In GitBranch mode: pull current branch or show warning
 				if len(m.filtered) > 0 && m.filtered[m.cursor].IsCurrent {
@@ -190,23 +191,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			cmd = m.switchToGitBranchMode()
 			return m, cmd
-		case "ctrl+s":
+		case config.ActionFiles:
 			// Switch to Files mode
 			cmd = m.switchToFilesMode()
 			return m, cmd
-		case "ctrl+w":
+		case config.ActionWorktree:
 			// Switch to Worktree mode
 			cmd = m.switchToWorktreeMode()
 			return m, cmd
-		case "ctrl+x":
+		case config.ActionCommit:
 			// Switch to Commit mode
 			cmd = m.switchToCommitMode()
 			return m, cmd
-		case "ctrl+r":
+		case config.ActionHistory:
 			// Switch to History mode
 			cmd = m.switchToHistoryMode()
 			return m, cmd
-		case "down", "ctrl+n":
+		case config.ActionDown:
 			if len(m.filtered) > 0 {
 				m.cursor++
 				if m.cursor >= len(m.filtered) {
@@ -218,7 +219,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.updatePreview()
 			}
 			return m, nil
-		case "up", "ctrl+p":
+		case config.ActionUp:
 			if len(m.filtered) > 0 {
 				m.cursor--
 				if m.cursor < 0 {
@@ -315,8 +316,8 @@ func (m *model) switchToCommitMode() tea.Cmd {
 
 // updateActionPicker handles keys while the commit action picker is open.
 func (m model) updateActionPicker(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "enter":
+	switch m.keys[msg.String()] {
+	case config.ActionSelect:
 		res := m.pendingCommit
 		if tmpl := commitActions[m.actionCursor].Template; tmpl != "" {
 			res = tmpl + " " + res
@@ -325,14 +326,14 @@ func (m model) updateActionPicker(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.commitIsCmd = commitActions[m.actionCursor].Template != ""
 		m.quitting = true
 		return m, tea.Quit
-	case "esc", "ctrl+c":
+	case config.ActionQuit:
 		m.pendingCommit = ""
 		return m, nil
-	case "down", "ctrl+n":
+	case config.ActionDown:
 		if m.actionCursor < len(commitActions)-1 {
 			m.actionCursor++
 		}
-	case "up", "ctrl+p":
+	case config.ActionUp:
 		if m.actionCursor > 0 {
 			m.actionCursor--
 		}

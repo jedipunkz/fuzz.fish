@@ -77,6 +77,7 @@ type model struct {
 	mode     SearchMode
 	input    textinput.Model
 	viewport viewport.Model
+	keys     map[string]string // Key (KeyPressMsg.String()) → config.Action*
 
 	// Data sources
 	historyEntries []history.Entry

@@ -71,6 +71,29 @@ Notes:
 - Git Commit Search matches both the short hash and the commit subject. `enter` opens a small action list (`git show`, `git diff`, `git revert`, `git cherry-pick`, `git rebase --onto`, or the bare hash); the chosen command is placed on the prompt without running it. `ctrl+x` outside a git repository shows a warning instead of switching modes.
 - File Search skips hidden files and build directories such as `node_modules` and `vendor`.
 
+## Configuration
+
+Keybindings inside the finder can be changed in `~/.config/fuzz.fish/fuzz.fish.yaml`. The file is optional; without it the defaults above apply.
+
+List only the actions you want to change. Each listed action replaces its default keys, and an empty list unbinds it. Binding one key to two actions is an error.
+
+```yaml
+keybinds:
+  history: [ctrl+r]
+  git_branch: [ctrl+g]
+  files: [ctrl+s]
+  worktree: [ctrl+w]
+  commit: [ctrl+x]
+  select: [enter]
+  complete: [tab]
+  copy: [ctrl+y]
+  quit: [esc, ctrl+c]
+  up: [up, ctrl+p]
+  down: [down, ctrl+n]
+```
+
+The key that opens fuzz.fish from the shell (`ctrl+r`) is a Fish binding, not part of this file; add another with e.g. `bind \ct fh` in your `config.fish`.
+
 
 ## License
 
