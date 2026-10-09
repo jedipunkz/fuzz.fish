@@ -179,11 +179,12 @@ func TestUpdate_LoadingStaysWithTheActiveMode(t *testing.T) {
 // a fixed-width frame at the right edge of the input row.
 func TestViewShowsModeTag(t *testing.T) {
 	for mode, want := range map[SearchMode]string{
-		ModeHistory:   "history",
-		ModeGitBranch: "branch",
-		ModeFiles:     "files",
-		ModeWorktree:  "worktree",
-		ModeCommit:    "commit",
+		ModeHistory:     "history",
+		ModeGitBranch:   "branch",
+		ModeFiles:       "files",
+		ModeWorktree:    "worktree",
+		ModeCommit:      "commit",
+		ModePullRequest: "pr",
 	} {
 		m := model{
 			mode:         mode,

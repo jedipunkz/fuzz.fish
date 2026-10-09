@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/jedipunkz/fuzz.fish/internal/app"
+	"github.com/jedipunkz/fuzz.fish/internal/config"
 )
 
 // version is stamped by the release workflow with
@@ -22,5 +24,11 @@ func main() {
 		return
 	}
 
-	app.Run(*query)
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "fuzz: config: %v\n", err)
+		os.Exit(1)
+	}
+
+	app.Run(*query, cfg)
 }
