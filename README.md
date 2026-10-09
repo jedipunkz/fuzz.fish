@@ -109,6 +109,8 @@ worktree_dir: ~/gm/.worktrees
 
 An existing directory at that path is reused instead of created again.
 
+The `~/gm` in the example comes from [gm](https://github.com/jedipunkz/gm), a ghq-style repository manager that keeps clones in a `host/user/repo` tree and its worktrees under `<root>/.worktrees/<host>/<user>/<repo>/<branch>`. gm is recommended alongside fuzz.fish: with gm's root at `~/gm` and `worktree_dir: ~/gm/.worktrees`, the worktrees fuzz.fish creates follow the same layout as gm's own.
+
 The key that opens fuzz.fish from the shell (`ctrl+r`) is a Fish binding, not part of this file; add another with e.g. `bind \ct fh` in your `config.fish`.
 
 
