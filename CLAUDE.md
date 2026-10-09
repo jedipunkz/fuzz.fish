@@ -22,6 +22,7 @@ internal/app/             # TUI application (Bubble Tea MVC)
 internal/git/             # Git branch listing and preview
 internal/history/         # Fish history file parsing
 internal/files/           # Directory walker
+internal/config/          # ~/.config/fuzz.fish/fuzz.fish.yaml loader (keybinds)
 internal/scoring/         # Frecency scoring algorithm
 internal/ui/              # Styles, colors, format helpers
 conf.d/fuzz.fish          # Fish shell integration (keybindings, binary install)
