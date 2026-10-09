@@ -11,6 +11,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.8
 	github.com/go-git/go-git/v5 v5.19.2
 	github.com/sahilm/fuzzy v0.1.3
+	go.yaml.in/yaml/v3 v3.0.5
 )
 
 require (
