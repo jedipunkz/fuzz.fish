@@ -2,6 +2,7 @@ package app
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -108,6 +109,22 @@ func (m *model) loadItemsForMode() {
 				SearchText: c.Hash + " " + c.Subject,
 				Index:      n - 1 - i,
 				Original:   c,
+			}
+		}
+	case ModePullRequest:
+		// gh lists newest first, reverse so the newest sits at the bottom.
+		n := len(m.pullRequests)
+		if cap(m.allItems) >= n {
+			m.allItems = m.allItems[:n]
+		} else {
+			m.allItems = make([]Item, n)
+		}
+		for i := range m.pullRequests {
+			pr := m.pullRequests[n-1-i]
+			m.allItems[i] = Item{
+				Text:     "#" + strconv.Itoa(pr.Number) + " " + pr.Title,
+				Index:    n - 1 - i,
+				Original: pr,
 			}
 		}
 	default:

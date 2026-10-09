@@ -1,21 +1,25 @@
 package app
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"strconv"
 
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/jedipunkz/fuzz.fish/internal/config"
+	"github.com/jedipunkz/fuzz.fish/internal/git"
 	"github.com/jedipunkz/fuzz.fish/internal/ui"
 )
 
 // Run starts the application. initialQuery pre-fills the search box (e.g. with
 // the current Fish command line) so results are already filtered on startup.
-// keys maps a key string to a config.Action* name.
-func Run(initialQuery string, keys map[string]string) {
+func Run(initialQuery string, cfg config.Config) {
 	ti := textinput.New()
 	ti.Placeholder = ""
 	ti.CharLimit = 156
@@ -33,7 +37,7 @@ func Run(initialQuery string, keys map[string]string) {
 
 	m := model{
 		mode:         ModeHistory,
-		keys:         keys,
+		keys:         cfg.Keys,
 		input:        ti,
 		viewport:     viewport.New(),
 		previewCache: make(map[string]string),
@@ -79,6 +83,10 @@ func Run(initialQuery string, keys map[string]string) {
 				}
 			case ModeWorktree:
 				fmt.Printf("DIR:%s", *m.choice)
+			case ModePullRequest:
+				if dir := checkoutPullRequest(m.choicePR, cfg.WorktreeDir, tty); dir != "" {
+					fmt.Printf("DIR:%s", dir)
+				}
 			case ModeCommit:
 				if m.commitIsCmd {
 					fmt.Printf("CMD:%s", *m.choice)
@@ -88,4 +96,43 @@ func Run(initialQuery string, keys map[string]string) {
 			}
 		}
 	}
+}
+
+// checkoutPullRequest returns the directory to cd into for pr: the worktree
+// that already has its head branch checked out, else a worktree created for
+// it (see git.PullRequestWorktreePath). `gh pr checkout` then fetches the
+// branch inside that worktree, which also covers fork PRs. A failed checkout
+// is reported but still returns the directory.
+func checkoutPullRequest(pr git.PullRequest, worktreeDir string, tty *os.File) string {
+	dir := pr.Worktree
+	if dir == "" {
+		path, err := git.NewRepository(".").PullRequestWorktreePath(pr, worktreeDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "fuzz: %v\n", err)
+			return ""
+		}
+		// An existing directory is a worktree created on an earlier pick
+		// (e.g. a fork PR, which never matches pr.Worktree): reuse it.
+		if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+			// --detach: gh pr checkout creates or switches to the branch.
+			add := exec.Command("git", "worktree", "add", "--detach", path)
+			add.Stdout = tty
+			add.Stderr = tty
+			if err := add.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "git worktree add failed: %v\n", err)
+				return ""
+			}
+		}
+		dir = path
+	}
+
+	cmd := exec.Command("gh", "pr", "checkout", strconv.Itoa(pr.Number))
+	cmd.Dir = dir
+	cmd.Stdin = tty
+	cmd.Stdout = tty
+	cmd.Stderr = tty
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "gh pr checkout failed: %v\n", err)
+	}
+	return dir
 }

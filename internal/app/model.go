@@ -20,6 +20,10 @@ type filesLoadedMsg struct {
 }
 type worktreesLoadedMsg struct{ worktrees []git.Worktree }
 type commitsLoadedMsg struct{ commits []git.Commit }
+type pullRequestsLoadedMsg struct {
+	prs []git.PullRequest
+	err error
+}
 
 // Filter debounce message
 type filterTickMsg struct{ query string }
@@ -43,6 +47,7 @@ const (
 	ModeFiles
 	ModeWorktree
 	ModeCommit
+	ModePullRequest
 )
 
 // commitActions are the commands offered after selecting a commit. The
@@ -85,6 +90,7 @@ type model struct {
 	fileEntries    []files.Entry
 	worktrees      []git.Worktree
 	commits        []git.Commit
+	pullRequests   []git.PullRequest
 
 	// Items state
 	allItems         []Item   // All items for current mode (sorted newest/priority first)
@@ -94,9 +100,10 @@ type model struct {
 
 	cursor      int
 	offset      int
-	choice      *string // Result string to print
-	choiceIsDir bool    // For files mode: whether the choice is a directory
-	fetchBranch bool    // True when ctrl+g selects current branch for git pull
+	choice      *string         // Result string to print
+	choiceIsDir bool            // For files mode: whether the choice is a directory
+	fetchBranch bool            // True when ctrl+g selects current branch for git pull
+	choicePR    git.PullRequest // For pull request mode: the selected pull request
 
 	// Commit action picker: non-empty pendingCommit means the picker is open
 	// and the list keys drive the action list instead of the commit list.
@@ -166,5 +173,12 @@ func loadWorktreesCmd() tea.Cmd {
 		r := git.NewRepository(".")
 		worktrees, _ := r.Worktrees()
 		return worktreesLoadedMsg{worktrees: worktrees}
+	}
+}
+
+func loadPullRequestsCmd() tea.Cmd {
+	return func() tea.Msg {
+		prs, err := git.NewRepository(".").PullRequests()
+		return pullRequestsLoadedMsg{prs: prs, err: err}
 	}
 }

@@ -1,12 +1,17 @@
 package config
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
-func TestParseKeymap_Defaults(t *testing.T) {
-	km, err := ParseKeymap(nil)
+func TestParse_Defaults(t *testing.T) {
+	cfg, err := Parse(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	km := cfg.Keys
 	for action, keys := range DefaultKeybinds {
 		for _, key := range keys {
 			if km[key] != action {
@@ -16,11 +21,12 @@ func TestParseKeymap_Defaults(t *testing.T) {
 	}
 }
 
-func TestParseKeymap_Override(t *testing.T) {
-	km, err := ParseKeymap([]byte("keybinds:\n  files: [ctrl+f]\n  copy: []\n"))
+func TestParse_Override(t *testing.T) {
+	cfg, err := Parse([]byte("keybinds:\n  files: [ctrl+f]\n  copy: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	km := cfg.Keys
 	if km["ctrl+f"] != ActionFiles {
 		t.Errorf("ctrl+f = %q, want files", km["ctrl+f"])
 	}
@@ -35,14 +41,29 @@ func TestParseKeymap_Override(t *testing.T) {
 	}
 }
 
-func TestParseKeymap_Errors(t *testing.T) {
+func TestParse_Errors(t *testing.T) {
 	for name, in := range map[string]string{
 		"unknown action": "keybinds:\n  nope: [ctrl+a]\n",
 		"unknown field":  "keybind:\n  files: [ctrl+f]\n",
 		"duplicate key":  "keybinds:\n  files: [ctrl+r]\n",
+		"relative dir":   "worktree_dir: gm/.worktrees\n",
 	} {
-		if _, err := ParseKeymap([]byte(in)); err == nil {
+		if _, err := Parse([]byte(in)); err == nil {
 			t.Errorf("%s: expected error", name)
 		}
+	}
+}
+
+func TestParse_WorktreeDir(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Parse([]byte("worktree_dir: ~/gm/.worktrees/\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(home, "gm", ".worktrees"); cfg.WorktreeDir != want {
+		t.Errorf("WorktreeDir = %q, want %q", cfg.WorktreeDir, want)
 	}
 }
