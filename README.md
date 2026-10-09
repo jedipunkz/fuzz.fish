@@ -54,7 +54,7 @@ Press `ctrl+r` to open fuzz.fish, then type to search. Switch modes at any time 
 | `ctrl+w` | Git Worktree Search | `cd` into the worktree |
 | `ctrl+g` | Git Branch Search | Switch to the selected branch |
 | `ctrl+x` | Git Commit Search | Pick a command to run against the commit |
-| `ctrl+j` | Pull Request Search (needs `gh`) | Check out the PR branch and `cd` into it |
+| `ctrl+j` | Pull Request Search (needs `gh`) | Check out the PR branch in a worktree and `cd` into it |
 
 Common keys:
 
@@ -72,11 +72,11 @@ Notes:
 - In Git Branch Search mode, pressing `ctrl+g` again on the current branch runs `git pull origin <branch>`.
 - Git Commit Search matches both the short hash and the commit subject. `enter` opens a small action list (`git show`, `git diff`, `git revert`, `git cherry-pick`, `git rebase --onto`, or the bare hash); the chosen command is placed on the prompt without running it. `ctrl+x` outside a git repository shows a warning instead of switching modes.
 - File Search skips hidden files and build directories such as `node_modules` and `vendor`.
-- Pull Request Search lists the open pull requests of the current repository via `gh pr list`, searchable by number and title. The preview shows the pull request, repository, author, head branch, and the local worktree that has the branch checked out. `enter` runs `gh pr checkout <number>` (fetching the remote branch) inside that worktree and `cd`s into it; with no such worktree it runs in the current worktree and `cd`s to its root. If `gh` is missing or not authenticated, the error is shown in the status line.
+- Pull Request Search lists the open pull requests of the current repository via `gh pr list`, searchable by number and title. The preview shows the pull request, repository, author, head branch, and the local worktree that has the branch checked out. `enter` `cd`s into that worktree; with no such worktree it first creates one with `git worktree add` (see `worktree_dir` under [Configuration](#configuration)). Either way `gh pr checkout <number>` runs inside it to fetch the remote branch. If `gh` is missing or not authenticated, the error is shown in the status line.
 
 ## Configuration
 
-Keybindings inside the finder can be changed in `~/.config/fuzz.fish/fuzz.fish.yaml`. The file is optional; without it the defaults above apply.
+Keybindings inside the finder and the worktree location for Pull Request Search can be set in `~/.config/fuzz.fish/fuzz.fish.yaml`. The file is optional; without it the defaults above apply.
 
 List only the actions you want to change. Each listed action replaces its default keys, and an empty list unbinds it. Binding one key to two actions is an error.
 
@@ -95,6 +95,19 @@ keybinds:
   up: [up, ctrl+p]
   down: [down, ctrl+n]
 ```
+
+`worktree_dir` sets where Pull Request Search creates worktrees. It must be an absolute path or start with `~/`.
+
+```yaml
+worktree_dir: ~/gm/.worktrees
+```
+
+| `worktree_dir` | Worktree for PR #42 from `feat/foo` in `github.com/user/repo` |
+|---|---|
+| unset (default) | `<parent of the main worktree>/repo-pr-42` |
+| `~/gm/.worktrees` | `~/gm/.worktrees/github.com/user/repo/feat/foo` |
+
+An existing directory at that path is reused instead of created again.
 
 The key that opens fuzz.fish from the shell (`ctrl+r`) is a Fish binding, not part of this file; add another with e.g. `bind \ct fh` in your `config.fish`.
 
