@@ -245,10 +245,9 @@ func (m *model) updateFilter(query string) tea.Cmd {
 					aggIdxByKey[mat.Index] = append([]int(nil), mat.MatchedIndexes...)
 				}
 
-				// subset and newMatches are reused across token passes within
-				// this filter run: capacity stabilizes after the first pass.
+				// subset is reused across token passes within this filter run:
+				// capacity stabilizes after the first pass.
 				subset := make([]string, len(matches))
-				newMatches := fuzzy.Matches{}
 
 				for _, token := range tokens[1:] {
 					if len(matches) == 0 {
@@ -259,11 +258,10 @@ func (m *model) updateFilter(query string) tea.Cmd {
 						subset[i] = m.allItemsStr[mat.Index]
 					}
 					subMatches := fuzzy.Find(token, subset)
-					if cap(newMatches) < len(subMatches) {
-						newMatches = make(fuzzy.Matches, 0, len(matches))
-					} else {
-						newMatches = newMatches[:0]
-					}
+					// A fresh slice per pass: subMatches is ordered by score, so
+					// writing into the slice matches reads from would overwrite
+					// candidates before they are read.
+					newMatches := make(fuzzy.Matches, 0, len(subMatches))
 					for _, sm := range subMatches {
 						orig := matches[sm.Index]
 						aggScore[orig.Index] += sm.Score
