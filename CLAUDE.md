@@ -56,7 +56,7 @@ go test -v ./...
 
 ```sh
 go vet ./...
-# golangci-lint is run in CI (version v2.8.0)
+# golangci-lint is run in CI (version v2.14.0)
 golangci-lint run
 ```
 
