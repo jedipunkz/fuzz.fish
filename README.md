@@ -9,6 +9,7 @@ Press `ctrl+r` to open it, type to search, and switch modes with a single key.
 No external finder required — a single Go binary ships with the plugin.
 
 [![CI](https://github.com/jedipunkz/fuzz.fish/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jedipunkz/fuzz.fish/actions/workflows/ci.yml)
+[![CodeQL](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/jedipunkz/fuzz.fish/badges/codeql.json)](https://github.com/jedipunkz/fuzz.fish/security/code-scanning)
 [![GitHub Release](https://img.shields.io/github/v/release/jedipunkz/fuzz.fish)](https://github.com/jedipunkz/fuzz.fish/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
