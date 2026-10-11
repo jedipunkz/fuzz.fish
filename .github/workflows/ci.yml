@@ -53,3 +53,45 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.14.0
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27'
+          cache: true
+
+      - name: Run tests with coverage
+        run: |
+          set -o pipefail
+          go test -coverprofile=coverage.out ./... | tee coverage.txt
+
+      - name: Build coverage report
+        run: |
+          {
+            echo "## Test coverage"
+            echo ""
+            echo "| Package | Coverage |"
+            echo "|---|---|"
+            grep '^ok' coverage.txt | \
+              awk '{pkg = $2; sub("github.com/jedipunkz/fuzz.fish/", "", pkg); printf "| %s | %s |\n", pkg, $5}'
+            echo ""
+            go tool cover -func=coverage.out | awk '/^total/ {printf "Total: %s\n", $3}'
+          } > coverage-report.md
+          cat coverage-report.md
+
+      - name: Post coverage comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: test-coverage
+          path: coverage-report.md

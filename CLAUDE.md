@@ -60,7 +60,7 @@ go vet ./...
 golangci-lint run
 ```
 
-CI runs on every push and PR to `main`: build, `go vet`, `go test`, and `golangci-lint`.
+CI runs on every push and PR to `main`: build, `go vet`, `go test`, and `golangci-lint`. On pull requests a coverage job also runs `go test -cover` and posts a per-package coverage report as a PR comment.
 
 ## Code Conventions
 
