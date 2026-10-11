@@ -2,7 +2,6 @@ package app
 
 import (
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/jedipunkz/fuzz.fish/internal/scoring"
@@ -61,12 +60,7 @@ func (m *model) globFilter(tokens []string) {
 	config := scoring.DefaultConfig()
 	now := scoring.CurrentTimestamp()
 
-	type hit struct {
-		itemIdx int
-		idx     []int
-		score   float64
-	}
-	hits := make([]hit, 0, len(m.allItems))
+	hits := make([]rankedItem, 0, len(m.allItems))
 	// buf collects one candidate's matched indexes and is reused across
 	// candidates; only hits get their own copy.
 	var buf []int
@@ -95,18 +89,9 @@ func (m *model) globFilter(tokens []string) {
 		// already rewards contiguous, boundary-aligned matches, so it carries
 		// the match quality alone here.
 		score := config.ItemScore(m.allItemsStr[i], 0, idx, timestamp, frequency, isCurrent, now)
-		hits = append(hits, hit{itemIdx: i, idx: idx, score: score})
+		hits = append(hits, rankedItem{itemIdx: i, idx: idx, score: score})
 	}
 
-	// Higher score at the bottom (higher priority), matching the fuzzy path.
-	sort.SliceStable(hits, func(i, j int) bool {
-		return hits[i].score < hits[j].score
-	})
-
-	m.filtered = make([]Item, len(hits))
-	for rank, h := range hits {
-		item := m.allItems[h.itemIdx]
-		item.MatchedIndexes = h.idx
-		m.filtered[rank] = item
-	}
+	// Ordered like the fuzzy path: higher score at the bottom.
+	m.setFilteredRanked(hits)
 }
