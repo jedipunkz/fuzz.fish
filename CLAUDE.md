@@ -60,7 +60,7 @@ go vet ./...
 golangci-lint run
 ```
 
-CI runs on every push and PR to `main`: build, `go vet`, `go test`, and `golangci-lint`. On pull requests a coverage job also runs `go test -cover` and posts a per-package coverage report as a PR comment.
+CI runs on push and PR to `main` when Go-relevant files change (`**.go`, `go.mod`, `go.sum`, `.golangci*`, `Makefile`): build, `go vet`, `go test`, and `golangci-lint`. On qualifying pull requests a coverage job also runs `go test -cover` and posts a per-package coverage report as a PR comment. CodeQL runs as an advanced-setup workflow on Go-relevant pull requests and on a weekly schedule, not on pushes to `main`.
 
 ## Code Conventions
 
