@@ -365,3 +365,32 @@ func TestUpdate_ResizeRegeneratesPreview(t *testing.T) {
 		t.Errorf("preview served a cached render from the old pane size:\n%s\nwant:\n%s", got, want)
 	}
 }
+
+func TestRenderActionPicker(t *testing.T) {
+	m := model{
+		mode:          ModeCommit,
+		pendingCommit: "abc1234",
+		actionCursor:  1,
+	}
+
+	got := m.renderActionPicker()
+	if !strings.Contains(got, "Run on abc1234") {
+		t.Errorf("picker = %q, want the pending commit header", got)
+	}
+	if !strings.Contains(got, "git revert abc1234") {
+		t.Errorf("picker = %q, want the templated action line", got)
+	}
+	if !strings.Contains(got, "hash only") {
+		t.Errorf("picker = %q, want the hash-only action", got)
+	}
+	// The cursor arrow sits before the second action line.
+	first := strings.Index(got, "git show")
+	second := strings.Index(got, "git diff")
+	if first < 0 || second < 0 || first > second {
+		t.Fatalf("action order wrong: %q", got)
+	}
+	arrowIdx := strings.Index(got, "▸")
+	if arrowIdx < first || arrowIdx > second {
+		t.Errorf("cursor arrow at %d, expected on the second action: %q", arrowIdx, got)
+	}
+}
