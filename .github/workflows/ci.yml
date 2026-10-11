@@ -3,24 +3,35 @@ name: CI
 on:
   push:
     branches: [ main ]
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci*'
-      - 'Makefile'
   pull_request:
     branches: [ main ]
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci*'
-      - 'Makefile'
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Filter Go-relevant changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**.go'
+              - 'go.mod'
+              - 'go.sum'
+              - '.golangci*'
+              - 'Makefile'
+
   build:
     name: Build and Test
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,6 +59,8 @@ jobs:
 
   lint:
     name: Lint
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -68,8 +81,9 @@ jobs:
 
   coverage:
     name: Coverage
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     permissions:
       contents: read
       pull-requests: write
