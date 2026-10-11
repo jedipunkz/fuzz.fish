@@ -2,6 +2,7 @@ package history
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
@@ -81,35 +82,27 @@ func unescape(s string) string {
 // This is exported for testing purposes.
 func parseReader(r io.Reader) []Entry {
 	var entries []Entry
-	var current *Entry
 	scanner := bufio.NewScanner(r)
 
+	// Lines are inspected as bytes and only the fields kept are converted to
+	// strings: scanner.Text would allocate for every line, including the
+	// "paths:" headers and lines that are skipped.
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := scanner.Bytes()
 
-		if strings.HasPrefix(line, "- cmd: ") {
-			if current != nil {
-				entries = append(entries, *current)
-			}
-			current = &Entry{
-				Cmd: unescape(strings.TrimPrefix(line, "- cmd: ")),
-			}
-		} else if current != nil {
-			if strings.HasPrefix(line, "  when: ") {
-				whenStr := strings.TrimPrefix(line, "  when: ")
-				when, err := strconv.ParseInt(whenStr, 10, 64)
+		if rest, ok := bytes.CutPrefix(line, []byte("- cmd: ")); ok {
+			entries = append(entries, Entry{Cmd: unescape(string(rest))})
+		} else if len(entries) > 0 {
+			current := &entries[len(entries)-1]
+			if rest, ok := bytes.CutPrefix(line, []byte("  when: ")); ok {
+				when, err := strconv.ParseInt(string(rest), 10, 64)
 				if err == nil {
 					current.When = when
 				}
-			} else if strings.HasPrefix(line, "    - ") {
-				path := unescape(strings.TrimPrefix(line, "    - "))
-				current.Paths = append(current.Paths, path)
+			} else if rest, ok := bytes.CutPrefix(line, []byte("    - ")); ok {
+				current.Paths = append(current.Paths, unescape(string(rest)))
 			}
 		}
-	}
-
-	if current != nil {
-		entries = append(entries, *current)
 	}
 
 	// Reverse to show newest first

@@ -62,3 +62,35 @@ func TestUpdateFilter_HighlightIndexesMultiToken(t *testing.T) {
 		}
 	}
 }
+
+// TestUpdateFilter_ThreeTokens verifies that every result of a query with
+// three or more tokens matches all of them. Token passes after the second
+// must not read candidates from a buffer they are overwriting.
+func TestUpdateFilter_ThreeTokens(t *testing.T) {
+	// "pull" matches contiguously in the first command and scattered in the
+	// second, while "main" does the opposite: the third pass returns the
+	// candidates in the reverse order of the second pass.
+	m := historyModel([]string{
+		"git pull m a i n zz",
+		"git p u l l main",
+		"git status",
+	})
+	m.updateFilter("git pull main")
+
+	got := make(map[string]int, len(m.filtered))
+	for _, item := range m.filtered {
+		got[item.Text]++
+	}
+	want := map[string]int{
+		"git pull m a i n zz": 1,
+		"git p u l l main":    1,
+	}
+	if len(got) != len(want) || len(m.filtered) != len(want) {
+		t.Fatalf("filtered = %v, want each of %v exactly once", got, want)
+	}
+	for text := range want {
+		if got[text] != 1 {
+			t.Errorf("%q appears %d times in %v, want once", text, got[text], got)
+		}
+	}
+}

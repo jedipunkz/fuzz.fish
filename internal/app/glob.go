@@ -1,7 +1,7 @@
 package app
 
 import (
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/jedipunkz/fuzz.fish/internal/scoring"
@@ -17,31 +17,34 @@ func queryHasGlob(query string) bool {
 
 // globMatch matches a single whitespace-delimited glob token against text.
 //
-// The token is split on '*' into literal segments that must each appear
-// contiguously and in order; '*' allows an arbitrary run (including empty)
-// between them. Matching is unanchored on both ends, so "nvim" matches any
-// text containing "nvim" and "*.go" matches any text containing ".go".
+// The token arrives pre-split on '*' (segs) into literal segments that must
+// each appear contiguously and in order; '*' allows an arbitrary run
+// (including empty) between them. Matching is unanchored on both ends, so
+// "nvim" matches any text containing "nvim" and "*.go" matches any text
+// containing ".go". Splitting is left to the caller so it runs once per
+// keystroke rather than once per candidate.
 //
 // Both arguments must already be lowercased by the caller so matching is
-// case-insensitive; the returned indexes are byte offsets into text, aligned
-// with the original string for ASCII (matching the existing highlight code).
-func globMatch(token, text string) (matched []int, ok bool) {
+// case-insensitive; the matched indexes are byte offsets into text, aligned
+// with the original string for ASCII (matching the existing highlight code),
+// appended to dst so the caller can reuse one buffer across candidates.
+func globMatch(dst []int, segs []string, text string) (matched []int, ok bool) {
 	pos := 0
-	for _, seg := range strings.Split(token, "*") {
+	for _, seg := range segs {
 		if seg == "" {
 			continue
 		}
 		i := strings.Index(text[pos:], seg)
 		if i < 0 {
-			return nil, false
+			return dst, false
 		}
 		start := pos + i
 		for k := 0; k < len(seg); k++ {
-			matched = append(matched, start+k)
+			dst = append(dst, start+k)
 		}
 		pos = start + len(seg)
 	}
-	return matched, true
+	return dst, true
 }
 
 // globFilter populates m.filtered using glob matching. Every token must match
@@ -49,39 +52,35 @@ func globMatch(token, text string) (matched []int, ok bool) {
 // pipeline as fuzzy matching, so frecency and match-quality ordering behave
 // consistently across both search modes.
 func (m *model) globFilter(tokens []string) {
-	lowerTokens := make([]string, len(tokens))
+	tokenSegs := make([][]string, len(tokens))
 	for i, t := range tokens {
-		lowerTokens[i] = strings.ToLower(t)
+		tokenSegs[i] = strings.Split(strings.ToLower(t), "*")
 	}
 
 	config := scoring.DefaultConfig()
 	now := scoring.CurrentTimestamp()
 
-	type hit struct {
-		itemIdx int
-		idx     []int
-		score   float64
-	}
-	hits := make([]hit, 0, len(m.allItems))
+	hits := make([]rankedItem, 0, len(m.allItems))
+	// buf collects one candidate's matched indexes and is reused across
+	// candidates; only hits get their own copy.
+	var buf []int
 
 	for i := range m.allItems {
 		// Lowercased at load time in loadItemsForMode: re-lowercasing every
 		// candidate string here would allocate once per item per keystroke.
 		text := m.allItemsStrLower[i]
-		var idx []int
+		buf = buf[:0]
 		ok := true
-		for _, token := range lowerTokens {
-			mIdx, matched := globMatch(token, text)
-			if !matched {
-				ok = false
+		for _, segs := range tokenSegs {
+			buf, ok = globMatch(buf, segs, text)
+			if !ok {
 				break
 			}
-			idx = append(idx, mIdx...)
 		}
 		if !ok {
 			continue
 		}
-		idx = sortDedupe(idx)
+		idx := slices.Clone(sortDedupe(buf))
 
 		timestamp, frequency, isCurrent := m.scoringSignals(m.allItems[i])
 		// Glob matches have no fuzzy score to pass through: matchedLen is not on
@@ -90,18 +89,9 @@ func (m *model) globFilter(tokens []string) {
 		// already rewards contiguous, boundary-aligned matches, so it carries
 		// the match quality alone here.
 		score := config.ItemScore(m.allItemsStr[i], 0, idx, timestamp, frequency, isCurrent, now)
-		hits = append(hits, hit{itemIdx: i, idx: idx, score: score})
+		hits = append(hits, rankedItem{itemIdx: i, idx: idx, score: score})
 	}
 
-	// Higher score at the bottom (higher priority), matching the fuzzy path.
-	sort.SliceStable(hits, func(i, j int) bool {
-		return hits[i].score < hits[j].score
-	})
-
-	m.filtered = make([]Item, len(hits))
-	for rank, h := range hits {
-		item := m.allItems[h.itemIdx]
-		item.MatchedIndexes = h.idx
-		m.filtered[rank] = item
-	}
+	// Ordered like the fuzzy path: higher score at the bottom.
+	m.setFilteredRanked(hits)
 }

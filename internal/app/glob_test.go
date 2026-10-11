@@ -2,6 +2,7 @@ package app
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/jedipunkz/fuzz.fish/internal/git"
@@ -39,7 +40,7 @@ func TestGlobMatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		// globMatch expects lowercased inputs; lowercase the text to mirror the caller.
-		got, ok := globMatch(tt.token, lower(tt.text))
+		got, ok := globMatch(nil, strings.Split(tt.token, "*"), lower(tt.text))
 		if ok != tt.wantOK {
 			t.Errorf("globMatch(%q, %q) ok = %v, want %v", tt.token, tt.text, ok, tt.wantOK)
 			continue
