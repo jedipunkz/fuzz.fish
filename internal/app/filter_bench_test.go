@@ -6,7 +6,9 @@ import (
 )
 
 // benchCommands builds n distinct, realistic-looking history commands so the
-// fuzzy matcher sees a mix of hits, misses and scattered matches.
+// fuzzy matcher sees a mix of hits, misses and scattered matches. The CI
+// benchmark workflow runs these benchmarks against the merge base of a PR in
+// .github/workflows/bench.yml.
 func benchCommands(n int) []string {
 	templates := []string{
 		"git pull origin feature/branch-%d",
