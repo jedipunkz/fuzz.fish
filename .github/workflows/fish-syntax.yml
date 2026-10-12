@@ -1,0 +1,29 @@
+name: Fish Syntax
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'conf.d/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'conf.d/**'
+      - '.github/workflows/**'
+
+jobs:
+  syntax:
+    name: Check fish script syntax
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install fish
+        run: sudo apt-get update && sudo apt-get install -y fish
+
+      - name: Check syntax
+        run: fish --no-execute conf.d/fuzz.fish
