@@ -1,0 +1,85 @@
+name: Benchmark
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Filter Go-relevant changes
+        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**.go'
+              - 'go.mod'
+              - 'go.sum'
+              - '.golangci*'
+              - 'Makefile'
+
+  benchmark:
+    name: Bench comparison
+    needs: changes
+    if: github.event.pull_request.head.repo.fork == false && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: head
+
+      - name: Checkout base branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.base_ref }}
+          path: base
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27'
+          cache: true
+
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@v0.0.0-20261009192801-be2c69fb417e
+
+      - name: Run benchmarks on PR head
+        run: |
+          (cd head && go test -run '^$' -bench . -benchmem -count 10 -benchtime=100x ./internal/app/ ./internal/history/) > bench-head.txt
+
+      - name: Run benchmarks on base branch
+        run: |
+          (cd base && go test -run '^$' -bench . -benchmem -count 10 -benchtime=100x ./internal/app/ ./internal/history/) > bench-base.txt
+
+      - name: Compare with benchstat
+        run: |
+          benchstat bench-base.txt bench-head.txt > bench-diff.txt || true
+          {
+            echo '## Benchmark comparison (base → head)'
+            echo ''
+            echo '```'
+            cat bench-diff.txt
+            echo '```'
+          } > bench-report.md
+          cat bench-report.md
+
+      - name: Post benchmark comment
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: benchmark
+          path: bench-report.md
