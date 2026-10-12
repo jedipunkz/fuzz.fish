@@ -117,6 +117,16 @@ The `~/gm` in the example comes from [gm](https://github.com/jedipunkz/gm), a gh
 The key that opens fuzz.fish from the shell (`ctrl+r`) is a Fish binding, not part of this file; add another with e.g. `bind \ct fh` in your `config.fish`.
 
 
+## Verifying release binaries
+
+Release binaries are built by the repository's GitHub Actions workflow and carry
+build provenance attestations. To verify that a downloaded `*.tar.gz` was built
+from this repository:
+
+```sh
+gh attestation verify fuzz_linux_amd64.tar.gz --repo jedipunkz/fuzz.fish
+```
+
 ## Development
 
 Build and run the same checks CI runs (build, vet, `golangci-lint`, tests with `-race`):
