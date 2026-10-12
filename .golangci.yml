@@ -1,0 +1,65 @@
+version: "2"
+
+linters:
+  enable:
+    - depguard
+    - errorlint
+    - gocritic
+    - gosec
+    - prealloc
+
+  settings:
+    depguard:
+      rules:
+        internal-leaf-no-internal-imports:
+          files:
+            - "**/internal/config/**"
+            - "**/internal/scoring/**"
+            - "**/internal/ui/**"
+          deny:
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/app
+              desc: internal/config, internal/scoring and internal/ui must not import other internal packages
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/config
+              desc: internal/config, internal/scoring and internal/ui must not import other internal packages
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/files
+              desc: internal/config, internal/scoring and internal/ui must not import other internal packages
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/git
+              desc: internal/config, internal/scoring and internal/ui must not import other internal packages
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/history
+              desc: internal/config, internal/scoring and internal/ui must not import other internal packages
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/scoring
+              desc: internal/config, internal/scoring and internal/ui must not import other internal packages
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/ui
+              desc: internal/config, internal/scoring and internal/ui must not import other internal packages
+        data-layer-imports-ui-only:
+          files:
+            - "**/internal/files/**"
+            - "**/internal/git/**"
+            - "**/internal/history/**"
+          deny:
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/app
+              desc: only cmd/fuzz may import internal/app
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/config
+              desc: internal/files, internal/git and internal/history may import only internal/ui
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/files
+              desc: internal/files, internal/git and internal/history may import only internal/ui
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/git
+              desc: internal/files, internal/git and internal/history may import only internal/ui
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/history
+              desc: internal/files, internal/git and internal/history may import only internal/ui
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/scoring
+              desc: internal/files, internal/git and internal/history may import only internal/ui
+        app-only-from-cmd-fuzz:
+          files:
+            - "!**/cmd/fuzz/**"
+          deny:
+            - pkg: github.com/jedipunkz/fuzz.fish/internal/app
+              desc: only cmd/fuzz may import internal/app
+    gosec:
+      excludes:
+        - G204
+        - G304
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+

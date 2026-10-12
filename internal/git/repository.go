@@ -40,6 +40,7 @@ func (r *Repository) IsRepo() bool {
 // Branches collects all git branches (local and remote)
 // Lightweight version: does not fetch commit objects for performance
 func (r *Repository) Branches() ([]Branch, error) {
+	//nolint:prealloc // branch count is unknown until refs are iterated
 	var branches []Branch
 
 	repo, err := gogit.PlainOpenWithOptions(r.Path, &gogit.PlainOpenOptions{DetectDotGit: true, EnableDotGitCommonDir: true})
