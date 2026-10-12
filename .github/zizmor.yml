@@ -1,0 +1,46 @@
+# zizmor configuration: https://docs.zizmor.sh/configuration/
+# Every relaxation below carries the reason it exists; revisit each entry when
+# the referenced follow-up work lands.
+rules:
+  # All `uses:` clauses must at least pin an explicit ref. SHA pinning for every
+  # action is tracked separately in #209; the blanket hash-pin default is
+  # relaxed until that work lands.
+  unpinned-uses:
+    config:
+      policies:
+        "*": ref-pin
+  # checkout v6+ persists credentials in $RUNNER_TEMP instead of .git/config,
+  # and no checkout here uploads the workspace as an artifact. Setting
+  # persist-credentials: false repo-wide is pending in #215; these files are
+  # under parallel maintenance.
+  artipacked:
+    ignore:
+      - ci.yml
+      - codeql.yml
+      - codeql-badge.yml
+      - fish-syntax.yml
+      - govulncheck.yml
+      - release.yml
+  # dependabot-auto-merge.yml is under parallel maintenance; the spoofable
+  # github.actor check should become github.event.pull_request.user.login,
+  # tracked in #215.
+  bot-conditions:
+    ignore:
+      - dependabot-auto-merge.yml
+  # Same workflow as bot-conditions: pull_request_target is currently required
+  # for the auto-merge setup; re-evaluation is tracked in #215.
+  dangerous-triggers:
+    ignore:
+      - dependabot-auto-merge.yml
+  # Template expansions reference a workflow_dispatch choice input and internal
+  # step outputs only, so they are not attacker-controlled today. The env:
+  # refactor is tracked in #215; both files are under parallel maintenance.
+  template-injection:
+    ignore:
+      - ci.yml
+      - release.yml
+  # ci.yml jobs need no token scopes; adding workflow-level permissions: {} is a
+  # separate change to a file under parallel maintenance (see #215).
+  excessive-permissions:
+    ignore:
+      - ci.yml
