@@ -27,6 +27,7 @@ jobs:
               - 'go.sum'
               - '.golangci*'
               - 'Makefile'
+              - '.github/workflows/ci.yml'
 
   build:
     name: Build and Test
@@ -90,6 +91,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -97,10 +100,29 @@ jobs:
           go-version: '1.27'
           cache: true
 
-      - name: Run tests with coverage
+      - name: Run tests with coverage (head)
         run: |
           set -o pipefail
           go test -coverprofile=coverage.out ./... | tee coverage.txt
+
+      - name: Run tests with coverage (base)
+        run: |
+          set -o pipefail
+          git worktree add "$RUNNER_TEMP/base" "${{ github.event.pull_request.base.sha }}"
+          cd "$RUNNER_TEMP/base"
+          go test -coverprofile="$RUNNER_TEMP/coverage-base.out" ./...
+
+      - name: Compute totals
+        id: totals
+        run: |
+          head=$(go tool cover -func=coverage.out | awk '/^total/ {gsub("%", "", $3); print $3}')
+          base=$(go tool cover -func="$RUNNER_TEMP/coverage-base.out" | awk '/^total/ {gsub("%", "", $3); print $3}')
+          delta=$(awk -v h="$head" -v b="$base" 'BEGIN { printf "%.1f", h - b }')
+          {
+            echo "head=$head"
+            echo "base=$base"
+            echo "delta=$delta"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build coverage report
         run: |
@@ -112,9 +134,19 @@ jobs:
             grep '^ok' coverage.txt | \
               awk '{pkg = $2; sub("github.com/jedipunkz/fuzz.fish/", "", pkg); printf "| %s | %s |\n", pkg, $5}'
             echo ""
-            go tool cover -func=coverage.out | awk '/^total/ {printf "Total: %s\n", $3}'
+            echo "Total (head): ${{ steps.totals.outputs.head }}%"
+            echo "Total (base): ${{ steps.totals.outputs.base }}%"
+            echo "Delta vs base: ${{ steps.totals.outputs.delta }} pp"
           } > coverage-report.md
           cat coverage-report.md
+
+      - name: Fail when total coverage drops
+        run: |
+          if awk -v h="${{ steps.totals.outputs.head }}" -v b="${{ steps.totals.outputs.base }}" \
+            'BEGIN { exit (h + 0.5 < b) ? 0 : 1 }'; then
+            echo "::error::Total coverage dropped from ${{ steps.totals.outputs.base }}% to ${{ steps.totals.outputs.head }}% (tolerance 0.5 pp)"
+            exit 1
+          fi
 
       - name: Post coverage comment
         uses: marocchino/sticky-pull-request-comment@v2
