@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
 
     steps:
       - name: Checkout code
@@ -89,6 +91,11 @@ jobs:
           # Relative names so each line matches the published asset name.
           (cd dist && sha256sum *.tar.gz > checksums.txt)
           ls -lh dist
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: dist/*.tar.gz
 
       - name: Create and push tag
         run: |
