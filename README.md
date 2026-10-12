@@ -63,6 +63,7 @@ Common keys:
 |-----|--------|
 | `↑`/`↓` or `ctrl+p`/`ctrl+n` | Move the selection |
 | `tab` | Complete the query with the selected item |
+| `f5` | Re-fetch the data of the current mode (branch, file, ... lists are read once per session otherwise) |
 | `ctrl+y` | Copy the selected item to the clipboard |
 | `esc` or `ctrl+c` | Cancel |
 
@@ -91,6 +92,7 @@ keybinds:
   pull_request: [ctrl+j]
   select: [enter]
   complete: [tab]
+  refresh: [f5]
   copy: [ctrl+y]
   quit: [esc, ctrl+c]
   up: [up, ctrl+p]

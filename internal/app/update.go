@@ -222,6 +222,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Switch to History mode
 			cmd = m.switchToHistoryMode()
 			return m, cmd
+		case config.ActionRefresh:
+			return m, m.refreshMode()
 		case config.ActionDown:
 			if len(m.filtered) > 0 {
 				m.cursor++
@@ -301,6 +303,45 @@ func (m *model) switchMode(mode SearchMode, cached bool, load tea.Cmd) tea.Cmd {
 // switchToGitBranchMode switches to git branch mode (Ctrl+G)
 func (m *model) switchToGitBranchMode() tea.Cmd {
 	return m.switchMode(ModeGitBranch, len(m.gitBranches) > 0, loadBranchesCmd())
+}
+
+// refreshMode re-runs the current mode's loader so data fetched earlier in the
+// session (branches, files, ...) reflects changes made while the finder was
+// open. The current query is kept and re-applied when the load completes. A
+// refresh while a load is still in flight is a no-op, so the in-flight result
+// is not thrown away.
+func (m *model) refreshMode() tea.Cmd {
+	if m.loading {
+		return nil
+	}
+	var load tea.Cmd
+	switch m.mode {
+	case ModeHistory:
+		load = loadHistoryCmd()
+	case ModeGitBranch:
+		load = loadBranchesCmd()
+	case ModeFiles:
+		load = loadFilesCmd()
+	case ModeWorktree:
+		load = loadWorktreesCmd()
+	case ModeCommit:
+		load = loadCommitsCmd()
+	case ModePullRequest:
+		load = loadPullRequestsCmd()
+	default:
+		return nil
+	}
+	m.loading = true
+	m.filtered = nil
+	m.allItems = nil
+	m.allItemsStr = nil
+	m.allItemsStrLower = nil
+	m.cursor = 0
+	m.offset = 0
+	// Previews rendered from the old data must not survive the reload.
+	m.previewCache = make(map[string]string)
+	m.lastPreviewKey = ""
+	return load
 }
 
 // switchToHistoryMode switches directly to history mode (Ctrl+R). The initial
