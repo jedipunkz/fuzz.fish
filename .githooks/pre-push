@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs the same checks as CI before pushing. Enable once with:
+#   git config core.hooksPath .githooks
+make check
