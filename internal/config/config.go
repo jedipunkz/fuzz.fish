@@ -24,6 +24,7 @@ const (
 	ActionPullRequest = "pull_request"
 	ActionSelect      = "select"
 	ActionComplete    = "complete"
+	ActionRefresh     = "refresh"
 	ActionCopy        = "copy"
 	ActionQuit        = "quit"
 	ActionUp          = "up"
@@ -42,6 +43,7 @@ var DefaultKeybinds = map[string][]string{
 	ActionPullRequest: {"ctrl+j"},
 	ActionSelect:      {"enter"},
 	ActionComplete:    {"tab"},
+	ActionRefresh:     {"f5"},
 	ActionCopy:        {"ctrl+y"},
 	ActionQuit:        {"esc", "ctrl+c"},
 	ActionUp:          {"up", "ctrl+p"},
