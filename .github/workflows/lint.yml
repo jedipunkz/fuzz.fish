@@ -46,7 +46,7 @@ jobs:
 
       - name: Run zizmor (SARIF)
         run: |
-          zizmor --no-online-audits --no-progress --format=sarif > "${RUNNER_TEMP}/zizmor.sarif"
+          zizmor --no-online-audits --no-progress --format=sarif .github/workflows/ > "${RUNNER_TEMP}/zizmor.sarif"
 
       - name: Upload SARIF
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
