@@ -88,10 +88,10 @@ func initTestRepo(t *testing.T, paths ...string) string {
 	dir := t.TempDir()
 	for _, p := range paths {
 		full := filepath.Join(dir, p)
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
 			t.Fatalf("MkdirAll(%q) failed: %v", filepath.Dir(full), err)
 		}
-		if err := os.WriteFile(full, []byte("x\n"), 0o644); err != nil {
+		if err := os.WriteFile(full, []byte("x\n"), 0o600); err != nil {
 			t.Fatalf("WriteFile(%q) failed: %v", full, err)
 		}
 	}
@@ -125,7 +125,7 @@ func TestCollect_GitRepo(t *testing.T) {
 		"ignored.log",
 		"node_modules/pkg/index.js",
 	)
-	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("*.log\nnode_modules/\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("*.log\nnode_modules/\n"), 0o600); err != nil {
 		t.Fatalf("WriteFile(.gitignore) failed: %v", err)
 	}
 
@@ -168,7 +168,7 @@ func TestCollect_GitRepoTruncated(t *testing.T) {
 func TestCollect_NonRepoFallback(t *testing.T) {
 	dir := t.TempDir()
 	for _, p := range []string{"visible.go", ".hidden"} {
-		if err := os.WriteFile(filepath.Join(dir, p), []byte("x\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, p), []byte("x\n"), 0o600); err != nil {
 			t.Fatalf("WriteFile(%q) failed: %v", p, err)
 		}
 	}
@@ -187,7 +187,7 @@ func TestCollect_NonRepoFallback(t *testing.T) {
 func TestCollect_WalkTruncated(t *testing.T) {
 	dir := t.TempDir()
 	for _, p := range []string{"a.go", "b.go", "c.go"} {
-		if err := os.WriteFile(filepath.Join(dir, p), []byte("x\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, p), []byte("x\n"), 0o600); err != nil {
 			t.Fatalf("WriteFile(%q) failed: %v", p, err)
 		}
 	}

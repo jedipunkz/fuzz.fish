@@ -55,6 +55,7 @@ func Run(initialQuery string, cfg config.Config) {
 	finalModel, err := prog.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
+		//nolint:gocritic // skipping tty.Close via defer so os.Exit is acceptable: run is fatal here
 		os.Exit(1)
 	}
 

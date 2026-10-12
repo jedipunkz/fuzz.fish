@@ -96,7 +96,7 @@ func TestLoad_ValidFile(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	dir := filepath.Join(home, ".config", "fuzz.fish")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "fuzz.fish.yaml"), []byte("keybinds:\n  files: [ctrl+f]\n"), 0o600); err != nil {
@@ -116,7 +116,7 @@ func TestLoad_InvalidFile(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	dir := filepath.Join(home, ".config", "fuzz.fish")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "fuzz.fish.yaml"), []byte("%%% not yaml\n"), 0o600); err != nil {

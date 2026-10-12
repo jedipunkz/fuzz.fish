@@ -282,6 +282,7 @@ func (m *model) updateFilter(query string) tea.Cmd {
 						nextScores[j] = aggScores[sm.Index] + sm.Score
 						// fuzzy.Find allocates MatchedIndexes per match, so each
 						// candidate owns its slice and it can be extended in place.
+						//nolint:gocritic // intentionally appending to a slice owned by another index
 						nextIdx[j] = append(aggIdx[sm.Index], sm.MatchedIndexes...)
 					}
 					items, aggScores, aggIdx = nextItems, nextScores, nextIdx
