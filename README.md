@@ -117,6 +117,21 @@ The `~/gm` in the example comes from [gm](https://github.com/jedipunkz/gm), a gh
 The key that opens fuzz.fish from the shell (`ctrl+r`) is a Fish binding, not part of this file; add another with e.g. `bind \ct fh` in your `config.fish`.
 
 
+## Development
+
+Build and run the same checks CI runs (build, vet, `golangci-lint`, tests with `-race`):
+
+```sh
+make check
+```
+
+To run `make check` automatically before every push, enable the bundled
+`pre-push` hook once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
 ## License
 
 MIT License - see LICENSE file for details
