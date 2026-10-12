@@ -127,6 +127,14 @@ from this repository:
 gh attestation verify fuzz_linux_amd64.tar.gz --repo jedipunkz/fuzz.fish
 ```
 
+## Branch Protection
+
+`main` is protected by a repository ruleset: all changes land through pull
+requests (no direct pushes, including for administrators), merges require CI,
+CodeQL, and govulncheck to pass on the up-to-date merge commit, and the
+history cannot be rewritten. See the
+[branch protection details](SECURITY.md#branch-protection-on-main).
+
 ## Development
 
 Build and run the same checks CI runs (build, vet, `golangci-lint`, tests with `-race`):

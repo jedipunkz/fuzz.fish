@@ -15,6 +15,40 @@ We recommend installing with [fisher](https://github.com/jorgebucaran/fisher),
 or rebuilding the binary from source with `_fuzz_fish_rebuild_binary`, so
 updates arrive with the plugin itself.
 
+## Branch Protection on `main`
+
+The `main` branch is protected by the repository ruleset
+["main: require CI"](https://github.com/jedipunkz/fuzz.fish/rules/22325247):
+
+- Direct pushes to `main` are not allowed; all changes (including by
+  repository administrators) must go through a pull request. Approvals are
+  not required, matching the single-maintainer workflow.
+- Conflict resolution is allowed only through pull requests, so force pushes
+  and direct fixes cannot rewrite `main`; subsequent checks validate the exact
+  merge proposal.
+- Merges require the following status checks to pass on the up-to-date merge
+  commit:
+
+  | Check | Source |
+  |---|---|
+  | `Build and Test (ubuntu-latest)` | CI |
+  | `Build and Test (macos-latest)` | CI |
+  | `Lint` | CI (golangci-lint) |
+  | `Analyze (go)` | CodeQL |
+  | `Vulnerability scan` | Govulncheck |
+
+- Changes to this ruleset are made by a repository administrator; until a
+  dedicated deploy key is introduced, the migration path for future
+  maintainers is:
+
+  1. Schedule the change through a pull request (per the rules above) so the
+     intent is reviewable.
+  2. Update the settings through the GitHub UI or API, and record the change
+     in this document in the same pull request.
+
+Report suspected bypasses (for example, an unexpected direct push to `main`)
+through [private vulnerability reporting](https://github.com/jedipunkz/fuzz.fish/security/advisories/new).
+
 ## Reporting a Vulnerability
 
 Use [private vulnerability reporting](https://github.com/jedipunkz/fuzz.fish/security/advisories/new)
