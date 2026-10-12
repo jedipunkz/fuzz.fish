@@ -2,13 +2,12 @@
 # Every relaxation below carries the reason it exists; revisit each entry when
 # the referenced follow-up work lands.
 rules:
-  # All `uses:` clauses must at least pin an explicit ref. SHA pinning for every
-  # action is tracked separately in #209; the blanket hash-pin default is
-  # relaxed until that work lands.
+  # Every `uses:` clause is pinned to a full commit SHA (see #209); this policy
+  # keeps enforcing hash pins so new workflows cannot regress.
   unpinned-uses:
     config:
       policies:
-        "*": ref-pin
+        "*": hash-pin
   # checkout v6+ persists credentials in $RUNNER_TEMP instead of .git/config,
   # and no checkout here uploads the workspace as an artifact. Setting
   # persist-credentials: false repo-wide is pending in #215; these files are
