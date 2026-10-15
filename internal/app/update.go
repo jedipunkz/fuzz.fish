@@ -295,6 +295,7 @@ func (m *model) switchMode(mode SearchMode, cached bool, load tea.Cmd) tea.Cmd {
 	m.allItems = nil
 	m.allItemsStr = nil
 	m.allItemsStrLower = nil
+	m.prevQuery = ""
 	m.cursor = 0
 	m.offset = 0
 	return load
@@ -336,6 +337,7 @@ func (m *model) refreshMode() tea.Cmd {
 	m.allItems = nil
 	m.allItemsStr = nil
 	m.allItemsStrLower = nil
+	m.prevQuery = ""
 	m.cursor = 0
 	m.offset = 0
 	// Previews rendered from the old data must not survive the reload.

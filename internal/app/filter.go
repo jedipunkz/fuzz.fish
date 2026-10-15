@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -130,6 +131,7 @@ func (m *model) loadItemsForMode() {
 	default:
 		m.allItems = m.allItems[:0]
 	}
+	m.prevQuery = ""
 
 	// Pre-build the search strings and their lowercase view: fuzzy matching
 	// consumes allItemsStr, and glob matching would otherwise re-lowercase
@@ -224,10 +226,28 @@ func (m *model) setFilteredRanked(ranked []rankedItem) {
 	}
 }
 
+// narrowCandidates returns the allItems indexes query must be matched
+// against; ok is false when every item must be scanned. Appending to the
+// previous query only adds constraints in both matchers: a longer fuzzy token
+// is a subsequence of fewer texts, a longer glob segment a substring of fewer,
+// and an extra token another AND. So the previous matches cover every new
+// match. The keystroke that adds the first '*' still rescans everything:
+// the matchers fold case differently (equalFold vs ToLower), so fuzzy matches
+// need not cover glob matches for every rune.
+func (m *model) narrowCandidates(query string) (cand []int, ok bool) {
+	if m.prevQuery == "" || !strings.HasPrefix(query, m.prevQuery) ||
+		queryHasGlob(query) != queryHasGlob(m.prevQuery) {
+		return nil, false
+	}
+	return m.prevMatches, true
+}
+
 // updateFilter updates the filtered items based on the query and returns the
 // tea.Cmd generating the preview of the newly selected item (nil when the
 // render is synchronous).
 func (m *model) updateFilter(query string) tea.Cmd {
+	cand, narrow := m.narrowCandidates(query)
+	m.prevQuery = ""
 	if query == "" {
 		// Return all items (which are already in display order)
 		m.filterAllItems()
@@ -237,9 +257,20 @@ func (m *model) updateFilter(query string) tea.Cmd {
 		if len(tokens) > 0 && queryHasGlob(query) {
 			// Glob matching: a '*' in the query switches to literal, ordered
 			// substring matching (e.g. "nvim *.go") instead of fuzzy scatter.
-			m.globFilter(tokens)
+			m.globFilter(tokens, cand, narrow)
+			m.prevQuery = query
 		} else if len(tokens) > 0 {
-			matches := fuzzy.Find(tokens[0], m.allItemsStr)
+			src := m.allItemsStr
+			if narrow {
+				// cand aliases prevMatches, which is overwritten below, so
+				// it is only read in this first pass.
+				m.prevStr = m.prevStr[:0]
+				for _, itemIdx := range cand {
+					m.prevStr = append(m.prevStr, m.allItemsStr[itemIdx])
+				}
+				src = m.prevStr
+			}
+			matches := fuzzy.Find(tokens[0], src)
 
 			// Per-candidate allItems index, aggregated fuzzy score and matched
 			// indexes, kept aligned with each other through every token pass.
@@ -248,6 +279,9 @@ func (m *model) updateFilter(query string) tea.Cmd {
 			aggIdx := make([][]int, len(matches))
 			for i, mat := range matches {
 				items[i] = mat.Index
+				if narrow {
+					items[i] = cand[mat.Index]
+				}
 				aggScores[i] = mat.Score
 				aggIdx[i] = mat.MatchedIndexes
 			}
@@ -303,6 +337,12 @@ func (m *model) updateFilter(query string) tea.Cmd {
 				ranked[i] = rankedItem{itemIdx: itemIdx, idx: idx, score: score}
 			}
 			m.setFilteredRanked(ranked)
+
+			// Kept ascending so a narrowed rescan feeds fuzzy.Find (a stable
+			// sort) the candidates in allItems order, as a full scan does.
+			m.prevMatches = append(m.prevMatches[:0], items...)
+			slices.Sort(m.prevMatches)
+			m.prevQuery = query
 		} else {
 			// Query is just whitespace, treat as empty
 			m.filterAllItems()

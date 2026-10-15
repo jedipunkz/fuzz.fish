@@ -60,3 +60,22 @@ func BenchmarkLoadItemsForMode(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkUpdateFilterTyping types a query one character at a time, the way
+// the debounced filter sees it, so each keystroke can narrow to the previous
+// matches instead of rescanning every item.
+func BenchmarkUpdateFilterTyping(b *testing.B) {
+	const query = "git pull origin"
+	for _, size := range []int{1000, 10000, 50000} {
+		m := historyModel(benchCommands(size))
+		b.Run(fmt.Sprintf("n=%d", size), func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				m.updateFilter("")
+				for i := 1; i <= len(query); i++ {
+					m.updateFilter(query[:i])
+				}
+			}
+		})
+	}
+}

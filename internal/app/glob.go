@@ -50,8 +50,9 @@ func globMatch(dst []int, segs []string, text string) (matched []int, ok bool) {
 // globFilter populates m.filtered using glob matching. Every token must match
 // (AND); the union of matched indexes feeds the same scoring and highlighting
 // pipeline as fuzzy matching, so frecency and match-quality ordering behave
-// consistently across both search modes.
-func (m *model) globFilter(tokens []string) {
+// consistently across both search modes. When narrow is set only the cand
+// indexes are scanned, and the matches are recorded in prevMatches either way.
+func (m *model) globFilter(tokens []string, cand []int, narrow bool) {
 	tokenSegs := make([][]string, len(tokens))
 	for i, t := range tokens {
 		tokenSegs[i] = strings.Split(strings.ToLower(t), "*")
@@ -60,12 +61,21 @@ func (m *model) globFilter(tokens []string) {
 	config := scoring.DefaultConfig()
 	now := scoring.CurrentTimestamp()
 
-	hits := make([]rankedItem, 0, len(m.allItems))
+	n := len(m.allItems)
+	if narrow {
+		n = len(cand)
+	}
+
+	hits := make([]rankedItem, 0, n)
 	// buf collects one candidate's matched indexes and is reused across
 	// candidates; only hits get their own copy.
 	var buf []int
 
-	for i := range m.allItems {
+	for k := range n {
+		i := k
+		if narrow {
+			i = cand[k]
+		}
 		// Lowercased at load time in loadItemsForMode: re-lowercasing every
 		// candidate string here would allocate once per item per keystroke.
 		text := m.allItemsStrLower[i]
@@ -90,6 +100,13 @@ func (m *model) globFilter(tokens []string) {
 		// the match quality alone here.
 		score := config.ItemScore(m.allItemsStr[i], 0, idx, timestamp, frequency, isCurrent, now)
 		hits = append(hits, rankedItem{itemIdx: i, idx: idx, score: score})
+	}
+
+	// hits are in ascending allItems order here, before ranking reorders
+	// them. cand aliases prevMatches, so it is overwritten only now.
+	m.prevMatches = m.prevMatches[:0]
+	for _, h := range hits {
+		m.prevMatches = append(m.prevMatches, h.itemIdx)
 	}
 
 	// Ordered like the fuzzy path: higher score at the bottom.
