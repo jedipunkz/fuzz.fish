@@ -1,7 +1,6 @@
 package app
 
 import (
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -212,7 +211,10 @@ type rankedItem struct {
 
 // setFilteredRanked fills filtered with the ranked candidates. Higher combined
 // score should appear at bottom (higher priority), so they are sorted
-// ascending; the sort is stable to keep the matcher's order on ties.
+// ascending; the sort is stable to keep allItems order on ties, the order an
+// empty query displays. The matchers return candidates in allItems order
+// (fuzzy.FindNoSort skips the library's own score sort, which this re-sort
+// would discard anyway).
 func (m *model) setFilteredRanked(ranked []rankedItem) {
 	sort.SliceStable(ranked, func(i, j int) bool {
 		return ranked[i].score < ranked[j].score
@@ -270,7 +272,7 @@ func (m *model) updateFilter(query string) tea.Cmd {
 				}
 				src = m.prevStr
 			}
-			matches := fuzzy.Find(tokens[0], src)
+			matches := fuzzy.FindNoSort(tokens[0], src)
 
 			// Per-candidate allItems index, aggregated fuzzy score and matched
 			// indexes, kept aligned with each other through every token pass.
@@ -304,17 +306,14 @@ func (m *model) updateFilter(query string) tea.Cmd {
 					for i, itemIdx := range items {
 						subset[i] = m.allItemsStr[itemIdx]
 					}
-					subMatches := fuzzy.Find(token, subset)
-					// Fresh slices per pass: subMatches is ordered by score, so
-					// writing into the slices being read would overwrite
-					// candidates before they are read.
+					subMatches := fuzzy.FindNoSort(token, subset)
 					nextItems := make([]int, len(subMatches))
 					nextScores := make([]int, len(subMatches))
 					nextIdx := make([][]int, len(subMatches))
 					for j, sm := range subMatches {
 						nextItems[j] = items[sm.Index]
 						nextScores[j] = aggScores[sm.Index] + sm.Score
-						// fuzzy.Find allocates MatchedIndexes per match, so each
+						// fuzzy allocates MatchedIndexes per match, so each
 						// candidate owns its slice and it can be extended in place.
 						//nolint:gocritic // intentionally appending to a slice owned by another index
 						nextIdx[j] = append(aggIdx[sm.Index], sm.MatchedIndexes...)
@@ -338,10 +337,10 @@ func (m *model) updateFilter(query string) tea.Cmd {
 			}
 			m.setFilteredRanked(ranked)
 
-			// Kept ascending so a narrowed rescan feeds fuzzy.Find (a stable
-			// sort) the candidates in allItems order, as a full scan does.
+			// items is ascending: FindNoSort keeps its input order and every
+			// pass reads candidates in allItems order. A narrowed rescan
+			// therefore sees them in the same order as a full scan.
 			m.prevMatches = append(m.prevMatches[:0], items...)
-			slices.Sort(m.prevMatches)
 			m.prevQuery = query
 		} else {
 			// Query is just whitespace, treat as empty

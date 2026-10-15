@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/jedipunkz/fuzz.fish/internal/history"
@@ -92,5 +93,24 @@ func TestUpdateFilter_ThreeTokens(t *testing.T) {
 		if got[text] != 1 {
 			t.Errorf("%q appears %d times in %v, want once", text, got[text], got)
 		}
+	}
+}
+
+// TestUpdateFilter_TiesKeepItemsOrder pins the order of items whose combined
+// scores tie: they keep allItems order, as an empty query shows them, so in
+// history mode the newer command sits at the bottom under the cursor. These
+// two tie although their fuzzy scores differ (31 vs 16); ordering ties by
+// fuzzy score would put the older one at the bottom.
+func TestUpdateFilter_TiesKeepItemsOrder(t *testing.T) {
+	m := historyModel([]string{"aAA_ b", " ab/A/"}) // newest first
+	m.updateFilter("ab")
+
+	got := make([]string, 0, len(m.filtered))
+	for _, item := range m.filtered {
+		got = append(got, item.Text)
+	}
+	want := []string{" ab/A/", "aAA_ b"}
+	if !slices.Equal(got, want) {
+		t.Errorf("filtered = %q, want %q", got, want)
 	}
 }
