@@ -98,6 +98,14 @@ type model struct {
 	allItemsStrLower []string // Lowercase view of allItemsStr, pre-built once per load for glob matching
 	filtered         []Item   // Filtered items
 
+	// Incremental narrowing: the last filtered query and the allItems indexes
+	// it matched, ascending. A query that extends prevQuery can only match a
+	// subset of those, so the next filter rescans them instead of allItems.
+	// prevQuery is empty whenever allItems changes, which disables narrowing.
+	prevQuery   string
+	prevMatches []int
+	prevStr     []string // Search strings of prevMatches, reused across keystrokes
+
 	cursor      int
 	offset      int
 	choice      *string         // Result string to print
