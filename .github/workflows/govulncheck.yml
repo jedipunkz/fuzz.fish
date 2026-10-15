@@ -3,8 +3,6 @@ name: Govulncheck
 on:
   pull_request:
     branches: [ main ]
-    paths:
-      - '.github/workflows/govulncheck.yml'
   schedule:
     - cron: '0 3 * * 1'
 
@@ -12,8 +10,42 @@ permissions:
   contents: read
 
 jobs:
+  # Vulnerability scan is a required status check. A workflow-level paths filter
+  # would leave it pending forever on PRs that do not match, so the workflow
+  # always runs and the scan job is skipped instead: a job skipped by its
+  # if condition reports success to required checks.
+  changes:
+    name: Detect changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Filter Go-relevant changes
+        uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**.go'
+              - 'go.mod'
+              - 'go.sum'
+              - '.github/workflows/govulncheck.yml'
+
   govulncheck:
     name: Vulnerability scan
+    needs: changes
+    # Scheduled runs skip change detection and always scan. !cancelled()
+    # keeps this job from being skipped along with that skipped job.
+    if: ${{ !cancelled() && (github.event_name == 'schedule' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

@@ -29,10 +29,13 @@ jobs:
               - 'Makefile'
               - '.github/workflows/ci.yml'
 
+  # The required checks are the matrix names "Build and Test (<os>)". A job
+  # skipped by its if condition reports once under the unexpanded name, which
+  # leaves those required checks pending, so the job always runs and its steps
+  # are skipped instead.
   build:
     name: Build and Test
     needs: changes
-    if: needs.changes.outputs.code == 'true'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -41,24 +44,30 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
+        if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Go
+        if: needs.changes.outputs.code == 'true'
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.27'
           cache: true
 
       - name: Verify dependencies
+        if: needs.changes.outputs.code == 'true'
         run: go mod verify
 
       - name: Build
+        if: needs.changes.outputs.code == 'true'
         run: go build -v ./cmd/fuzz
 
       - name: Run go vet
+        if: needs.changes.outputs.code == 'true'
         run: go vet ./...
 
       - name: Run tests
+        if: needs.changes.outputs.code == 'true'
         run: go test -race -v ./...
 
   lint:
