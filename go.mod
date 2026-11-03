@@ -8,7 +8,7 @@ require (
 	charm.land/lipgloss/v2 v2.0.6
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/atotto/clipboard v0.1.4
-	github.com/charmbracelet/x/ansi v0.11.8
+	github.com/charmbracelet/x/ansi v0.11.9
 	github.com/go-git/go-git/v5 v5.19.2
 	github.com/sahilm/fuzzy v0.1.3
 	go.yaml.in/yaml/v3 v3.0.5
