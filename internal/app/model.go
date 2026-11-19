@@ -25,9 +25,6 @@ type pullRequestsLoadedMsg struct {
 	err error
 }
 
-// Filter debounce message
-type filterTickMsg struct{ query string }
-
 // previewReadyMsg delivers preview content generated inside a tea.Cmd so the
 // update loop is not blocked by subprocesses and disk I/O. gen identifies the
 // resize generation the render was produced for: renders from older
@@ -121,8 +118,6 @@ type model struct {
 	quitting      bool
 	statusMsg     string // Transient status message (e.g., warning)
 	loading       bool   // True while async data loading is in progress
-
-	pendingQuery string // For filter debounce
 
 	width      int
 	height     int

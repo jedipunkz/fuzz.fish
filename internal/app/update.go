@@ -3,7 +3,6 @@ package app
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
@@ -90,12 +89,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.key == m.lastPreviewKey {
 				m.viewport.SetContent(msg.content)
 			}
-		}
-		return m, nil
-
-	case filterTickMsg:
-		if msg.query == m.pendingQuery {
-			return m, m.updateFilter(msg.query)
 		}
 		return m, nil
 
@@ -257,10 +250,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	newValue := m.input.Value()
 	if oldValue != newValue {
-		m.pendingQuery = newValue
-		cmds = append(cmds, tea.Tick(30*time.Millisecond, func(t time.Time) tea.Msg {
-			return filterTickMsg{query: newValue}
-		}))
+		// Filter synchronously: with incremental narrowing and the slice reuse
+		// in filter.go a keystroke costs single-digit milliseconds even at 50k
+		// items, so the debounce this replaced only added a fixed 30ms lag
+		// between typing and the list updating.
+		cmds = append(cmds, m.updateFilter(newValue))
 	}
 
 	m.viewport, cmd = m.viewport.Update(msg)
